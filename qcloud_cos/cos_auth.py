@@ -10,7 +10,7 @@ from urlparse import urlparse
 from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
 
-
+#fix a bug which can't send header
 class CosS3Auth(AuthBase):
 
     def __init__(self, access_id, secret_key, expire=10000):
@@ -22,6 +22,8 @@ class CosS3Auth(AuthBase):
         method = r.method.lower()
         uri = urllib.unquote(r.url)
         uri = uri.split('?')[0]
+        http_header = r.headers
+        r.headers = {}
         rt = urlparse(uri)
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
@@ -30,8 +32,6 @@ class CosS3Auth(AuthBase):
             uri_params = {rt.query: ""}
         else:
             uri_params = {}
-        r.headers = {}
-        r.headers['Host'] = rt.netloc
         headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
@@ -54,7 +54,7 @@ class CosS3Auth(AuthBase):
         logger.debug('sign: ' + str(sign))
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
 
-        r.headers['Authorization'] = sign_tpl.format(
+        http_header['Authorization'] = sign_tpl.format(
             ak=self._access_id,
             sign_time=sign_time,
             key_time=sign_time,
@@ -62,6 +62,7 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
+        r.headers = http_header
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
 
