@@ -83,12 +83,13 @@ class ObjectInterface(object):
     def __init__(self, conf, session=None):
         self._conf = conf
         self._upload_id = None
+        self._headers = []
+        self._params = []
         self._md5 = []
-        self._have_finished = 0
-        self._err_tips = ''
         self._retry = 2
         self._file_num = 0
         self._folder_num = 0
+        self._have_finished = 0
         self._etag = 'ETag'
         if session is None:
             self._session = requests.session()
@@ -119,32 +120,17 @@ class ObjectInterface(object):
                     self._file_num += 1
                     logger.debug("upload {file} success".format(file=to_printable_str(filepath)))
 
-    def upload_file(self, local_path, cos_path, **kwargs):
-        for i in kwargs.keys():
-            print i, kwargs[i]
+    def upload_file(self, Body, Key, **kwargs):
+
         def single_upload():
-            if len(local_path) == 0:
-                data = ""
-            else:
-                with open(local_path, 'rb') as File:
-                    data = File.read()
-            url = self._conf.uri(path=cos_path)
+            url = self._conf.uri(path=Key)
+            print type(kwargs['headers'])
             for j in range(self._retry):
-                try:
-                    rt = self._session.put(url=url,
-                                           auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data)
-                    if rt.status_code == 200:
-                        if local_path != '':
-                            logger.warn("upload {file} with {per}%".format(file=to_printable_str(local_path), per="{0:5.2f}".format(100)))
-                        return True
-                    else:
-                        time.sleep(2**j)
-                        continue
-                    if j+1 == self._retry:
-                        return False
-                except Exception:
-                    logger.warn("upload file failed")
-            return False
+                rt = self._session.put(url=url,
+                    auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body, headers=kwargs['headers'])
+                if rt.status_code == 200:
+                    break
+            return rt
 
         def init_multiupload():
             url = self._conf.uri(path=cos_path)
@@ -200,7 +186,8 @@ class ObjectInterface(object):
                 return True
 
             offset = 0
-            file_size = path.getsize(local_path)
+            file_size = len(local_path)
+            print file_size
             logger.debug("file size: " + str(file_size))
             chunk_size = 1024 * 1024 * self._conf._part_size
             while file_size / chunk_size > 10000:
@@ -257,16 +244,12 @@ class ObjectInterface(object):
             except Exception:
                 return False
             return True
-
-        if local_path == "":
-            file_size = 0
-        else:
-            file_size = os.path.getsize(local_path)
+        
+        file_size = len(Body)
+        print file_size
         if file_size < 5*1024*1024:
             for i in range(self._retry):
-                if single_upload() is True:
-                    return True
-            return False
+                return single_upload()
         else:
             for i in range(self._retry):
 
