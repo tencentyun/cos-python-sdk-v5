@@ -4,13 +4,12 @@ import time
 import urllib
 import hashlib
 import logging
-import requests
 from urllib import quote
 from urlparse import urlparse
 from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
 
-#fix a bug which can't send header
+
 class CosS3Auth(AuthBase):
 
     def __init__(self, access_id, secret_key, expire=10000):
@@ -72,4 +71,3 @@ class CosS3Auth(AuthBase):
 
 if __name__ == "__main__":
     url = 'http://lewzylu01-1252448703.cn-south.myqcloud.com/a.txt'
-    
