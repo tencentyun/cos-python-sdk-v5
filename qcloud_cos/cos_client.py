@@ -1,41 +1,36 @@
 # -*- coding=utf-8
 from cos_auth import CosS3Auth
-from cos_threadpool import SimpleThreadPool
-import time
 import requests
-from os import path
-from contextlib import closing
-from xml.dom import minidom
 import logging
 import sys
-import os
 import copy
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
 maplist = {
-           'ContentLength':'Content-Length',
-           'ContentType':'Content-Type',
-           'ContentMD5':'Content-MD5',
-           'CacheControl':'Cache-Control',
-           'ContentDisposition':'Content-Disposition',
-           'ContentEncoding':'Content-Encoding',
-           'Expires':'Expires',
-           'Metadata':'x-cos-meta- *',
-           'ACL':'x-cos-acl',
-           'GrantFullControl':'x-cos-grant-full-control',
-           'GrantWrite':'x-cos-grant-write',
-           'GrantRead':'x-cos-grant-read',
-           'StorageClass':'x-cos-storage-class',
-           'PartNumber':'partNumber',
-           'UploadId':'uploadId',
-           'Delimiter':'delimiter',
-           'Marker':'marker',
-           'MaxKeys':'max-keys',
-           'Prefix':'prefix',
-           'EncodingType':'encoding-type'
+           'ContentLength': 'Content-Length',
+           'ContentType': 'Content-Type',
+           'ContentMD5': 'Content-MD5',
+           'CacheControl': 'Cache-Control',
+           'ContentDisposition': 'Content-Disposition',
+           'ContentEncoding': 'Content-Encoding',
+           'Expires': 'Expires',
+           'Metadata': 'x-cos-meta- *',
+           'ACL': 'x-cos-acl',
+           'GrantFullControl': 'x-cos-grant-full-control',
+           'GrantWrite': 'x-cos-grant-write',
+           'GrantRead': 'x-cos-grant-read',
+           'StorageClass': 'x-cos-storage-class',
+           'PartNumber': 'partNumber',
+           'UploadId': 'uploadId',
+           'Delimiter': 'delimiter',
+           'Marker': 'marker',
+           'MaxKeys': 'max-keys',
+           'Prefix': 'prefix',
+           'EncodingType': 'encoding-type'
            }
+
 
 def to_unicode(s):
     if isinstance(s, unicode):
@@ -66,28 +61,26 @@ def getTagText(root, tag):
         if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
             rc = rc + node.data
 
+
 def mapped(headers):
-    _headers = copy.copy(headers) 
+    _headers = copy.copy(headers)
     for i in headers.keys():
         if i in maplist:
             del _headers[i]
             _headers[maplist[i]] = headers[i]
     return _headers
 
+
 class CosConfig(object):
 
-    def __init__(self, appid, region, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
-        self._appid = appid
-        self._region = region
-        self._access_id = access_id
-        self._access_key = access_key
-        self._part_size = min(10, part_size)
-        self._max_thread = min(10, max_thread)
-        logger.info("config parameter-> appid: {appid}, region: {region}, part_size: {part_size}, max_thread: {max_thread}".format(
-                 appid=appid,
-                 region=region,
-                 part_size=part_size,
-                 max_thread=max_thread))
+    def __init__(self, Appid, Region, Access_id, Access_key, *args, **kwargs):
+        self._appid = Appid
+        self._region = Region
+        self._access_id = Access_id
+        self._access_key = Access_key
+        logger.info("config parameter-> appid: {appid}, region: {region}".format(
+                 appid=Appid,
+                 region=Region))
 
     def uri(self, bucket, path=None):
         if path:
@@ -106,7 +99,7 @@ class CosConfig(object):
         return url
 
 
-class ObjectInterface(object):
+class CosS3Client(object):
 
     def __init__(self, conf, session=None):
         self._conf = conf
@@ -123,13 +116,11 @@ class ObjectInterface(object):
         else:
             self._session = session
 
-
     def put_object(self, Bucket, Body, Key, **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key)
         for j in range(self._retry):
-            rt = self._session.put(url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body, headers=headers)
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body, headers=headers)
             if rt.status_code == 200:
                 break
         return rt
@@ -138,7 +129,7 @@ class ObjectInterface(object):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key)
         for j in range(self._retry):
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
             if rt.status_code == 200:
                 break
         return rt
@@ -147,12 +138,12 @@ class ObjectInterface(object):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key)
         for j in range(self._retry):
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
+            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
             if rt.status_code == 204:
                 break
         return rt
-    
-    def create_multipart_upload(self, Bucket, Key, **kwargs):        
+
+    def create_multipart_upload(self, Bucket, Key, **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
         for j in range(self._retry):
@@ -160,44 +151,30 @@ class ObjectInterface(object):
             if rt.status_code == 200:
                 break
         return rt
-    
-    def upload_part(self, Bucket, Key, PartNumber="", UploadId="", **kwargs):
-        headers,params = mapped(kwargs)
+
+    def upload_part(self, Bucket, Key, Body, PartNumber="", UploadId="", **kwargs):
+        headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key+"?partNumber={PartNumber}&uploadId={UploadId}".format(PartNumber=PartNumber, UploadId=UploadId))
         for j in range(self._retry):
             rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body)
             if rt.status_code == 200:
                 break
         return rt
-    
+
     def complete_multipart_upload(self, Bucket, Key, UploadId="", **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
         for j in range(self._retry):
-            rt = self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data)
+            rt = self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
             if rt.status_code == 200:
                 break
         return rt
-
-class BucketInterface(object):
-
-    def __init__(self,  conf, session=None):
-        self._conf = conf
-        self._upload_id = None
-        self._md5 = []
-        self._have_finished = 0
-        self._retry = 2
-        if session is None:
-            self._session = requests.session()
-        else:
-            self._session = session
 
     def create_bucket(self, Bucket, **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
         for j in range(self._retry):
-            rt = self._session.put(url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
             if rt.status_code == 200:
                 break
         return rt
@@ -206,32 +183,27 @@ class BucketInterface(object):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
         for j in range(self._retry):
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
+            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
             if rt.status_code == 204:
                 break
         return rt
 
-    def list_objects(self, Bucket ,**kwargs):
+    def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys="", Prefix="",  **kwargs):
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path="?max-keys=1")
+        url = self._conf.uri(bucket=Bucket,
+                             path='''?prefix={Prefix}&delimiter={Delimiter}&encoding-type={EncodingType}&marker={Marker}&max-keys={MaxKeys}'''.format(
+                                                    Delimiter=Delimiter,
+                                                    EncodingType=EncodingType,
+                                                    Prefix=Prefix,
+                                                    MaxKeys=MaxKeys,
+                                                    Marker=Marker
+                                                    ),
+                             )
         for j in range(self._retry):
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 break
         return rt
-
-
-class CosS3Client(object):
-
-    def __init__(self, conf):
-        self._conf = conf
-        self._session = requests.session()
-
-    def obj_int(self, local_path='', cos_path=''):
-        return ObjectInterface(conf=self._conf, session=self._session)
-
-    def buc_int(self):
-        return BucketInterface(conf=self._conf, session=self._session)
 
 
 if __name__ == "__main__":
