@@ -9,10 +9,22 @@ from xml.dom import minidom
 import logging
 import sys
 import os
+import copy
 
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
+maplist = {'CacheControl':'Cache-Control',
+           'ContentDisposition':'Content-Disposition',
+           'ContentEncoding':'Content-Encoding',
+           'Expires':'Expires',
+           'Metadata':'x-cos-meta- *',
+           'ACL':'x-cos-acl',
+           'GrantFullControl':'x-cos-grant-full-control',
+           'GrantWrite':'x-cos-grant-write',
+           'GrantRead':'x-cos-grant-read',
+           'StorageClass':'x-cos-storage-class',
+           }
 
 def to_unicode(s):
     if isinstance(s, unicode):
@@ -43,35 +55,40 @@ def getTagText(root, tag):
         if node.nodeType in (node.TEXT_NODE, node.CDATA_SECTION_NODE):
             rc = rc + node.data
 
+def mapped(headers):
+    _headers = copy.copy(headers) 
+    for i in headers.keys():
+        if i in maplist:
+            del _headers[i]
+            _headers[maplist[i]] = headers[i]
+    return _headers
 
 class CosConfig(object):
 
-    def __init__(self, appid, region, bucket, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
+    def __init__(self, appid, region, access_id, access_key, part_size=1, max_thread=5, *args, **kwargs):
         self._appid = appid
         self._region = region
-        self._bucket = bucket
         self._access_id = access_id
         self._access_key = access_key
         self._part_size = min(10, part_size)
         self._max_thread = min(10, max_thread)
-        logger.info("config parameter-> appid: {appid}, region: {region}, bucket: {bucket}, part_size: {part_size}, max_thread: {max_thread}".format(
+        logger.info("config parameter-> appid: {appid}, region: {region}, part_size: {part_size}, max_thread: {max_thread}".format(
                  appid=appid,
                  region=region,
-                 bucket=bucket,
                  part_size=part_size,
                  max_thread=max_thread))
 
-    def uri(self, path=None):
+    def uri(self, bucket, path=None):
         if path:
             url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
-                bucket=self._bucket,
+                bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
             url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
-                bucket=self._bucket,
+                bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region
             )
@@ -96,30 +113,34 @@ class ObjectInterface(object):
             self._session = session
 
 
-    def put_object(self, Body, Key, **kwargs):
-        url = self._conf.uri(path=Key)
+    def put_object(self, Bucket, Body, Key, **kwargs):
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key)
         for j in range(self._retry):
             rt = self._session.put(url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body, headers=kwargs['headers'])
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body, headers=headers)
             if rt.status_code == 200:
                 break
         return rt
 
-    def get_object(self, Key, **kwargs):
-        url = self._conf.uri(path=Key)
+    def get_object(self, Bucket, Key, **kwargs):
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key)
         for j in range(self._retry):
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=kwargs['headers'])
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
             if rt.status_code == 200:
                 break
         return rt
 
-    def delete_object(self, Key, **kwargs):
-        url = self._conf.uri(path=Key)
+    def delete_object(self, Bucket, Key, **kwargs):
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key)
         for j in range(self._retry):
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=kwargs['headers'])
+            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
             if rt.status_code == 204:
                 break
         return rt
+
 
 
 class BucketInterface(object):
@@ -135,19 +156,21 @@ class BucketInterface(object):
         else:
             self._session = session
 
-    def put_bucket(self, **kwargs):
-        url = self._conf.uri(path='')
+    def put_bucket(self, Bucket, **kwargs):
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket)
         for j in range(self._retry):
             rt = self._session.put(url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=kwargs['headers'])
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
             if rt.status_code == 200:
                 break
         return rt
 
-    def delete_bucket(self, Key, **kwargs):
-        url = self._conf.uri(path='')
+    def delete_bucket(self, Bucket, **kwargs):
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket)
         for j in range(self._retry):
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=kwargs['headers'])
+            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
             if rt.status_code == 204:
                 break
         return rt
