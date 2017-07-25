@@ -14,7 +14,11 @@ import copy
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
-maplist = {'CacheControl':'Cache-Control',
+maplist = {
+           'ContentLength':'Content-Length',
+           'ContentType':'Content-Type',
+           'ContentMD5':'Content-MD5',
+           'CacheControl':'Cache-Control',
            'ContentDisposition':'Content-Disposition',
            'ContentEncoding':'Content-Encoding',
            'Expires':'Expires',
@@ -24,6 +28,13 @@ maplist = {'CacheControl':'Cache-Control',
            'GrantWrite':'x-cos-grant-write',
            'GrantRead':'x-cos-grant-read',
            'StorageClass':'x-cos-storage-class',
+           'PartNumber':'partNumber',
+           'UploadId':'uploadId',
+           'Delimiter':'delimiter',
+           'Marker':'marker',
+           'MaxKeys':'max-keys',
+           'Prefix':'prefix',
+           'EncodingType':'encoding-type'
            }
 
 def to_unicode(s):
@@ -140,8 +151,33 @@ class ObjectInterface(object):
             if rt.status_code == 204:
                 break
         return rt
-
-
+    
+    def create_multipart_upload(self, Bucket, Key, **kwargs):        
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
+        for j in range(self._retry):
+            rt = self._session.post(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt.status_code == 200:
+                break
+        return rt
+    
+    def upload_part(self, Bucket, Key, PartNumber="", UploadId="", **kwargs):
+        headers,params = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key+"?partNumber={PartNumber}&uploadId={UploadId}".format(PartNumber=PartNumber, UploadId=UploadId))
+        for j in range(self._retry):
+            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body)
+            if rt.status_code == 200:
+                break
+        return rt
+    
+    def complete_multipart_upload(self, Bucket, Key, UploadId="", **kwargs):
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
+        for j in range(self._retry):
+            rt = self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=data)
+            if rt.status_code == 200:
+                break
+        return rt
 
 class BucketInterface(object):
 
@@ -156,7 +192,7 @@ class BucketInterface(object):
         else:
             self._session = session
 
-    def put_bucket(self, Bucket, **kwargs):
+    def create_bucket(self, Bucket, **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
         for j in range(self._retry):
@@ -172,6 +208,15 @@ class BucketInterface(object):
         for j in range(self._retry):
             rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
             if rt.status_code == 204:
+                break
+        return rt
+
+    def list_objects(self, Bucket ,**kwargs):
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?max-keys=1")
+        for j in range(self._retry):
+            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key),headers=headers)
+            if rt.status_code == 200:
                 break
         return rt
 
