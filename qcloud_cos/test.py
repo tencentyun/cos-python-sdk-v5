@@ -83,9 +83,15 @@ def Test():
     assert rt.status_code == 204
 
     print "Test list objects"
-    rt = client.list_objects(Bucket='lewzylu06',
-                             MaxKeys='1',
-                             )
+    rt = client.list_objects(
+                            Bucket='lewzylu06',
+                            Delimiter='string',
+                            EncodingType='url',
+                            Marker='string',
+                            MaxKeys=123,
+                            Prefix='string',
+                            MaxKeys='1',
+                            )
     print rt.status_code
     assert rt.status_code == 200
 
