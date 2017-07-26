@@ -85,13 +85,12 @@ def Test():
         print "Test list objects"
         rt = client.list_objects(
                                 Bucket='lewzylu06',
-                                Delimiter='string',
+                                Delimiter='',
                                 EncodingType='url',
                                 Marker='string',
                                 Prefix='string',
                                 MaxKeys='1',
                                 )
-        print rt.status_code
         assert rt.status_code == 200
 
 
