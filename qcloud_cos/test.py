@@ -30,70 +30,69 @@ def tearDown():
 
 
 def Test():
-    file_size = 3.1 + 0.1
-    file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
-    headers = {'Content-Encoding': 'url'}
-    print "Test put " + file_name
-    sys.stdout.flush()
-    conf = cos_client.CosConfig(
-        Appid="1252448703",
-        Region="cn-north",
-        Access_id=ACCESS_ID,
-        Access_key=ACCESS_KEY,
-    )
-    client = cos_client.CosS3Client(conf)
-    rt = client.put_object(
-                         Bucket='lewzylu06',
-                         Body='123'*1232,
-                         Key=file_name,
-                         CacheControl='string',
-                         ContentDisposition='string',
-                         ContentEncoding='string',
-                         ContentLanguage='string',
-                         ContentType='string'
-                         )
-    assert rt.status_code == 200
+    for i in range(test_num):
+        file_size = 3.1 + 0.1
+        file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
+        headers = {'Content-Encoding': 'url'}
+        print "Test put " + file_name
+        conf = cos_client.CosConfig(
+            Appid="1252448703",
+            Region="cn-north",
+            Access_id=ACCESS_ID,
+            Access_key=ACCESS_KEY,
+        )
+        client = cos_client.CosS3Client(conf)
+        rt = client.put_object(
+                             Bucket='lewzylu06',
+                             Body='123'*1232,
+                             Key=file_name,
+                             CacheControl='string',
+                             ContentDisposition='string',
+                             ContentEncoding='string',
+                             ContentLanguage='string',
+                             ContentType='string'
+                             )
+        assert rt.status_code == 200
 
-    print "Test get " + file_name
-    rt = client.get_object(Bucket='lewzylu06',
-                           Key=file_name
-                           )
-    assert rt.status_code == 200
+        print "Test get " + file_name
+        rt = client.get_object(Bucket='lewzylu06',
+                               Key=file_name
+                               )
+        assert rt.status_code == 200
 
-    print "Test delete " + file_name
-    rt = client.delete_object(Bucket='lewzylu06',
-                              Key=file_name,
-                              )
-    assert rt.status_code == 204
+        print "Test delete " + file_name
+        rt = client.delete_object(Bucket='lewzylu06',
+                                  Key=file_name,
+                                  )
+        assert rt.status_code == 204
 
-    conf = cos_client.CosConfig(
-        Appid="1252448703",
-        Region="cn-north",
-        Access_id=ACCESS_ID,
-        Access_key=ACCESS_KEY,
-    )
-    client = cos_client.CosS3Client(conf)
-    print "Test create bucket"
-    rt = client.create_bucket(Bucket='lewzylu999'
-                              )
-    assert rt.status_code == 200
-    print "Test delete bucket"
-    rt = client.delete_bucket(Bucket='lewzylu999'
-                              )
-    assert rt.status_code == 204
+        conf = cos_client.CosConfig(
+            Appid="1252448703",
+            Region="cn-north",
+            Access_id=ACCESS_ID,
+            Access_key=ACCESS_KEY,
+        )
+        client = cos_client.CosS3Client(conf)
+        print "Test create bucket"
+        rt = client.create_bucket(Bucket='lewzylu999'
+                                  )
+        assert rt.status_code == 200
+        print "Test delete bucket"
+        rt = client.delete_bucket(Bucket='lewzylu999'
+                                  )
+        assert rt.status_code == 204
 
-    print "Test list objects"
-    rt = client.list_objects(
-                            Bucket='lewzylu06',
-                            Delimiter='string',
-                            EncodingType='url',
-                            Marker='string',
-                            MaxKeys=123,
-                            Prefix='string',
-                            MaxKeys='1',
-                            )
-    print rt.status_code
-    assert rt.status_code == 200
+        print "Test list objects"
+        rt = client.list_objects(
+                                Bucket='lewzylu06',
+                                Delimiter='string',
+                                EncodingType='url',
+                                Marker='string',
+                                Prefix='string',
+                                MaxKeys='1',
+                                )
+        print rt.status_code
+        assert rt.status_code == 200
 
 
 if __name__ == "__main__":
