@@ -191,13 +191,14 @@ class CosS3Client(object):
     def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys="", Prefix="",  **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket,
-                             path='''?prefix={Prefix}&delimiter={Delimiter}&encoding-type={EncodingType}&marker={Marker}&max-keys={MaxKeys}'''.format(
-                                                    Delimiter=Delimiter,
-                                                    EncodingType=EncodingType,
-                                                    Prefix=Prefix,
-                                                    MaxKeys=MaxKeys,
-                                                    Marker=Marker
-                                                    ),
+                             path='''?prefix={Prefix}&delimiter={Delimiter}&encoding-type={EncodingType}&marker={Marker}&max-keys={MaxKeys}'''
+                             .format(
+                                    Delimiter=Delimiter,
+                                    EncodingType=EncodingType,
+                                    Prefix=Prefix,
+                                    MaxKeys=MaxKeys,
+                                    Marker=Marker
+                                     ),
                              )
         for j in range(self._retry):
             rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
