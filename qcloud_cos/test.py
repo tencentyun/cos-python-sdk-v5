@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format="%(asctime)s - %(message)s")
 file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
 file_list = []
-test_num = 20
+test_num = 10
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
 
@@ -31,7 +31,7 @@ def tearDown():
 
 def Test():
     for i in range(test_num):
-        file_size = 3.1 + 0.1
+        file_size = i + 0.1
         file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
         headers = {'Content-Encoding': 'url'}
         print "Test put " + file_name
