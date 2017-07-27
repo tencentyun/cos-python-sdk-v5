@@ -7,8 +7,8 @@ from xml.dom.minidom import parse
 from cos_client import CosS3Client
 from cos_client import CosConfig
 
-#ACCESS_ID = os.environ["ACCESS_ID"]
-#ACCESS_KEY = os.environ["ACCESS_KEY"]
+ACCESS_ID = os.environ["ACCESS_ID"]
+ACCESS_KEY = os.environ["ACCESS_KEY"]
 
 def gen_file(path, size):
     _file = open(path, 'w')
@@ -34,8 +34,8 @@ def Test():
     conf = CosConfig(
         Appid="1252448703",
         Region="cn-north",
-        Access_id='AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00',
-        Access_key='ciivKvnnrMvSvQpMAWuIz12pThGGlWRW'
+        Access_id=ACCESS_ID,
+        Access_key=ACCESS_KEY
     )
     client = cos_client.CosS3Client(conf)
 
