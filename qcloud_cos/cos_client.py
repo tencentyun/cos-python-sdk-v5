@@ -56,7 +56,7 @@ def dict_to_xml(data):
     if 'Parts' not in data.keys():
         logger.error("Invalid Parameter, Parts Is Required!")
         return ''
-    
+
     for i in data['Parts']:
         nodePart = doc.createElement('Part')
 
@@ -122,7 +122,7 @@ class CosS3Client(object):
     """cos客户端类，封装相应请求"""
     def __init__(self, conf, retry=1, session=None):
         self._conf = conf
-        self._retry = retry # 重试的次数，分片上传时可适当增大
+        self._retry = retry  # 重试的次数，分片上传时可适当增大
         if session is None:
             self._session = requests.session()
         else:
@@ -145,7 +145,7 @@ class CosS3Client(object):
                 break
             logger.error(rt.headers)
         return rt
-        
+
     def get_object(self, Bucket, Key, **kwargs):
         """单文件下载接口"""
         headers = mapped(kwargs)
