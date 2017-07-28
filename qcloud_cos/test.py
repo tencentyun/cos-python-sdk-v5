@@ -11,11 +11,13 @@ from cos_client import CosConfig
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
 
+
 def gen_file(path, size):
     _file = open(path, 'w')
     _file.seek(1024*1024*size)
     _file.write('cos')
     _file.close()
+
 
 def get_id_from_xml(data):
     tree = xml.dom.minidom.parseString(data)
@@ -24,8 +26,10 @@ def get_id_from_xml(data):
     # use childNodes to get a list, if has no child get itself
     return result[0].childNodes[0].nodeValue
 
+
 def setUp():
     print "start test"
+
 
 def tearDown():
     print "function teardown"
@@ -49,9 +53,9 @@ def Test():
         Bucket='test01',
         Body='TY'*1024*512*file_size,
         Key=file_name,
-        CacheControl = 'no-cache',
-        ContentDisposition = 'download.txt',
-        ACL = 'public-read'
+        CacheControl='no-cache',
+        ContentDisposition='download.txt',
+        ACL='public-read'
     )
     assert response.status_code == 200
 
@@ -85,7 +89,7 @@ def Test():
     print "Test Create Bucket"
     response = client.create_bucket(
         Bucket='test02',
-        ACL = 'public-read'
+        ACL='public-read'
     )
     assert response.status_code == 200
 
@@ -98,49 +102,55 @@ def Test():
     print "Test Create MultipartUpload"
     response = client.create_multipart_upload(
         Bucket='test01',
-        Key = 'multipartfile.txt',    
+        Key='multipartfile.txt',
     )
     assert response.status_code == 200
     uploadid = get_id_from_xml(response.text)
 
-    
     print "Test Abort MultipartUpload"
     response = client.abort_multipart_upload(
         Bucket='test01',
-        Key = 'multipartfile.txt',
-        UploadId = uploadid
+        Key='multipartfile.txt',
+        UploadId=uploadid
     )
     assert response.status_code == 200
-    
+
     print "Test Create MultipartUpload"
     response = client.create_multipart_upload(
         Bucket='test01',
-        Key = 'multipartfile.txt',    
+        Key='multipartfile.txt',
     )
     uploadid = get_id_from_xml(response.text)
     assert response.status_code == 200
-    
+
     print "Test Upload Part"
     response = client.upload_part(
         Bucket='test01',
-        Key = 'multipartfile.txt',
-        UploadId = uploadid,
-        PartNumber = 1,
-        Body = 'A'*1024*1024*4
+        Key='multipartfile.txt',
+        UploadId=uploadid,
+        PartNumber=1,
+        Body='A'*1024*1024*4
     )
     etag = response.headers['ETag']
     assert response.status_code == 200
-    
+
+    print "List Upload Parts"
+    response = client.list_parts(
+        Bucket='test01',
+        Key='multipartfile.txt',
+        UploadId=uploadid
+    )
+    assert response.status_code == 200
+
     print "Test Complete MultipartUpload"
     response = client.complete_multipart_upload(
         Bucket='test01',
-        Key = 'multipartfile.txt',
-        UploadId = uploadid,
-        MultipartUpload = {'Parts':[{'PartNumber':1, 'ETag':etag}]}
+        Key='multipartfile.txt',
+        UploadId=uploadid,
+        MultipartUpload={'Parts': [{'PartNumber': 1, 'ETag': etag}]}
     )
     assert response.status_code == 200
 
 if __name__ == "__main__":
     setUp()
     Test()
-
