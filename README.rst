@@ -26,10 +26,10 @@ __________
 .. code:: python
 
     # 设置用户属性, 包括appid, secret_id和secret_key
-    appid = 100000                  # 替换为用户的appid
-    secret_id = u'xxxxxxxx'         # 替换为用户的secret_id
-    secret_key = u'xxxxxxx'         # 替换为用户的secret_key
-    region = "cn-north"             # 替换为用户的region，目前可以为 cn-east/cn-south/cn-north/cn-southwest，分别对应于上海，广州，天津,西南园区
+    appid = 100000              # 替换为用户的appid
+    secret_id = u'xxxxxxxx'     # 替换为用户的secret_id
+    secret_key = u'xxxxxxx'     # 替换为用户的secret_key
+    region = "cn-north"         # 替换为用户的region，目前可以为 cn-east/cn-south/cn-north/cn-southwest，分别对应于上海，广州，天津,西南园区
     config = CosConfig(Appid=appid, Region=region, Access_id=secret_id, Access_key=secret_key)  #获取配置对象
     client = CosS3Client(config)                                                                #获取客户端对象
 
@@ -95,14 +95,6 @@ __________
     )
     etag = response.headers['ETag']
 
-    # 8. 上传分片
-    response = client.list_parts(
-        Bucket='test01',
-        Key='multipartfile.txt',
-        UploadId=uploadid
-    )
-
-
     # 9. 完成分片上传
     response = client.complete_multipart_upload(
         Bucket='test01',
@@ -122,7 +114,6 @@ __________
     )   
 
     # 2. 删除Bucket
-    print "Test Delete Bucket"
     response = client.delete_bucket(
         Bucket='test02'
     )
