@@ -20,6 +20,7 @@ def gen_file(path, size):
 
 
 def get_id_from_xml(data):
+    """解析xml中的uploadid"""
     tree = xml.dom.minidom.parseString(data)
     root = tree.documentElement
     result = root.getElementsByTagName('UploadId')
