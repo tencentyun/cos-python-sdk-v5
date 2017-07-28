@@ -55,7 +55,7 @@ def dict_to_xml(data):
     if 'Parts' not in data.keys():
         logger.error("Invalid Parameter, Parts Is Required!")
         return ''
-
+    
     for i in data['Parts']:
         nodePart = doc.createElement('Part')
 
