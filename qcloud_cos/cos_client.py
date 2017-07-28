@@ -7,12 +7,12 @@ import copy
 import xml.dom.minidom
 
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(
+                level=logging.INFO,
                 format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                 datefmt='%a, %d %b %Y %H:%M:%S',
                 filename='cos_s3.log',
                 filemode='w')
-
 logger = logging.getLogger(__name__)
 fs_coding = sys.getfilesystemencoding()
 
@@ -46,6 +46,7 @@ def to_unicode(s):
     else:
         return s.decode(fs_coding)
 
+
 def dict_to_xml(data):
     doc = xml.dom.minidom.Document()
     root = doc.createElement('CompleteMultipartUpload')
@@ -54,7 +55,7 @@ def dict_to_xml(data):
     if 'Parts' not in data.keys():
         logger.error("Invalid Parameter, Parts Is Required!")
         return ''
-    
+
     for i in data['Parts']:
         nodePart = doc.createElement('Part')
 
@@ -84,6 +85,7 @@ def mapped(headers):
         if i in maplist:
             _headers[maplist[i]] = headers[i]
     return _headers
+
 
 class CosConfig(object):
 
@@ -135,13 +137,16 @@ class CosS3Client(object):
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body, headers=headers)
+            rt = self._session.put(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                data=Body,
+                headers=headers)
             if rt.status_code == 200:
                 break
             logger.error(rt.headers)
-           
         return rt
 
     def get_object(self, Bucket, Key, **kwargs):
@@ -149,9 +154,12 @@ class CosS3Client(object):
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("get object, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
+            rt = self._session.get(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
             if rt.status_code == 200:
                 break
             logger.error(rt.headers)
@@ -162,9 +170,12 @@ class CosS3Client(object):
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("delete object, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
+            rt = self._session.delete(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
             if rt.status_code == 204:
                 break
             logger.error(rt.headers)
@@ -175,9 +186,12 @@ class CosS3Client(object):
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
         logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.post(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            rt = self._session.post(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
             if rt.status_code == 200:
                 break
             logger.error(rt.headers)
@@ -185,67 +199,85 @@ class CosS3Client(object):
 
     def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, **kwargs):
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?partNumber={PartNumber}&uploadId={UploadId}".format(PartNumber=PartNumber, UploadId=UploadId))
+        url = self._conf.uri(bucket=Bucket, path=Key+"?partNumber={PartNumber}&uploadId={UploadId}".format(
+            PartNumber=PartNumber,
+            UploadId=UploadId))
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=Body)
+            rt = self._session.put(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                data=Body)
             if rt.status_code == 200:
                 break
             logger.error(rt.headers)
         return rt
 
-    def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload = {}, **kwargs):
+    def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
         logger.info("complete multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.post(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), data=dict_to_xml(MultipartUpload), headers=headers)
+            rt = self._session.post(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                data=dict_to_xml(MultipartUpload),
+                headers=headers)
             if rt.status_code == 200:
                 break
-        logger.error(rt.headers)
+            logger.error(rt.headers)
         return rt
 
     def abort_multipart_upload(self, Bucket, Key, UploadId, **kwargs):
-         headers = mapped(kwargs)
-         url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
-         logger.info("abort multipart upload, url=:{url} ,headers=:{headers}".format(
-             url=url,
-             headers = headers))
-         for j in range(self._retry):
-             rt = self._session.delete(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
-             if rt.status_code == 200:
-                 break
-         logger.error(rt.headers)
-         return rt
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
+        logger.info("abort multipart upload, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        for j in range(self._retry):
+            rt = self._session.delete(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
+            if rt.status_code == 200:
+                break
+            logger.error(rt.headers)
+        return rt
 
     def list_parts(self, Bucket, Key, UploadId, **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
         logger.info("list multipart upload, url=:{url} ,headers=:{headers}".format(
-            url = url,
-            headers = headers))
+            url=url,
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.get(url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
+            rt = self._session.get(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
             if rt.status_code == 200:
-                 break
+                break
             logger.error(rt.headers)
-            return rt
+        return rt
 
     def create_bucket(self, Bucket, **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.put(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
+            rt = self._session.put(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
             if rt.status_code == 200:
                 break
-        logger.error(rt.headers)
+            logger.error(rt.headers)
         return rt
 
     def delete_bucket(self, Bucket, **kwargs):
@@ -253,38 +285,54 @@ class CosS3Client(object):
         url = self._conf.uri(bucket=Bucket)
         logger.info("delete bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.delete(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key), headers=headers)
+            rt = self._session.delete(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
             if rt.status_code == 204:
                 break
             logger.error(rt.headers)
         return rt
 
-    def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys="", Prefix="",  **kwargs):
+    def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys=100, Prefix="",  **kwargs):
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
         logger.info("list objects, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
+        params = {
+            'delimiter': Delimiter,
+            'encoding-type': EncodingType,
+            'marker': Marker,
+            'max-keys': MaxKeys,
+            'prefix': Prefix}
         for j in range(self._retry):
-            rt = self._session.get(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            rt = self._session.get(
+                url=url,
+                params=params,
+                headers=headers,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 break
             logger.error(rt.headers)
         return rt
 
-    def head_object(self, Bucket, Key):
-        headers = ''
+    def head_object(self, Bucket, Key, **kwargs):
+        headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
-            headers = headers))
+            headers=headers))
         for j in range(self._retry):
-            rt = self._session.head(url=url, auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            rt = self._session.head(
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
             if rt.status_code == 200:
                 break
-        logger.error(rt.headers)
+            logger.error(rt.headers)
         return rt
 
 
