@@ -30,12 +30,6 @@ maplist = {
            'GrantWrite': 'x-cos-grant-write',
            'GrantRead': 'x-cos-grant-read',
            'StorageClass': 'x-cos-storage-class',
-           'PartNumber': 'partNumber',
-           'UploadId': 'uploadId',
-           'Delimiter': 'delimiter',
-           'Marker': 'marker',
-           'MaxKeys': 'max-keys',
-           'Prefix': 'prefix',
            'EncodingType': 'encoding-type'
            }
 
@@ -143,7 +137,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def get_object(self, Bucket, Key, **kwargs):
@@ -160,7 +154,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def delete_object(self, Bucket, Key, **kwargs):
@@ -177,7 +171,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 204:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def create_multipart_upload(self, Bucket, Key, **kwargs):
@@ -194,7 +188,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, **kwargs):
@@ -213,7 +207,7 @@ class CosS3Client(object):
                 data=Body)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):
@@ -231,7 +225,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def abort_multipart_upload(self, Bucket, Key, UploadId, **kwargs):
@@ -248,7 +242,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def list_parts(self, Bucket, Key, UploadId, **kwargs):
@@ -265,7 +259,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def create_bucket(self, Bucket, **kwargs):
@@ -282,7 +276,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def delete_bucket(self, Bucket, **kwargs):
@@ -299,7 +293,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 204:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys=100, Prefix="",  **kwargs):
@@ -323,14 +317,14 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
     def head_object(self, Bucket, Key, **kwargs):
         """获取文件信息"""
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("put object, url=:{url} ,headers=:{headers}".format(
+        logger.info("head object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         for j in range(self._retry):
@@ -340,7 +334,7 @@ class CosS3Client(object):
                 headers=headers)
             if rt.status_code == 200:
                 break
-            logger.error(rt.headers)
+            logger.error(rt.text)
         return rt
 
 
