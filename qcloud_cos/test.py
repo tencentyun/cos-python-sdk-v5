@@ -43,7 +43,7 @@ def Test():
         Access_id=ACCESS_ID,
         Access_key=ACCESS_KEY
     )
-    client = cos_client.CosS3Client(conf)
+    client = CosS3Client(conf)
 
     file_size = 2
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
