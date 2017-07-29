@@ -95,7 +95,14 @@ __________
     )
     etag = response.headers['ETag']
 
-    # 9. 完成分片上传
+    # 9. 列出分片
+    response = clieent.list_parts(
+        Bucket='test01',
+        Key='mutilpartfile.txt',
+        UploadId=uploadid
+    )
+
+    # 10. 完成分片上传
     response = client.complete_multipart_upload(
         Bucket='test01',
         Key='multipartfile.txt',
