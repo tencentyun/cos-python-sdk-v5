@@ -14,8 +14,8 @@ logging.basicConfig(
                 filename='cos_s3.log',
                 filemode='w')
 logger = logging.getLogger(__name__)
-fs_coding = sys.getfilesystemencoding()
-
+reload(sys)
+sys.setdefaultencoding('utf-8')
 maplist = {
            'ContentLength': 'Content-Length',
            'ContentType': 'Content-Type',
@@ -38,7 +38,7 @@ def to_unicode(s):
     if isinstance(s, unicode):
         return s
     else:
-        return s.decode(fs_coding)
+        return s.decode('utf-8')
 
 
 def dict_to_xml(data):
