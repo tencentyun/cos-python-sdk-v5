@@ -11,6 +11,7 @@ from cos_client import CosConfig
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
 
+
 def gen_file(path, size):
     _file = open(path, 'w')
     _file.seek(1024*1024*size)
