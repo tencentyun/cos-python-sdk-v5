@@ -122,6 +122,22 @@ class CosS3Client(object):
         else:
             self._session = session
 
+    def send_request(self, method, url, **kwargs):
+        try:
+            if method == 'POST':
+                res = self._session.post(url, **kwargs)
+            elif method == 'GET':
+                res = self._session.get(url, **kwargs)
+            elif method == 'PUT':
+                res = self._session.put(url, **kwargs)
+            elif method == 'DELETE':
+                res = self._session.delete(url, **kwargs)
+            elif method == 'HEAD':
+                res = self._session.head(url, **kwargs)
+            return res
+        except Exception as e:
+            logger.exception('url:%s, exception:%s' % (url, str(e)))
+
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""
         headers = mapped(kwargs)
@@ -130,11 +146,15 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.put(
+            rt = self.send_request(
+                method='PUT',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=Body,
-                headers=headers)
+                headers=headers,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -148,10 +168,13 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.get(
+            rt = self.send_request(
+                method='GET',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -165,10 +188,13 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.delete(
+            rt = self.send_request(
+                method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
+            if rt is None:
+                continue
             if rt.status_code == 204:
                 break
             logger.error(rt.text)
@@ -182,10 +208,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.post(
+            rt = self.send_request(
+                method='POST',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -201,10 +231,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.put(
+            rt = self.send_request(
+                method='PUT',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                data=Body)
+                data=Body,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -218,11 +252,15 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.post(
+            rt = self.send_request(
+                method='POST',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=dict_to_xml(MultipartUpload),
-                headers=headers)
+                headers=headers,
+                timeout=600)  # 完成分片上传的超时时间设置为10分钟
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -236,10 +274,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.delete(
+            rt = self.send_request(
+                method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -253,10 +295,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.get(
+            rt = self.send_request(
+                method='GET',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -270,10 +316,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.put(
+            rt = self.send_request(
+                method='PUT',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -287,10 +337,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.delete(
+            rt = self.send_request(
+                method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 204:
                 break
             logger.error(rt.text)
@@ -310,11 +364,15 @@ class CosS3Client(object):
             'max-keys': MaxKeys,
             'prefix': Prefix}
         for j in range(self._retry):
-            rt = self._session.get(
+            rt = self.send_request(
+                method='GET',
                 url=url,
                 params=params,
                 headers=headers,
+                timeout=10,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
@@ -328,10 +386,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         for j in range(self._retry):
-            rt = self._session.head(
+            rt = self.send_request(
+                method='HEAD',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                timeout=10)
+            if rt is None:
+                continue
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
