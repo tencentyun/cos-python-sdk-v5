@@ -122,18 +122,18 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def send_request(self, method, url, **kwargs):
+    def send_request(self, method, url, timeout=20, **kwargs):
         try:
             if method == 'POST':
-                res = self._session.post(url, **kwargs)
+                res = self._session.post(url, timeout=timeout, **kwargs)
             elif method == 'GET':
-                res = self._session.get(url, **kwargs)
+                res = self._session.get(url, timeout=timeout, **kwargs)
             elif method == 'PUT':
-                res = self._session.put(url, **kwargs)
+                res = self._session.put(url, timeout=timeout, **kwargs)
             elif method == 'DELETE':
-                res = self._session.delete(url, **kwargs)
+                res = self._session.delete(url, timeout=timeout, **kwargs)
             elif method == 'HEAD':
-                res = self._session.head(url, **kwargs)
+                res = self._session.head(url, timeout=timeout, **kwargs)
             return res
         except Exception as e:
             logger.exception('url:%s, exception:%s' % (url, str(e)))
@@ -151,8 +151,7 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=Body,
-                headers=headers,
-                timeout=10)
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 200:
@@ -212,8 +211,7 @@ class CosS3Client(object):
                 method='POST',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers,
-                timeout=10)
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 200:
@@ -255,10 +253,10 @@ class CosS3Client(object):
             rt = self.send_request(
                 method='POST',
                 url=url,
+                timeout=600,  # 完成分片上传的超时时间设置为10分钟
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=dict_to_xml(MultipartUpload),
-                headers=headers,
-                timeout=600)  # 完成分片上传的超时时间设置为10分钟
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 200:
@@ -278,8 +276,7 @@ class CosS3Client(object):
                 method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers,
-                timeout=10)
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 200:
@@ -299,8 +296,7 @@ class CosS3Client(object):
                 method='GET',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers,
-                timeout=10)
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 200:
@@ -320,8 +316,7 @@ class CosS3Client(object):
                 method='PUT',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers,
-                timeout=10)
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 200:
@@ -341,8 +336,7 @@ class CosS3Client(object):
                 method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers,
-                timeout=10)
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 204:
@@ -369,7 +363,6 @@ class CosS3Client(object):
                 url=url,
                 params=params,
                 headers=headers,
-                timeout=10,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
             if rt is None:
                 continue
@@ -390,8 +383,7 @@ class CosS3Client(object):
                 method='HEAD',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers,
-                timeout=10)
+                headers=headers)
             if rt is None:
                 continue
             if rt.status_code == 200:
