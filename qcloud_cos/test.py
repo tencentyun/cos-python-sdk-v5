@@ -8,7 +8,7 @@ from xml.dom.minidom import parse
 from cos_client import CosS3Client
 from cos_client import CosConfig
 
-ACCESS_ID = os.environ["ACCESS_ID"]
+ACCESS_ID =  os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
 
 
