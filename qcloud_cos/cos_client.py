@@ -114,7 +114,7 @@ class CosConfig(object):
 
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
-    def __init__(self, conf, retry=1, session=None):
+    def __init__(self, conf, retry=2, session=None):
         self._conf = conf
         self._retry = retry  # 重试的次数，分片上传时可适当增大
         if session is None:
@@ -122,7 +122,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def send_request(self, method, url, timeout=20, **kwargs):
+    def send_request(self, method, url, timeout=60, **kwargs):
         try:
             if method == 'POST':
                 res = self._session.post(url, timeout=timeout, **kwargs)
