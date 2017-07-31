@@ -233,8 +233,7 @@ class CosS3Client(object):
                 method='PUT',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                data=Body,
-                timeout=10)
+                data=Body)
             if rt is None:
                 continue
             if rt.status_code == 200:
