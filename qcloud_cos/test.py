@@ -7,6 +7,7 @@ import xml.dom.minidom
 from xml.dom.minidom import parse
 from cos_client import CosS3Client
 from cos_client import CosConfig
+from cos_exception import COSServiceError
 
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
@@ -49,22 +50,63 @@ def Test():
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
 
+    print "Test Put Object That Bucket Not Exist" + file_name
+    try:
+        response = client.put_object(
+            Bucket='test0xx',
+            Body='T'*1024*1024*file_size,
+            Key=file_name,
+            CacheControl='no-cache',
+            ContentDisposition='download.txt'
+        )
+    except COSServiceError as e:
+        print e.get_full_msg()
+        print e.get_error_code()
+        print e.get_error_msg()
+        print e.get_resource_location()
+        print e.get_trace_id()
+        print e.get_request_id()
+
+    special_file_name = '对@@@/象*存储 @>?<=;:""%\###$[].^-_~{}|'
+    print "Test Put Object Contains Special Characters " + special_file_name
+    response = client.put_object(
+            Bucket='test01',
+            Body='S'*1024*1024*file_size,
+            Key=special_file_name,
+            CacheControl='no-cache',
+            ContentDisposition='download.txt'
+        )
+    print response.headers
+    assert response.status_code == 200
+
+    print "Test Get Object Contains Special Characters " + special_file_name
+    response = client.get_object(
+            Bucket='test01',
+            Key=special_file_name,
+        )
+    assert response.status_code == 200
+
+    print "Test Delete Object Contains Special Characters " + special_file_name
+    response = client.delete_object(
+        Bucket='test01',
+        Key=special_file_name
+    )
+    assert response.status_code == 204
+
     print "Test Put Object " + file_name
     response = client.put_object(
-        Bucket='test01',
-        Body='T'*1024*1024*file_size,
-        Key=file_name,
-        CacheControl='no-cache',
-        ContentDisposition='download.txt',
-        ACL='public-read'
-    )
-    assert response.status_code == 200
+            Bucket='test01',
+            Body='T'*1024*1024*file_size,
+            Key=file_name,
+            CacheControl='no-cache',
+            ContentDisposition='download.txt'
+        )
 
     print "Test Get Object " + file_name
     response = client.get_object(
-        Bucket='test01',
-        Key=file_name,
-    )
+            Bucket='test01',
+            Key=file_name,
+        )
     assert response.status_code == 200
 
     print "Test Head Object " + file_name
