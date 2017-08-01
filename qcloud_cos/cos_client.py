@@ -1,5 +1,7 @@
 # -*- coding=utf-8
 from cos_auth import CosS3Auth
+from cos_exception import UserDefinedError
+from cos_exception import ServerError
 import requests
 import logging
 import sys
@@ -124,19 +126,26 @@ class CosS3Client(object):
 
     def send_request(self, method, url, timeout=60, **kwargs):
         try:
-            if method == 'POST':
-                res = self._session.post(url, timeout=timeout, **kwargs)
-            elif method == 'GET':
-                res = self._session.get(url, timeout=timeout, **kwargs)
-            elif method == 'PUT':
-                res = self._session.put(url, timeout=timeout, **kwargs)
-            elif method == 'DELETE':
-                res = self._session.delete(url, timeout=timeout, **kwargs)
-            elif method == 'HEAD':
-                res = self._session.head(url, timeout=timeout, **kwargs)
-            return res
+            for j in range(self._retry):
+                if method == 'POST':
+                    res = self._session.post(url, timeout=timeout, **kwargs)
+                elif method == 'GET':
+                    res = self._session.get(url, timeout=timeout, **kwargs)
+                elif method == 'PUT':
+                    res = self._session.put(url, timeout=timeout, **kwargs)
+                elif method == 'DELETE':
+                    res = self._session.delete(url, timeout=timeout, **kwargs)
+                elif method == 'HEAD':
+                    res = self._session.head(url, timeout=timeout, **kwargs)
+                if res.status_code == 200 or res.status_code == 204:
+                    return res
+            if res.status_code < 500:
+                raise UserDefinedError(res.text)
+            elif res.status_code >= 500:
+                raise ServerError(res.text)
         except Exception as e:
             logger.exception('url:%s, exception:%s' % (url, str(e)))
+            raise e
 
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""
@@ -166,17 +175,11 @@ class CosS3Client(object):
         logger.info("get object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='GET',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def delete_object(self, Bucket, Key, **kwargs):
@@ -186,17 +189,11 @@ class CosS3Client(object):
         logger.info("delete object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 204:
-                break
-            logger.error(rt.text)
         return rt
 
     def create_multipart_upload(self, Bucket, Key, **kwargs):
@@ -206,17 +203,11 @@ class CosS3Client(object):
         logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='POST',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, **kwargs):
@@ -228,17 +219,11 @@ class CosS3Client(object):
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='PUT',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=Body)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):
@@ -248,19 +233,13 @@ class CosS3Client(object):
         logger.info("complete multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='POST',
                 url=url,
                 timeout=600,  # 完成分片上传的超时时间设置为10分钟
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=dict_to_xml(MultipartUpload),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def abort_multipart_upload(self, Bucket, Key, UploadId, **kwargs):
@@ -270,17 +249,11 @@ class CosS3Client(object):
         logger.info("abort multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def list_parts(self, Bucket, Key, UploadId, **kwargs):
@@ -290,17 +263,11 @@ class CosS3Client(object):
         logger.info("list multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='GET',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def create_bucket(self, Bucket, **kwargs):
@@ -310,17 +277,11 @@ class CosS3Client(object):
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='PUT',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def delete_bucket(self, Bucket, **kwargs):
@@ -330,17 +291,11 @@ class CosS3Client(object):
         logger.info("delete bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='DELETE',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 204:
-                break
-            logger.error(rt.text)
         return rt
 
     def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys=100, Prefix="",  **kwargs):
@@ -356,18 +311,12 @@ class CosS3Client(object):
             'marker': Marker,
             'max-keys': MaxKeys,
             'prefix': Prefix}
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='GET',
                 url=url,
                 params=params,
                 headers=headers,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
     def head_object(self, Bucket, Key, **kwargs):
@@ -377,17 +326,11 @@ class CosS3Client(object):
         logger.info("head object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
+        rt = self.send_request(
                 method='HEAD',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
         return rt
 
 
