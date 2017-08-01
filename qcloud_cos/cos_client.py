@@ -1,13 +1,12 @@
 # -*- coding=utf-8
-from cos_auth import CosS3Auth
-from cos_exception import UserDefinedError
-from cos_exception import ServerError
 import requests
 import logging
 import sys
 import copy
 import xml.dom.minidom
-
+from cos_auth import CosS3Auth
+from cos_exception import ClientError
+from cos_exception import COSServiceError
 
 logging.basicConfig(
                 level=logging.INFO,
@@ -124,7 +123,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def send_request(self, method, url, timeout=60, **kwargs):
+    def send_request(self, method, url, timeout=30, **kwargs):
         try:
             for j in range(self._retry):
                 if method == 'POST':
@@ -137,15 +136,16 @@ class CosS3Client(object):
                     res = self._session.delete(url, timeout=timeout, **kwargs)
                 elif method == 'HEAD':
                     res = self._session.head(url, timeout=timeout, **kwargs)
-                if res.status_code == 200 or res.status_code == 204:
+                if res.status_code < 300:
                     return res
-            if res.status_code < 500:
-                raise UserDefinedError(res.text)
-            elif res.status_code >= 500:
-                raise ServerError(res.text)
-        except Exception as e:
+        except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
             logger.exception('url:%s, exception:%s' % (url, str(e)))
-            raise e
+            raise ClientError(str(e))
+
+        if res.status_code >= 300:  # 所有的3XX,4XX,5XX都认为是COSServiceError
+            msg = res.text
+            logger.error(msg)
+            raise COSServiceError(msg)
 
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""
