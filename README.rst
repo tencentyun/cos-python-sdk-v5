@@ -42,8 +42,7 @@ __________
         Body='TY'*1024*512*file_size,
         Key=file_name,
         CacheControl='no-cache',
-        ContentDisposition='download.txt',
-        ACL='public-read'
+        ContentDisposition='download.txt'
     )
 
     # 2. 下载单个文件
