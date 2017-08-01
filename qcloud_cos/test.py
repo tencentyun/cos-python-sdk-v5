@@ -89,14 +89,14 @@ def Test():
 
     print "Test Create Bucket"
     response = client.create_bucket(
-        Bucket='test02',
-        ACL='public-read'
-    )
+            Bucket='test'+file_id,
+            ACL='public-read'
+        )
     assert response.status_code == 200
 
     print "Test Delete Bucket"
     response = client.delete_bucket(
-        Bucket='test02'
+        Bucket='test'+file_id
     )
     assert response.status_code == 204
 

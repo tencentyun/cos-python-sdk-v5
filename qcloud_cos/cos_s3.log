@@ -1,0 +1,36 @@
+Tue, 01 Aug 2017 11:43:18 cos_client.py[line:97] INFO config parameter-> appid: 1252448703, region: cn-north
+Tue, 01 Aug 2017 11:43:18 cos_client.py[line:156] INFO put object, url=:http://test01-1252448703.cn-north.myqcloud.com/tmp440144_2MB ,headers=:{'x-cos-acl': 'public-read', 'Content-Disposition': 'download.txt', 'Cache-Control': 'no-cache'}
+Tue, 01 Aug 2017 11:43:18 cos_client.py[line:177] INFO get object, url=:http://test01-1252448703.cn-north.myqcloud.com/tmp440144_2MB ,headers=:{}
+Tue, 01 Aug 2017 11:43:19 cos_client.py[line:328] INFO head object, url=:http://test01-1252448703.cn-north.myqcloud.com/tmp440144_2MB ,headers=:{}
+Tue, 01 Aug 2017 11:43:19 cos_client.py[line:191] INFO delete object, url=:http://test01-1252448703.cn-north.myqcloud.com/tmp440144_2MB ,headers=:{}
+Tue, 01 Aug 2017 11:43:19 cos_client.py[line:307] INFO list objects, url=:http://test01-1252448703.cn-north.myqcloud.com ,headers=:{}
+Tue, 01 Aug 2017 11:43:19 cos_client.py[line:279] INFO create bucket, url=:http://test02-1252448703.cn-north.myqcloud.com ,headers=:{'x-cos-acl': 'public-read'}
+Tue, 01 Aug 2017 11:43:21 cos_client.py[line:147] ERROR url:http://test02-1252448703.cn-north.myqcloud.com, exception:<?xml version='1.0' encoding='utf-8' ?>
+<Error>
+	<Code>BucketAlreadyExists</Code>
+	<Message>The requested bucket name is not available.</Message>
+	<Resource>test02-1252448703.cn-north.myqcloud.com</Resource>
+	<RequestId>NTk3ZmY4ZDhfMmZiNTM1MGFfNzk4Ml9mZThhZg==</RequestId>
+	<TraceId>OGVmYzZiMmQzYjA2OWNhODk0NTRkMTBiOWVmMDAxODc0OWRkZjk0ZDM1NmI1M2E2MTRlY2MzZDhmNmI5MWI1OTBjYzE2MjAxN2M1MzJiOTdkZjMxMDVlYTZjN2FiMmI0YjVlZTZkNWJhZWY0YzhmMTJiMzlmOTFmNWFmOTI0MDk=</TraceId>
+</Error>
+
+Traceback (most recent call last):
+  File "/data/part1/home/tiedu/cos-python-sdk-v5/qcloud_cos/cos_client.py", line 143, in send_request
+    raise UserDefinedError(res.text)
+UserDefinedError: <?xml version='1.0' encoding='utf-8' ?>
+<Error>
+	<Code>BucketAlreadyExists</Code>
+	<Message>The requested bucket name is not available.</Message>
+	<Resource>test02-1252448703.cn-north.myqcloud.com</Resource>
+	<RequestId>NTk3ZmY4ZDhfMmZiNTM1MGFfNzk4Ml9mZThhZg==</RequestId>
+	<TraceId>OGVmYzZiMmQzYjA2OWNhODk0NTRkMTBiOWVmMDAxODc0OWRkZjk0ZDM1NmI1M2E2MTRlY2MzZDhmNmI5MWI1OTBjYzE2MjAxN2M1MzJiOTdkZjMxMDVlYTZjN2FiMmI0YjVlZTZkNWJhZWY0YzhmMTJiMzlmOTFmNWFmOTI0MDk=</TraceId>
+</Error>
+
+
+Tue, 01 Aug 2017 11:43:21 cos_client.py[line:293] INFO delete bucket, url=:http://test02-1252448703.cn-north.myqcloud.com ,headers=:{}
+Tue, 01 Aug 2017 11:43:22 cos_client.py[line:205] INFO create multipart upload, url=:http://test01-1252448703.cn-north.myqcloud.com/multipartfile.txt?uploads ,headers=:{}
+Tue, 01 Aug 2017 11:43:22 cos_client.py[line:251] INFO abort multipart upload, url=:http://test01-1252448703.cn-north.myqcloud.com/multipartfile.txt?uploadId=150155900239f9b832787e69ae5d294f4ca43f739962502b4d033234e08f35fa98c8988abd ,headers=:{}
+Tue, 01 Aug 2017 11:43:22 cos_client.py[line:205] INFO create multipart upload, url=:http://test01-1252448703.cn-north.myqcloud.com/multipartfile.txt?uploads ,headers=:{}
+Tue, 01 Aug 2017 11:43:22 cos_client.py[line:221] INFO put object, url=:http://test01-1252448703.cn-north.myqcloud.com/multipartfile.txt?partNumber=1&uploadId=15015590026d355bbfd6a9076b62b77d4db1db00c4bf3dd169d36b070e7ddbc1e562b1110a ,headers=:{}
+Tue, 01 Aug 2017 11:43:23 cos_client.py[line:265] INFO list multipart upload, url=:http://test01-1252448703.cn-north.myqcloud.com/multipartfile.txt?uploadId=15015590026d355bbfd6a9076b62b77d4db1db00c4bf3dd169d36b070e7ddbc1e562b1110a ,headers=:{}
+Tue, 01 Aug 2017 11:43:23 cos_client.py[line:235] INFO complete multipart upload, url=:http://test01-1252448703.cn-north.myqcloud.com/multipartfile.txt?uploadId=15015590026d355bbfd6a9076b62b77d4db1db00c4bf3dd169d36b070e7ddbc1e562b1110a ,headers=:{}
