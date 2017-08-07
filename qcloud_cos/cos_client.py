@@ -1,4 +1,5 @@
 # -*- coding=utf-8
+
 import requests
 import logging
 import sys
@@ -145,7 +146,7 @@ class CosS3Client(object):
         if res.status_code >= 300:  # 所有的3XX,4XX,5XX都认为是COSServiceError
             msg = res.text
             logger.error(msg)
-            raise COSServiceError(msg)
+            raise COSServiceError(msg, res.status_code)
 
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""
