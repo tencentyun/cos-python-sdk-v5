@@ -63,24 +63,24 @@ class COSServiceError(COSException):
         """获取COS定义的错误码描述,服务器返回错误信息格式出错时，返回空 """
         if isinstance(self._digest_msg, dict):
             return self._digest_msg['code']
-        return ""
+        return "Unknown"
 
     def get_error_msg(self):
         if isinstance(self._digest_msg, dict):
             return self._digest_msg['message']
-        return ""
+        return "Unknown"
 
     def get_resource_location(self):
         if isinstance(self._digest_msg, dict):
             return self._digest_msg['resource']
-        return ""
+        return "Unknown"
 
     def get_trace_id(self):
         if isinstance(self._digest_msg, dict):
             return self._digest_msg['requestid']
-        return ""
+        return "Unknown"
 
     def get_request_id(self):
         if isinstance(self._digest_msg, dict):
             return self._digest_msg['traceid']
-        return ""
+        return "Unknown"
