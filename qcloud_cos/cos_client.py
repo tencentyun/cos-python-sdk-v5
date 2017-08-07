@@ -239,6 +239,7 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=dict_to_xml(MultipartUpload),
+                timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
                 headers=headers)
         return rt
 
