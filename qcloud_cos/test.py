@@ -50,7 +50,7 @@ def Test():
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
 
-    print "Test Put Object That Bucket Not Exist" + file_name
+    print "Test Put Object That Bucket Not Exist " + file_name
     try:
         response = client.put_object(
             Bucket='test0xx',
@@ -60,14 +60,16 @@ def Test():
             ContentDisposition='download.txt'
         )
     except COSServiceError as e:
-        print e.get_full_msg()
+        print e.get_origin_msg()
+        print e.get_digest_msg()
+        print e.get_status_code()
         print e.get_error_code()
         print e.get_error_msg()
         print e.get_resource_location()
         print e.get_trace_id()
         print e.get_request_id()
 
-    special_file_name = '对@@@/象*存储 @>?<=;:""%\###$[].^-_~{}|'
+    special_file_name = '对象!"存储#$%&()*+,- ./0123456789:;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
     print "Test Put Object Contains Special Characters " + special_file_name
     response = client.put_object(
             Bucket='test01',
@@ -76,7 +78,6 @@ def Test():
             CacheControl='no-cache',
             ContentDisposition='download.txt'
         )
-    print response.headers
     assert response.status_code == 200
 
     print "Test Get Object Contains Special Characters " + special_file_name
