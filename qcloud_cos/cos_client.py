@@ -237,7 +237,6 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='POST',
                 url=url,
-                timeout=600,  # 完成分片上传的超时时间设置为10分钟
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=dict_to_xml(MultipartUpload),
                 headers=headers)
