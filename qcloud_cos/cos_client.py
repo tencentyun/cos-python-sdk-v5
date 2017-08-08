@@ -342,7 +342,7 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys=100, Prefix="",  **kwargs):
+    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="",  **kwargs):
         """获取文件列表"""
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
@@ -351,7 +351,6 @@ class CosS3Client(object):
             headers=headers))
         params = {
             'delimiter': Delimiter,
-            'encoding-type': EncodingType,
             'marker': Marker,
             'max-keys': MaxKeys,
             'prefix': Prefix}
@@ -361,8 +360,15 @@ class CosS3Client(object):
                 params=params,
                 headers=headers,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+
         data = xml_to_dict(rt.text)
-        return data
+        if isinstance(data['Contents'], list):
+            return data
+        else:  # 只有一个Contents，将dict转为list，保持一致
+            lst = []
+            lst.append(data['Contents'])
+            data['Contents'] = lst
+            return data
 
     def head_object(self, Bucket, Key, **kwargs):
         """获取文件信息"""

@@ -82,7 +82,7 @@ def Test():
     print "Test Put Object " + file_name
     response = client.put_object(
             Bucket='test01',
-            Body='T'*1024*1024*file_size,
+            Body='T',
             Key=file_name,
             CacheControl='no-cache',
             ContentDisposition='download.txt'
