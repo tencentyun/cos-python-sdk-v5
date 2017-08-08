@@ -3,8 +3,6 @@ import cos_client
 import random
 import sys
 import os
-import xml.dom.minidom
-from xml.dom.minidom import parse
 from cos_client import CosS3Client
 from cos_client import CosConfig
 from cos_exception import COSServiceError
@@ -18,15 +16,6 @@ def gen_file(path, size):
     _file.seek(1024*1024*size)
     _file.write('cos')
     _file.close()
-
-
-def get_id_from_xml(data):
-    """解析xml中的uploadid"""
-    tree = xml.dom.minidom.parseString(data)
-    root = tree.documentElement
-    result = root.getElementsByTagName('UploadId')
-    # use childNodes to get a list, if has no child get itself
-    return result[0].childNodes[0].nodeValue
 
 
 def setUp():
@@ -78,21 +67,18 @@ def Test():
             CacheControl='no-cache',
             ContentDisposition='download.txt'
         )
-    assert response.status_code == 200
 
     print "Test Get Object Contains Special Characters " + special_file_name
     response = client.get_object(
             Bucket='test01',
             Key=special_file_name,
         )
-    assert response.status_code == 200
 
     print "Test Delete Object Contains Special Characters " + special_file_name
     response = client.delete_object(
         Bucket='test01',
         Key=special_file_name
     )
-    assert response.status_code == 204
 
     print "Test Put Object " + file_name
     response = client.put_object(
@@ -108,48 +94,45 @@ def Test():
             Bucket='test01',
             Key=file_name,
         )
-    assert response.status_code == 200
+    print response
 
     print "Test Head Object " + file_name
     response = client.head_object(
         Bucket='test01',
         Key=file_name
     )
-    assert response.status_code == 200
+    print response
 
     print "Test Delete Object " + file_name
     response = client.delete_object(
         Bucket='test01',
         Key=file_name
     )
-    assert response.status_code == 204
 
     print "Test List Objects"
     response = client.list_objects(
         Bucket='test01'
     )
-    assert response.status_code == 200
+    print response
 
     print "Test Create Bucket"
     response = client.create_bucket(
             Bucket='test'+file_id,
             ACL='public-read'
         )
-    assert response.status_code == 200
 
     print "Test Delete Bucket"
     response = client.delete_bucket(
         Bucket='test'+file_id
     )
-    assert response.status_code == 204
 
     print "Test Create MultipartUpload"
     response = client.create_multipart_upload(
         Bucket='test01',
         Key='multipartfile.txt',
     )
-    assert response.status_code == 200
-    uploadid = get_id_from_xml(response.text)
+    uploadid = response['UploadId']
+    print response
 
     print "Test Abort MultipartUpload"
     response = client.abort_multipart_upload(
@@ -157,26 +140,31 @@ def Test():
         Key='multipartfile.txt',
         UploadId=uploadid
     )
-    assert response.status_code == 200
 
     print "Test Create MultipartUpload"
     response = client.create_multipart_upload(
         Bucket='test01',
         Key='multipartfile.txt',
     )
-    uploadid = get_id_from_xml(response.text)
-    assert response.status_code == 200
+    uploadid = response['UploadId']
 
-    print "Test Upload Part"
+    print "Test Upload Part1"
     response = client.upload_part(
         Bucket='test01',
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=1,
-        Body='A'*1024*1024*4
+        Body='A'*1024*1024*10
     )
-    etag = response.headers['ETag']
-    assert response.status_code == 200
+
+    print "Test Upload Part2"
+    response = client.upload_part(
+        Bucket='test01',
+        Key='multipartfile.txt',
+        UploadId=uploadid,
+        PartNumber=2,
+        Body='B'*1024*1024*10
+    )
 
     print "List Upload Parts"
     response = client.list_parts(
@@ -184,16 +172,15 @@ def Test():
         Key='multipartfile.txt',
         UploadId=uploadid
     )
-    assert response.status_code == 200
+    lst = response['Part']
 
     print "Test Complete MultipartUpload"
     response = client.complete_multipart_upload(
         Bucket='test01',
         Key='multipartfile.txt',
         UploadId=uploadid,
-        MultipartUpload={'Parts': [{'PartNumber': 1, 'ETag': etag}]}
+        MultipartUpload={'Part': lst}
     )
-    assert response.status_code == 200
 
 if __name__ == "__main__":
     setUp()
