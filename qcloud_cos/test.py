@@ -1,11 +1,10 @@
 # -*- coding=utf-8
-import cos_client
 import random
 import sys
 import os
 from cos_client import CosS3Client
 from cos_client import CosConfig
-from cos_exception import COSServiceError
+from cos_exception import CosServiceError
 
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
@@ -48,7 +47,7 @@ def Test():
             CacheControl='no-cache',
             ContentDisposition='download.txt'
         )
-    except COSServiceError as e:
+    except CosServiceError as e:
         print e.get_origin_msg()
         print e.get_digest_msg()
         print e.get_status_code()
@@ -94,14 +93,12 @@ def Test():
             Bucket='test01',
             Key=file_name,
         )
-    print response
 
     print "Test Head Object " + file_name
     response = client.head_object(
         Bucket='test01',
         Key=file_name
     )
-    print response
 
     print "Test Delete Object " + file_name
     response = client.delete_object(
@@ -113,7 +110,6 @@ def Test():
     response = client.list_objects(
         Bucket='test01'
     )
-    print response
 
     print "Test Create Bucket"
     response = client.create_bucket(
@@ -132,7 +128,6 @@ def Test():
         Key='multipartfile.txt',
     )
     uploadid = response['UploadId']
-    print response
 
     print "Test Abort MultipartUpload"
     response = client.abort_multipart_upload(
