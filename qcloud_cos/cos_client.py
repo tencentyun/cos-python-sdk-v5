@@ -8,8 +8,8 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 from xml2dict import Xml2Dict
 from cos_auth import CosS3Auth
-from cos_exception import ClientError
-from cos_exception import COSServiceError
+from cos_exception import CosClientError
+from cos_exception import CosServiceError
 
 logging.basicConfig(
                 level=logging.INFO,
@@ -159,12 +159,12 @@ class CosS3Client(object):
                     return res
         except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
             logger.exception('url:%s, exception:%s' % (url, str(e)))
-            raise ClientError(str(e))
+            raise CosClientError(str(e))
 
         if res.status_code >= 300:  # 所有的3XX,4XX,5XX都认为是COSServiceError
             msg = res.text
             logger.error(msg)
-            raise COSServiceError(msg, res.status_code)
+            raise CosServiceError(msg, res.status_code)
 
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""

@@ -3,7 +3,7 @@
 import xml.dom.minidom
 
 
-class COSException(Exception):
+class CosException(Exception):
     def __init__(self, message):
         Exception.__init__(self, message)
 
@@ -33,16 +33,16 @@ def digest_xml(data):
         return "Response Error Msg Is INVALID"
 
 
-class ClientError(COSException):
+class CosClientError(CosException):
     """Client端错误，如timeout"""
     def __init__(self, message):
-        COSException.__init__(self, message)
+        CosException.__init__(self, message)
 
 
-class COSServiceError(COSException):
+class CosServiceError(CosException):
     """COS Server端错误，可以获取特定的错误信息"""
     def __init__(self, message, status_code):
-        COSException.__init__(self, message)
+        CosException.__init__(self, message)
         self._origin_msg = message
         self._digest_msg = digest_xml(message)
         self._status_code = status_code
