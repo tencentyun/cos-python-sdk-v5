@@ -5,6 +5,8 @@ import logging
 import sys
 import copy
 import xml.dom.minidom
+import xml.etree.ElementTree
+from xml2dict import Xml2Dict
 from cos_auth import CosS3Auth
 from cos_exception import ClientError
 from cos_exception import COSServiceError
@@ -49,11 +51,11 @@ def dict_to_xml(data):
     root = doc.createElement('CompleteMultipartUpload')
     doc.appendChild(root)
 
-    if 'Parts' not in data.keys():
-        logger.error("Invalid Parameter, Parts Is Required!")
+    if 'Part' not in data.keys():
+        logger.error("Invalid Parameter, Part Is Required!")
         return ''
 
-    for i in data['Parts']:
+    for i in data['Part']:
         nodePart = doc.createElement('Part')
 
         if 'PartNumber' not in i.keys():
@@ -74,6 +76,22 @@ def dict_to_xml(data):
         nodePart.appendChild(nodeETag)
         root.appendChild(nodePart)
     return doc.toxml('utf-8')
+
+
+def xml_to_dict(data):
+    """V5使用xml格式，将response中的xml转换为dict"""
+    root = xml.etree.ElementTree.fromstring(data)
+    xmldict = Xml2Dict(root)
+    return xmldict
+
+
+def get_id_from_xml(data, name):
+    """解析xml中的特定字段"""
+    tree = xml.dom.minidom.parseString(data)
+    root = tree.documentElement
+    result = root.getElementsByTagName(name)
+    # use childNodes to get a list, if has no child get itself
+    return result[0].childNodes[0].nodeValue
 
 
 def mapped(headers):
@@ -167,7 +185,10 @@ class CosS3Client(object):
             if rt.status_code == 200:
                 break
             logger.error(rt.text)
-        return rt
+
+        response = dict()
+        response['ETag'] = rt.headers['ETag']
+        return response
 
     def get_object(self, Bucket, Key, **kwargs):
         """单文件下载接口"""
@@ -181,7 +202,13 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+
+        response = dict()
+        response['Body'] = rt.text
+
+        for k in rt.headers.keys():
+            response[k] = rt.headers[k]
+        return response
 
     def delete_object(self, Bucket, Key, **kwargs):
         """单文件删除接口"""
@@ -195,7 +222,7 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+        return None
 
     def create_multipart_upload(self, Bucket, Key, **kwargs):
         """创建分片上传，适用于大文件上传"""
@@ -209,7 +236,9 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+
+        data = xml_to_dict(rt.text)
+        return data
 
     def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, **kwargs):
         """上传分片，单个大小不得超过5GB"""
@@ -225,7 +254,9 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=Body)
-        return rt
+        response = dict()
+        response['ETag'] = rt.headers['ETag']
+        return response
 
     def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):
         """完成分片上传，组装后的文件不得小于1MB,否则会返回错误"""
@@ -241,7 +272,11 @@ class CosS3Client(object):
                 data=dict_to_xml(MultipartUpload),
                 timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
                 headers=headers)
-        return rt
+        response = dict()
+        data = xml_to_dict(rt.text)
+        for key in data.keys():
+            response[key[key.find('}')+1:]] = data[key]
+        return response
 
     def abort_multipart_upload(self, Bucket, Key, UploadId, **kwargs):
         """放弃一个已经存在的分片上传任务，删除所有已经存在的分片"""
@@ -255,7 +290,7 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+        return None
 
     def list_parts(self, Bucket, Key, UploadId, **kwargs):
         """列出已上传的分片"""
@@ -269,7 +304,15 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+
+        data = xml_to_dict(rt.text)
+        if isinstance(data['Part'], list):
+            return data
+        else:  # 只有一个part，将dict转为list，保持一致
+            lst = []
+            lst.append(data['Part'])
+            data['Part'] = lst
+            return data
 
     def create_bucket(self, Bucket, **kwargs):
         """创建一个bucket"""
@@ -283,7 +326,7 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+        return None
 
     def delete_bucket(self, Bucket, **kwargs):
         """删除一个bucket，bucket必须为空"""
@@ -297,7 +340,7 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+        return None
 
     def list_objects(self, Bucket, Delimiter="", EncodingType="url", Marker="", MaxKeys=100, Prefix="",  **kwargs):
         """获取文件列表"""
@@ -318,7 +361,8 @@ class CosS3Client(object):
                 params=params,
                 headers=headers,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
-        return rt
+        data = xml_to_dict(rt.text)
+        return data
 
     def head_object(self, Bucket, Key, **kwargs):
         """获取文件信息"""
@@ -332,7 +376,7 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-        return rt
+        return rt.headers
 
 
 if __name__ == "__main__":
