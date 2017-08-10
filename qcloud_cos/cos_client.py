@@ -118,6 +118,8 @@ class CosConfig(object):
     def uri(self, bucket, path=None):
         """拼接url"""
         if path:
+            if path[0] == '/':
+                path = path[1:]
             url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
