@@ -34,7 +34,7 @@ def Test():
     )
     client = CosS3Client(conf)
 
-    file_size = 2
+    file_size = 100
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
 
@@ -42,7 +42,7 @@ def Test():
     try:
         response = client.put_object(
             Bucket='test0xx',
-            Body='T'*1024*1024*file_size,
+            Body='T'*1024*1024,
             Key=file_name,
             CacheControl='no-cache',
             ContentDisposition='download.txt'
@@ -61,7 +61,7 @@ def Test():
     print "Test Put Object Contains Special Characters " + special_file_name
     response = client.put_object(
             Bucket='test01',
-            Body='S'*1024*1024*file_size,
+            Body='S'*1024*1024,
             Key=special_file_name,
             CacheControl='no-cache',
             ContentDisposition='download.txt'
@@ -80,19 +80,28 @@ def Test():
     )
 
     print "Test Put Object " + file_name
+    gen_file(file_name, file_size)
+    fp = open(file_name, 'rb')
     response = client.put_object(
             Bucket='test01',
-            Body='T',
+            Body=fp,
             Key=file_name,
             CacheControl='no-cache',
             ContentDisposition='download.txt'
         )
+    fp.close()
+    os.remove(file_name)
 
     print "Test Get Object " + file_name
     response = client.get_object(
             Bucket='test01',
             Key=file_name,
         )
+    # 返回一个generator
+    # stream_generator = response['Body'].get_stream(stream_size=1024*512)
+    response['Body'].get_stream_to_file('cos.txt')
+    if os.path.exists('cos.txt'):
+        os.remove('cos.txt')
 
     print "Test Head Object " + file_name
     response = client.head_object(
