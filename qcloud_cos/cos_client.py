@@ -6,6 +6,7 @@ import sys
 import copy
 import xml.dom.minidom
 import xml.etree.ElementTree
+from streambody import StreamBody
 from xml2dict import Xml2Dict
 from cos_auth import CosS3Auth
 from cos_exception import CosClientError
@@ -200,11 +201,12 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
+                stream=True,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
 
         response = dict()
-        response['Body'] = rt.text
+        response['Body'] = StreamBody(rt)
 
         for k in rt.headers.keys():
             response[k] = rt.headers[k]
