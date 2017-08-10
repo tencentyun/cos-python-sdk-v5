@@ -34,7 +34,7 @@ def Test():
     )
     client = CosS3Client(conf)
 
-    file_size = 100
+    file_size = 10
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
 
