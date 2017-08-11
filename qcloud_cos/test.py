@@ -34,9 +34,22 @@ def Test():
     )
     client = CosS3Client(conf)
 
-    file_size = 10
+    test_bucket = 'test01'
+    file_size = 2  # 方便CI通过
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
+
+    print "Test Copy Object From Other Bucket "
+    response = client.list_buckets()
+
+    copy_source = {'Bucket': 'test01', 'Key': '/test.txt'}
+    print "Test Copy Object From Other Bucket "
+    response = client.copy_object(
+            Bucket='test04',
+            Key='test.txt',
+            CopySource=copy_source
+           )
+    print response
 
     print "Test Put Object That Bucket Not Exist " + file_name
     try:
@@ -57,10 +70,10 @@ def Test():
         print e.get_trace_id()
         print e.get_request_id()
 
-    special_file_name = '对象!"存储#$%&()*+,- ./0123456789:;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
+    special_file_name = "对象()*'/. 存![]^&*~储{|}~()"
     print "Test Put Object Contains Special Characters " + special_file_name
     response = client.put_object(
-            Bucket='test01',
+            Bucket=test_bucket,
             Body='S'*1024*1024,
             Key=special_file_name,
             CacheControl='no-cache',
@@ -69,13 +82,13 @@ def Test():
 
     print "Test Get Object Contains Special Characters " + special_file_name
     response = client.get_object(
-            Bucket='test01',
+            Bucket=test_bucket,
             Key=special_file_name,
         )
 
     print "Test Delete Object Contains Special Characters " + special_file_name
     response = client.delete_object(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key=special_file_name
     )
 
@@ -83,7 +96,7 @@ def Test():
     gen_file(file_name, file_size)
     fp = open(file_name, 'rb')
     response = client.put_object(
-            Bucket='test01',
+            Bucket=test_bucket,
             Body=fp,
             Key=file_name,
             CacheControl='no-cache',
@@ -94,7 +107,7 @@ def Test():
 
     print "Test Get Object " + file_name
     response = client.get_object(
-            Bucket='test01',
+            Bucket=test_bucket,
             Key=file_name,
         )
     # 返回一个generator
@@ -105,19 +118,19 @@ def Test():
 
     print "Test Head Object " + file_name
     response = client.head_object(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key=file_name
     )
 
     print "Test Delete Object " + file_name
     response = client.delete_object(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key=file_name
     )
 
     print "Test List Objects"
     response = client.list_objects(
-        Bucket='test01'
+        Bucket=test_bucket
     )
 
     print "Test Create Bucket"
@@ -133,28 +146,28 @@ def Test():
 
     print "Test Create MultipartUpload"
     response = client.create_multipart_upload(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key='multipartfile.txt',
     )
     uploadid = response['UploadId']
 
     print "Test Abort MultipartUpload"
     response = client.abort_multipart_upload(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key='multipartfile.txt',
         UploadId=uploadid
     )
 
     print "Test Create MultipartUpload"
     response = client.create_multipart_upload(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key='multipartfile.txt',
     )
     uploadid = response['UploadId']
 
     print "Test Upload Part1"
     response = client.upload_part(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=1,
@@ -163,7 +176,7 @@ def Test():
 
     print "Test Upload Part2"
     response = client.upload_part(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=2,
@@ -172,7 +185,7 @@ def Test():
 
     print "List Upload Parts"
     response = client.list_parts(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key='multipartfile.txt',
         UploadId=uploadid
     )
@@ -180,7 +193,7 @@ def Test():
 
     print "Test Complete MultipartUpload"
     response = client.complete_multipart_upload(
-        Bucket='test01',
+        Bucket=test_bucket,
         Key='multipartfile.txt',
         UploadId=uploadid,
         MultipartUpload={'Part': lst}

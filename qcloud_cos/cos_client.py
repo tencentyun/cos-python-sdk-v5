@@ -53,22 +53,19 @@ def dict_to_xml(data):
     doc.appendChild(root)
 
     if 'Part' not in data.keys():
-        logger.error("Invalid Parameter, Part Is Required!")
-        return ''
+        raise CosClientError("Invalid Parameter, Part Is Required!")
 
     for i in data['Part']:
         nodePart = doc.createElement('Part')
 
         if 'PartNumber' not in i.keys():
-            logger.error("Invalid Parameter, PartNumber Is Required!")
-            return ''
+            raise CosClientError("Invalid Parameter, PartNumber Is Required!")
 
         nodeNumber = doc.createElement('PartNumber')
         nodeNumber.appendChild(doc.createTextNode(str(i['PartNumber'])))
 
         if 'ETag' not in i.keys():
-            logger.error("Invalid Parameter, ETag Is Required!")
-            return ''
+            raise CosClientError("Invalid Parameter, ETag Is Required!")
 
         nodeETag = doc.createElement('ETag')
         nodeETag.appendChild(doc.createTextNode(str(i['ETag'])))
@@ -388,6 +385,47 @@ class CosS3Client(object):
                 headers=headers)
         return rt.headers
 
+    def gen_copy_source_url(self, CopySource):
+        """拼接拷贝源url"""
+        if 'Bucket' in CopySource.keys():
+            bucket = CopySource['Bucket']
+        else:
+            raise CosClientError('CopySource Need Parameter Bucket')
+        if 'Key' in CopySource.keys():
+            key = CopySource['Key']
+        else:
+            raise CosClientError('CopySource Need Parameter Key')
+        url = self._conf.uri(bucket=bucket, path=key).encode('utf8')
+        url = url[7:]  # copysource不支持http://开头，去除
+        return url
+
+    def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
+        """文件拷贝，文件信息修改"""
+        headers = mapped(kwargs)
+        headers['x-cos-copy-source'] = self.gen_copy_source_url(CopySource)
+        headers['x-cos-metadata-directive'] = CopyStatus
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("copy object, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+                method='PUT',
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                headers=headers)
+        data = xml_to_dict(rt.text)
+        return data
+
+    def list_buckets(self):
+        """列出所有bucket"""
+        url = 'http://service.cos.myqcloud.com/'
+        rt = self.send_request(
+                method='GET',
+                url=url,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                )
+        data = xml_to_dict(rt.text)
+        return data
 
 if __name__ == "__main__":
     pass
