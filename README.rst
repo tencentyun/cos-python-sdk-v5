@@ -92,7 +92,7 @@ __________
         PartNumber=1,
         Body='A'*1024*1024*4
     )
-    etag = response.headers['ETag']
+    etag = response['ETag']
 
     # 9. 列出分片
     response = clieent.list_parts(
