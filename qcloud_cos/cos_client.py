@@ -31,7 +31,7 @@ maplist = {
            'ContentDisposition': 'Content-Disposition',
            'ContentEncoding': 'Content-Encoding',
            'Expires': 'Expires',
-           'Metadata': 'x-cos-meta- *',
+           'Metadata': 'Metadata',
            'ACL': 'x-cos-acl',
            'GrantFullControl': 'x-cos-grant-full-control',
            'GrantWrite': 'x-cos-grant-write',
@@ -100,6 +100,8 @@ def mapped(headers):
     for i in headers.keys():
         if i in maplist:
             _headers[maplist[i]] = headers[i]
+        else:
+            raise CosClientError('No Parameter Named '+i+' Please Check It')
     return _headers
 
 
@@ -180,6 +182,11 @@ class CosS3Client(object):
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""
         headers = mapped(kwargs)
+        if 'Metadata' in headers.keys():
+            for i in headers['Metadata'].keys():
+                headers[i] = headers['Metadata'][i]
+            headers.pop('Metadata')
+
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
