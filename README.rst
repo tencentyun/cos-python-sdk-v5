@@ -82,7 +82,7 @@ __________
         Bucket='test01',
         Key='multipartfile.txt',
     )
-    uploadid = get_id_from_xml(response.text)
+    uploadid = response['UploadId']
 
     # 8. 上传分片
     response = client.upload_part(
@@ -100,13 +100,14 @@ __________
         Key='mutilpartfile.txt',
         UploadId=uploadid
     )
+    lst = response['Part']
 
     # 10. 完成分片上传
     response = client.complete_multipart_upload(
         Bucket='test01',
         Key='multipartfile.txt',
         UploadId=uploadid,
-        MultipartUpload={'Parts': [{'PartNumber': 1, 'ETag': etag}]}
+        MultipartUpload={'Part': lst}
     )
 
 
