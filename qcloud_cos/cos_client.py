@@ -253,7 +253,6 @@ class CosS3Client(object):
     def create_multipart_upload(self, Bucket, Key, **kwargs):
         """创建分片上传，适用于大文件上传"""
         headers = mapped(kwargs)
-        # headers['Authorization'] = self.get_auth(Method='POST', Bucket=Bucket, Key=Key)
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
         logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
