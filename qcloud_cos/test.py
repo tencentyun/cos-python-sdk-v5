@@ -79,18 +79,18 @@ def Test():
     special_file_name = "对象()*'/. 存![]^&*~储{|}~()"
     print "Test Put Object Contains Special Characters " + special_file_name
     response = client.put_object(
-            Bucket=test_bucket,
-            Body='S'*1024*1024,
-            Key=special_file_name,
-            CacheControl='no-cache',
-            ContentDisposition='download.txt'
-        )
+        Bucket=test_bucket,
+        Body='S'*1024*1024,
+        Key=special_file_name,
+        CacheControl='no-cache',
+        ContentDisposition='download.txt'
+    )
 
     print "Test Get Object Contains Special Characters " + special_file_name
     response = client.get_object(
-            Bucket=test_bucket,
-            Key=special_file_name,
-        )
+        Bucket=test_bucket,
+        Key=special_file_name,
+    )
 
     print "Test Delete Object Contains Special Characters " + special_file_name
     response = client.delete_object(
@@ -102,19 +102,22 @@ def Test():
     gen_file(file_name, file_size)
     fp = open(file_name, 'rb')
     response = client.put_object(
-            Bucket=test_bucket,
-            Body=fp,
-            Key=file_name,
-            CacheControl='no-cache',
-            ContentDisposition='download.txt'
-        )
+        Bucket=test_bucket,
+        Body=fp,
+        Key=file_name,
+        CacheControl='no-cache',
+        ContentDisposition='download.txt',
+        Metadata={
+            "x-cos-meta-tiedu": "value1"
+        }
+    )
     fp.close()
     os.remove(file_name)
 
     print "Test Get Object " + file_name
     response = client.get_object(
-            Bucket=test_bucket,
-            Key=file_name,
+        Bucket=test_bucket,
+        Key=file_name,
         )
     # 返回一个raw stream
     # fp = response['Body'].get_raw_stream()
@@ -129,10 +132,9 @@ def Test():
         Bucket=test_bucket,
         Key=file_name
     )
-    print response
 
     print "Test Delete Object " + file_name
-    response = client.delete_object(
+    response = client.head_object(
         Bucket=test_bucket,
         Key=file_name
     )
@@ -144,9 +146,9 @@ def Test():
 
     print "Test Create Bucket"
     response = client.create_bucket(
-            Bucket='test'+file_id,
-            ACL='public-read'
-        )
+        Bucket='test'+file_id,
+        ACL='public-read'
+    )
 
     print "Test Delete Bucket"
     response = client.delete_bucket(
