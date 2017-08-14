@@ -333,12 +333,15 @@ class CosS3Client(object):
                 headers=headers)
 
         data = xml_to_dict(rt.text)
-        if isinstance(data['Part'], list):
-            return data
-        else:  # 只有一个part，将dict转为list，保持一致
-            lst = []
-            lst.append(data['Part'])
-            data['Part'] = lst
+        if 'Part' is data.keys():
+            if isinstance(data['Part'], list):
+                return data
+            else:  # 只有一个part，将dict转为list，保持一致
+                lst = []
+                lst.append(data['Part'])
+                data['Part'] = lst
+                return data
+        else:
             return data
 
     def create_bucket(self, Bucket, **kwargs):
@@ -389,12 +392,15 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
 
         data = xml_to_dict(rt.text)
-        if isinstance(data['Contents'], list):
-            return data
-        else:  # 只有一个Contents，将dict转为list，保持一致
-            lst = []
-            lst.append(data['Contents'])
-            data['Contents'] = lst
+        if 'Contents' in data.keys():
+            if isinstance(data['Contents'], list):
+                return data
+            else:  # 只有一个Contents，将dict转为list，保持一致
+                lst = []
+                lst.append(data['Contents'])
+                data['Contents'] = lst
+                return data
+        else:
             return data
 
     def head_object(self, Bucket, Key, **kwargs):

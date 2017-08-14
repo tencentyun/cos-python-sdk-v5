@@ -141,8 +141,9 @@ def Test():
 
     print "Test List Objects"
     response = client.list_objects(
-        Bucket=test_bucket
+        Bucket='test04'
     )
+    print response
 
     print "Test Create Bucket"
     response = client.create_bucket(
@@ -200,6 +201,7 @@ def Test():
         Key='multipartfile.txt',
         UploadId=uploadid
     )
+    print response
     lst = response['Part']
 
     print "Test Complete MultipartUpload"
