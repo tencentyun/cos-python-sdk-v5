@@ -6,8 +6,11 @@ class StreamBody():
     def __init__(self, rt):
         self._rt = rt
 
-    def get_stream(self, stream_size=1024):
-        return self._rt.iter_content(chunk_size=stream_size)
+    def get_raw_stream(self):
+        return self._rt.raw
+
+    def get_stream(self, chunk_size=1024):
+        return self._rt.iter_content(chunk_size=chunk_size)
 
     def get_stream_to_file(self, file_name):
         if 'Content-Length' in self._rt.headers:
