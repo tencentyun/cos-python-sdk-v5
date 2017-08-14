@@ -1,11 +1,13 @@
 # -*- coding=utf-8
 
 import requests
+import urllib
 import logging
 import sys
 import copy
 import xml.dom.minidom
 import xml.etree.ElementTree
+from requests import Request, Session
 from streambody import StreamBody
 from xml2dict import Xml2Dict
 from cos_auth import CosS3Auth
@@ -142,6 +144,15 @@ class CosS3Client(object):
         else:
             self._session = session
 
+    def get_auth(self, Method, Bucket, Key=None, **kwargs):
+        """获取签名"""
+        headers = mapped(kwargs)
+        # TODO(tiedu)  检查header的参数合法性
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        r = Request(Method, url)
+        auth = CosS3Auth(self._conf._access_id, self._conf._access_key)
+        return auth(r).headers['Authorization']
+
     def send_request(self, method, url, timeout=30, **kwargs):
         try:
             for j in range(self._retry):
@@ -211,6 +222,13 @@ class CosS3Client(object):
             response[k] = rt.headers[k]
         return response
 
+    def get_presigned_download_url(self, Bucket, Key):
+        """生成预签名的下载url"""
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key)
+        url = url + '?sign=' + urllib.quote(sign)
+        return url
+
     def delete_object(self, Bucket, Key, **kwargs):
         """单文件删除接口"""
         headers = mapped(kwargs)
@@ -228,6 +246,7 @@ class CosS3Client(object):
     def create_multipart_upload(self, Bucket, Key, **kwargs):
         """创建分片上传，适用于大文件上传"""
         headers = mapped(kwargs)
+        # headers['Authorization'] = self.get_auth(Method='POST', Bucket=Bucket, Key=Key)
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
         logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,

@@ -39,7 +39,14 @@ def Test():
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
 
-    print "Test Copy Object From Other Bucket "
+    print "Test Get Presigned Download URL "
+    url = client.get_presigned_download_url(
+            Bucket=test_bucket,
+            Key='test.txt'
+    )
+    print url
+
+    print "Test List Buckets"
     response = client.list_buckets()
 
     copy_source = {'Bucket': 'test01', 'Key': '/test.txt'}
@@ -49,7 +56,6 @@ def Test():
             Key='test.txt',
             CopySource=copy_source
            )
-    print response
 
     print "Test Put Object That Bucket Not Exist " + file_name
     try:
@@ -110,6 +116,8 @@ def Test():
             Bucket=test_bucket,
             Key=file_name,
         )
+    # 返回一个raw stream
+    # fp = response['Body'].get_raw_stream()
     # 返回一个generator
     # stream_generator = response['Body'].get_stream(stream_size=1024*512)
     response['Body'].get_stream_to_file('cos.txt')
@@ -121,6 +129,7 @@ def Test():
         Bucket=test_bucket,
         Key=file_name
     )
+    print response
 
     print "Test Delete Object " + file_name
     response = client.delete_object(
@@ -171,7 +180,7 @@ def Test():
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=1,
-        Body='A'*1024*1024*10
+        Body='A'*1024*1024*2
     )
 
     print "Test Upload Part2"
@@ -180,7 +189,7 @@ def Test():
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=2,
-        Body='B'*1024*1024*10
+        Body='B'*1024*1024*2
     )
 
     print "List Upload Parts"
