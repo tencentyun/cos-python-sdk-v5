@@ -332,7 +332,7 @@ class CosS3Client(object):
                 headers=headers)
 
         data = xml_to_dict(rt.text)
-        if 'Part' is data.keys():
+        if 'Part' in data.keys():
             if isinstance(data['Part'], list):
                 return data
             else:  # 只有一个part，将dict转为list，保持一致
