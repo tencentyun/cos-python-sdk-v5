@@ -191,18 +191,12 @@ class CosS3Client(object):
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        for j in range(self._retry):
-            rt = self.send_request(
-                method='PUT',
-                url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                data=Body,
-                headers=headers)
-            if rt is None:
-                continue
-            if rt.status_code == 200:
-                break
-            logger.error(rt.text)
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            data=Body,
+            headers=headers)
 
         response = dict()
         response['ETag'] = rt.headers['ETag']
