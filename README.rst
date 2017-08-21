@@ -11,7 +11,7 @@ __________
 
 使用pip安装 ::
 
-    pip install -U qcloud_cos_v5
+    pip install -U qcloud_cos_v5  暂不可用
 
 
 手动安装::
