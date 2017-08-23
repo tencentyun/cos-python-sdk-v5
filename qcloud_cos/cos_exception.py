@@ -41,10 +41,14 @@ class CosClientError(CosException):
 
 class CosServiceError(CosException):
     """COS Server端错误，可以获取特定的错误信息"""
-    def __init__(self, message, status_code):
+    def __init__(self, method, message, status_code):
         CosException.__init__(self, message)
-        self._origin_msg = message
-        self._digest_msg = digest_xml(message)
+        if method == 'HEAD':  # 对HEAD进行特殊处理
+            self._origin_msg = ''
+            self._digest_msg = message
+        else:
+            self._origin_msg = message
+            self._digest_msg = digest_xml(message)
         self._status_code = status_code
 
     def get_origin_msg(self):

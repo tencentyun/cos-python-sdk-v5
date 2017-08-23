@@ -138,7 +138,7 @@ class CosConfig(object):
 
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
-    def __init__(self, conf, retry=2, session=None):
+    def __init__(self, conf, retry=1, session=None):
         self._conf = conf
         self._retry = retry  # 重试的次数，分片上传时可适当增大
         if session is None:
@@ -175,9 +175,21 @@ class CosS3Client(object):
             raise CosClientError(str(e))
 
         if res.status_code >= 300:  # 所有的3XX,4XX,5XX都认为是COSServiceError
-            msg = res.text
-            logger.error(msg)
-            raise CosServiceError(msg, res.status_code)
+            if method == 'HEAD':   # Head 需要处理
+                info = dict()
+                info['code'] = 'NoSuchResource'
+                info['message'] = 'The Resource You Head Not Exist'
+                info['resource'] = url
+                info['requestid'] = res.headers['x-cos-request-id']
+                info['traceid'] = res.headers['x-cos-trace-id']
+                logger.error(info)
+                raise CosServiceError(method, info, res.status_code)
+            else:
+                msg = res.text
+                if msg == '':  # 服务器没有返回Error Body时 给出头部的信息
+                    msg = res.headers
+                logger.error(msg)
+                raise CosServiceError(method, msg, res.status_code)
 
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""
