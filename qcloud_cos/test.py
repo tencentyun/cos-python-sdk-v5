@@ -17,6 +17,17 @@ def gen_file(path, size):
     _file.close()
 
 
+def print_error_msg(e):
+    print e.get_origin_msg()
+    print e.get_digest_msg()
+    print e.get_status_code()
+    print e.get_error_code()
+    print e.get_error_msg()
+    print e.get_resource_location()
+    print e.get_trace_id()
+    print e.get_request_id()
+
+
 def setUp():
     print "start test"
 
@@ -67,14 +78,7 @@ def Test():
             ContentDisposition='download.txt'
         )
     except CosServiceError as e:
-        print e.get_origin_msg()
-        print e.get_digest_msg()
-        print e.get_status_code()
-        print e.get_error_code()
-        print e.get_error_msg()
-        print e.get_resource_location()
-        print e.get_trace_id()
-        print e.get_request_id()
+        print_error_msg(e)
 
     special_file_name = "对象()*'/. 存![]^&*~储{|}~()"
     print "Test Put Object Contains Special Characters " + special_file_name
@@ -133,6 +137,15 @@ def Test():
         Key=file_name
     )
 
+    print "Test Head Object " + file_name + "123"
+    try:
+        response = client.head_object(
+            Bucket=test_bucket,
+            Key=file_name+"123"
+        )
+    except CosServiceError as e:
+        print_error_msg(e)
+
     print "Test Delete Object " + file_name
     response = client.head_object(
         Bucket=test_bucket,
@@ -143,7 +156,6 @@ def Test():
     response = client.list_objects(
         Bucket='test04'
     )
-    print response
 
     print "Test Create Bucket"
     response = client.create_bucket(
@@ -201,7 +213,6 @@ def Test():
         Key='multipartfile.txt',
         UploadId=uploadid
     )
-    print response
     lst = response['Part']
 
     print "Test Complete MultipartUpload"
