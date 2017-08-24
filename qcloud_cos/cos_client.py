@@ -121,18 +121,33 @@ class CosConfig(object):
         if path:
             if path[0] == '/':
                 path = path[1:]
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
-                bucket=to_unicode(bucket),
-                uid=self._appid,
-                region=self._region,
-                path=to_unicode(path)
-            )
+            if self._region.find("cn") == -1:
+                url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
+                    bucket=to_unicode(bucket),
+                    uid=self._appid,
+                    region=self._region,
+                    path=to_unicode(path)
+                )
+            else:
+                url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+                    bucket=to_unicode(bucket),
+                    uid=self._appid,
+                    region=self._region,
+                    path=to_unicode(path)
+                )
         else:
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
-                bucket=to_unicode(bucket),
-                uid=self._appid,
-                region=self._region
-            )
+            if self._region.find("cn") == -1:
+                url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
+                    bucket=to_unicode(bucket),
+                    uid=self._appid,
+                    region=self._region
+                )
+            else:
+                url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
+                    bucket=to_unicode(bucket),
+                    uid=self._appid,
+                    region=self._region
+                )
         return url
 
 
