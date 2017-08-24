@@ -62,6 +62,7 @@ def Test():
 
     copy_source = {'Bucket': 'test01', 'Key': '/test.txt'}
     print "Test Copy Object From Other Bucket "
+
     response = client.copy_object(
             Bucket='test04',
             Key='test.txt',
@@ -154,7 +155,7 @@ def Test():
 
     print "Test List Objects"
     response = client.list_objects(
-        Bucket='test04'
+        Bucket=test_bucket
     )
 
     print "Test Create Bucket"

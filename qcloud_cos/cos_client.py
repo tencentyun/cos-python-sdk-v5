@@ -24,20 +24,20 @@ logger = logging.getLogger(__name__)
 reload(sys)
 sys.setdefaultencoding('utf-8')
 maplist = {
-           'ContentLength': 'Content-Length',
-           'ContentType': 'Content-Type',
-           'ContentMD5': 'Content-MD5',
-           'CacheControl': 'Cache-Control',
-           'ContentDisposition': 'Content-Disposition',
-           'ContentEncoding': 'Content-Encoding',
-           'Expires': 'Expires',
-           'Metadata': 'Metadata',
-           'ACL': 'x-cos-acl',
-           'GrantFullControl': 'x-cos-grant-full-control',
-           'GrantWrite': 'x-cos-grant-write',
-           'GrantRead': 'x-cos-grant-read',
-           'StorageClass': 'x-cos-storage-class',
-           'EncodingType': 'encoding-type'
+            'ContentLength': 'Content-Length',
+            'ContentType': 'Content-Type',
+            'ContentMD5': 'Content-MD5',
+            'CacheControl': 'Cache-Control',
+            'ContentDisposition': 'Content-Disposition',
+            'ContentEncoding': 'Content-Encoding',
+            'Expires': 'Expires',
+            'Metadata': 'Metadata',
+            'ACL': 'x-cos-acl',
+            'GrantFullControl': 'x-cos-grant-full-control',
+            'GrantWrite': 'x-cos-grant-write',
+            'GrantRead': 'x-cos-grant-read',
+            'StorageClass': 'x-cos-storage-class',
+            'EncodingType': 'encoding-type'
            }
 
 
@@ -121,14 +121,14 @@ class CosConfig(object):
         if path:
             if path[0] == '/':
                 path = path[1:]
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
+            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region
