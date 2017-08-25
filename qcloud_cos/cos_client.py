@@ -107,11 +107,12 @@ def mapped(headers):
 
 class CosConfig(object):
     """config类，保存用户相关信息"""
-    def __init__(self, Appid, Region, Access_id, Access_key):
+    def __init__(self, Appid, Region, Access_id, Access_key, Token=None):
         self._appid = Appid
         self._region = Region
         self._access_id = Access_id
         self._access_key = Access_key
+        self._token = Token
         logger.info("config parameter-> appid: {appid}, region: {region}".format(
                  appid=Appid,
                  region=Region))
@@ -156,6 +157,8 @@ class CosS3Client(object):
         return auth(r).headers['Authorization']
 
     def send_request(self, method, url, timeout=30, **kwargs):
+        if self._conf._token is not None:
+            kwargs['headers']['x-cos-security-token'] = self._conf._token
         try:
             for j in range(self._retry):
                 if method == 'POST':
@@ -174,8 +177,8 @@ class CosS3Client(object):
             logger.exception('url:%s, exception:%s' % (url, str(e)))
             raise CosClientError(str(e))
 
-        if res.status_code >= 300:  # 所有的3XX,4XX,5XX都认为是COSServiceError
-            if method == 'HEAD':   # Head 需要处理
+        if res.status_code >= 400:  # 所有的4XX,5XX都认为是COSServiceError
+            if method == 'HEAD' and res.status_code == 404:   # Head 需要处理
                 info = dict()
                 info['code'] = 'NoSuchResource'
                 info['message'] = 'The Resource You Head Not Exist'
@@ -453,12 +456,14 @@ class CosS3Client(object):
         data = xml_to_dict(rt.text)
         return data
 
-    def list_buckets(self):
+    def list_buckets(self, **kwargs):
         """列出所有bucket"""
+        headers = mapped(kwargs)
         url = 'http://service.cos.myqcloud.com/'
         rt = self.send_request(
                 method='GET',
                 url=url,
+                headers=headers,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 )
         data = xml_to_dict(rt.text)
