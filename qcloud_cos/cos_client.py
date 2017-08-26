@@ -82,6 +82,10 @@ def xml_to_dict(data):
     """V5使用xml格式，将response中的xml转换为dict"""
     root = xml.etree.ElementTree.fromstring(data)
     xmldict = Xml2Dict(root)
+    xmlstr = str(xmldict)
+    xmlstr = xmlstr.replace("{http://www.qcloud.com/document/product/436/7751}", "")
+    xmlstr = xmlstr.replace("{http://www.w3.org/2001/XMLSchema-instance}", "")
+    xmldict = eval(xmlstr)
     return xmldict
 
 
@@ -351,11 +355,8 @@ class CosS3Client(object):
                 data=dict_to_xml(MultipartUpload),
                 timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
                 headers=headers)
-        response = dict()
         data = xml_to_dict(rt.text)
-        for key in data.keys():
-            response[key[key.find('}')+1:]] = data[key]
-        return response
+        return data
 
     def abort_multipart_upload(self, Bucket, Key, UploadId, **kwargs):
         """放弃一个已经存在的分片上传任务，删除所有已经存在的分片"""
@@ -383,18 +384,45 @@ class CosS3Client(object):
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
-
         data = xml_to_dict(rt.text)
-        if 'Part' in data.keys():
-            if isinstance(data['Part'], list):
-                return data
-            else:  # 只有一个part，将dict转为list，保持一致
-                lst = []
-                lst.append(data['Part'])
-                data['Part'] = lst
-                return data
-        else:
-            return data
+        if 'Part' in data.keys() and isinstance(data['Part'], dict):  # 只有一个part，将dict转为list，保持一致
+            lst = []
+            lst.append(data['Part'])
+            data['Part'] = lst
+        return data
+
+    def put_object_acl(self, Bucket, Key, **kwargs):
+        """设置object ACL"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key+"?acl")
+        logger.info("put object acl, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def get_object_acl(self, Bucket, Key, **kwargs):
+        """获取object ACL"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key+"?acl")
+        logger.info("get object acl, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if data['AccessControlList'] is not None and isinstance(data['AccessControlList']['Grant'], dict):
+            lst = []
+            lst.append(data['AccessControlList']['Grant'])
+            data['AccessControlList']['Grant'] = lst
+        return data
 
     # s3 bucket interface begin
     def create_bucket(self, Bucket, **kwargs):
@@ -445,16 +473,58 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
 
         data = xml_to_dict(rt.text)
-        if 'Contents' in data.keys():
-            if isinstance(data['Contents'], list):
-                return data
-            else:  # 只有一个Contents，将dict转为list，保持一致
+        if 'Contents' in data.keys() and isinstance(data['Contents'], dict):  # 只有一个Contents，将dict转为list，保持一致
                 lst = []
                 lst.append(data['Contents'])
                 data['Contents'] = lst
-                return data
-        else:
-            return data
+        return data
+
+    def head_bucket(self, Bucket, **kwargs):
+        """获取bucket信息"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("head bucket, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='HEAD',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def put_bucket_acl(self, Bucket, **kwargs):
+        """设置bucket ACL"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?acl")
+        logger.info("put bucket acl, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def get_bucket_acl(self, Bucket, **kwargs):
+        """获取bucket ACL"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?acl")
+        logger.info("get bucket acl, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if data['AccessControlList'] is not None and isinstance(data['AccessControlList']['Grant'], dict):
+            lst = []
+            lst.append(data['AccessControlList']['Grant'])
+            data['AccessControlList']['Grant'] = lst
+        return data
 
     # service interface begin
     def list_buckets(self, **kwargs):
@@ -468,6 +538,10 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 )
         data = xml_to_dict(rt.text)
+        if data['Buckets'] is not None and isinstance(data['Buckets']['Bucket'], dict):
+            lst = []
+            lst.append(data['Buckets']['Bucket'])
+            data['Buckets']['Bucket'] = lst
         return data
 
 if __name__ == "__main__":
