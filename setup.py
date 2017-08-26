@@ -21,14 +21,13 @@ def long_description():
 
 setup(
     name='cos-python-sdk-v5',
-    version='0.0.1',
+    version='1.0.0',
     url='https://www.qcloud.com/',
     license='MIT',
-    author='lewzylu',
-    author_email='327874225@qq.com',
+    author='tiedu, lewzylu, channingliu',
+    author_email='dutie123@qq.com',
     description='cos-python-sdk-v5',
     long_description=long_description(),
     packages=find_packages(),
     install_requires=requirements()
-    }
 )

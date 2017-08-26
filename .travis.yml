@@ -9,9 +9,7 @@ install:
     - pip install requests
     - pip install nose
     - pip install pep8
-    - pip install tox
     
 script:
-    - pep8 --max-line-length=180
-    - nosetests -s
-    - tox
+    - pep8 --max-line-length=180 qcloud_cos/.
+    - nosetests -s -v
