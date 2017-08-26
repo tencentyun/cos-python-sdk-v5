@@ -13,7 +13,6 @@ __________
 
     pip install -U cos-python-sdk-v5
 
-
 手动安装::
 
     python setup.py install
