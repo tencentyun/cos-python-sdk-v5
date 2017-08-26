@@ -147,6 +147,19 @@ def Test():
     except CosServiceError as e:
         print_error_msg(e)
 
+    print "Test Put Object ACL " + file_name
+    response = client.put_object_acl(
+        Bucket=test_bucket,
+        Key=file_name,
+        ACL='public-read-write'
+    )
+
+    print "Test Get Object ACL" + file_name
+    response = client.get_object_acl(
+        Bucket=test_bucket,
+        Key=file_name
+    )
+
     print "Test Delete Object " + file_name
     response = client.head_object(
         Bucket=test_bucket,
@@ -164,10 +177,32 @@ def Test():
         ACL='public-read'
     )
 
+    print "Test PUT Bucket ACL"
+    try:
+        response = client.put_bucket_acl(
+            Bucket='test'+file_id,
+            ACL='public-read-writea'
+        )
+    except CosServiceError as e:
+        print_error_msg(e)
+
+    print "Test GET Bucket ACL"
+    response = client.get_bucket_acl(
+        Bucket='test'+file_id,
+    )
+
     print "Test Delete Bucket"
     response = client.delete_bucket(
         Bucket='test'+file_id
     )
+
+    print "Test Head Bucket"
+    try:
+        response = client.head_bucket(
+            Bucket='test'+file_id
+        )
+    except CosServiceError as e:
+        print_error_msg(e)
 
     print "Test Create MultipartUpload"
     response = client.create_multipart_upload(

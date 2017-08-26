@@ -35,12 +35,12 @@ class Xml2Dict(dict):
 
 if __name__ == "__main__":
     s = """<?xml version="1.0" encoding="utf-8" ?>
-    <result>
+    <result xmlns= "wqa.bai.com">
         <count n="1">10</count>
         <data><id>1</id><name>test1</name></data>
         <data><id>2</id><name>test2</name></data>
         <data><id>3</id><name>test3</name></data>
     </result>"""
     root = xml.etree.ElementTree.fromstring(s)
-    xmldict = XmlDictConfig(root)
+    xmldict = Xml2Dict(root)
     print xmldict

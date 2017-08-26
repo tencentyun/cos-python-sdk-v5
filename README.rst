@@ -11,8 +11,7 @@ __________
 
 使用pip安装 ::
 
-    pip install -U qcloud_cos_v5  暂不可用
-
+    pip install -U cos-python-sdk-v5
 
 手动安装::
 
