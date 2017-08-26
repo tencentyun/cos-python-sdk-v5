@@ -194,6 +194,7 @@ class CosS3Client(object):
                 logger.error(msg)
                 raise CosServiceError(method, msg, res.status_code)
 
+    #  s3 object interface begin
     def put_object(self, Bucket, Body, Key, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB"""
         headers = mapped(kwargs)
@@ -258,6 +259,51 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 headers=headers)
         return None
+
+    def head_object(self, Bucket, Key, **kwargs):
+        """获取文件信息"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("head object, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='HEAD',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return rt.headers
+
+    def gen_copy_source_url(self, CopySource):
+        """拼接拷贝源url"""
+        if 'Bucket' in CopySource.keys():
+            bucket = CopySource['Bucket']
+        else:
+            raise CosClientError('CopySource Need Parameter Bucket')
+        if 'Key' in CopySource.keys():
+            key = CopySource['Key']
+        else:
+            raise CosClientError('CopySource Need Parameter Key')
+        url = self._conf.uri(bucket=bucket, path=key).encode('utf8')
+        url = url[7:]  # copysource不支持http://开头，去除
+        return url
+
+    def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
+        """文件拷贝，文件信息修改"""
+        headers = mapped(kwargs)
+        headers['x-cos-copy-source'] = self.gen_copy_source_url(CopySource)
+        headers['x-cos-metadata-directive'] = CopyStatus
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("copy object, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        return data
 
     def create_multipart_upload(self, Bucket, Key, **kwargs):
         """创建分片上传，适用于大文件上传"""
@@ -352,6 +398,7 @@ class CosS3Client(object):
         else:
             return data
 
+    # s3 bucket interface begin
     def create_bucket(self, Bucket, **kwargs):
         """创建一个bucket"""
         headers = mapped(kwargs)
@@ -411,51 +458,7 @@ class CosS3Client(object):
         else:
             return data
 
-    def head_object(self, Bucket, Key, **kwargs):
-        """获取文件信息"""
-        headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("head object, url=:{url} ,headers=:{headers}".format(
-            url=url,
-            headers=headers))
-        rt = self.send_request(
-                method='HEAD',
-                url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
-        return rt.headers
-
-    def gen_copy_source_url(self, CopySource):
-        """拼接拷贝源url"""
-        if 'Bucket' in CopySource.keys():
-            bucket = CopySource['Bucket']
-        else:
-            raise CosClientError('CopySource Need Parameter Bucket')
-        if 'Key' in CopySource.keys():
-            key = CopySource['Key']
-        else:
-            raise CosClientError('CopySource Need Parameter Key')
-        url = self._conf.uri(bucket=bucket, path=key).encode('utf8')
-        url = url[7:]  # copysource不支持http://开头，去除
-        return url
-
-    def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
-        """文件拷贝，文件信息修改"""
-        headers = mapped(kwargs)
-        headers['x-cos-copy-source'] = self.gen_copy_source_url(CopySource)
-        headers['x-cos-metadata-directive'] = CopyStatus
-        url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("copy object, url=:{url} ,headers=:{headers}".format(
-            url=url,
-            headers=headers))
-        rt = self.send_request(
-                method='PUT',
-                url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
-        data = xml_to_dict(rt.text)
-        return data
-
+    # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket"""
         headers = mapped(kwargs)
