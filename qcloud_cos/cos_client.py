@@ -336,6 +336,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='PUT',
                 url=url,
+                headers=headers,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 data=Body)
         response = dict()
