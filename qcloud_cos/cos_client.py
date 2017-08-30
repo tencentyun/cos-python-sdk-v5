@@ -151,7 +151,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_auth(self, Method, Bucket, Key=None, Expired=10000, headers={}, params={}):
+    def get_auth(self, Method, Bucket, Key=None, Expired=300, headers={}, params={}):
         """获取签名"""
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=headers, params=params)
@@ -242,10 +242,10 @@ class CosS3Client(object):
             response[k] = rt.headers[k]
         return response
 
-    def get_presigned_download_url(self, Bucket, Key, Expired=10000):
+    def get_presigned_download_url(self, Bucket, Key, Expired=300):
         """生成预签名的下载url"""
         url = self._conf.uri(bucket=Bucket, path=Key)
-        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=10000)
+        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=300)
         url = url + '?sign=' + urllib.quote(sign)
         return url
 
