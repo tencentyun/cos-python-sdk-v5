@@ -161,7 +161,7 @@ def Test():
     )
 
     print "Test Delete Object " + file_name
-    response = client.head_object(
+    response = client.delete_object(
         Bucket=test_bucket,
         Key=file_name
     )
