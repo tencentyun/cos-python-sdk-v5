@@ -53,7 +53,7 @@ def Test():
     print "Test Get Presigned Download URL "
     url = client.get_presigned_download_url(
             Bucket=test_bucket,
-            Key='test.txt'
+            Key='中文.txt'
     )
     print url
 
