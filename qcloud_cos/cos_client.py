@@ -246,7 +246,7 @@ class CosS3Client(object):
         """生成预签名的下载url"""
         url = self._conf.uri(bucket=Bucket, path=Key)
         sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=300)
-        url = url + '?sign=' + urllib.quote(sign)
+        url = urllib.quote(url.encode('utf8'), ':/') + '?sign=' + urllib.quote(sign)
         return url
 
     def delete_object(self, Bucket, Key, **kwargs):
