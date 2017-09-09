@@ -109,11 +109,20 @@ def mapped(headers):
     return _headers
 
 
+def format_region(region):
+    if region.find('cos.') != -1:
+        return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
+    if region == 'cn-north' or region == 'cn-south' or region == 'cn-east' or region == 'cn-south-2' or region == 'cn-southwest' or region == 'sg':
+        return region  # 老域名不能加cos.
+
+    return 'cos.' + region  # 新域名加上cos.
+
+
 class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid, Region, Access_id, Access_key, Token=None):
         self._appid = Appid
-        self._region = Region
+        self._region = format_region(Region)
         self._access_id = Access_id
         self._access_key = Access_key
         self._token = Token
@@ -126,14 +135,14 @@ class CosConfig(object):
         if path:
             if path[0] == '/':
                 path = path[1:]
-            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
+            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
+            url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region

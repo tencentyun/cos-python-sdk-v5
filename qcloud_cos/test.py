@@ -81,7 +81,7 @@ def Test():
     except CosServiceError as e:
         print_error_msg(e)
 
-    special_file_name = "对象()*'/. 存![]^&*~储{|}~()"
+    special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
     print "Test Put Object Contains Special Characters " + special_file_name
     response = client.put_object(
         Bucket=test_bucket,
