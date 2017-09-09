@@ -21,6 +21,7 @@ __________
 __________
 
 使用python sdk，参照https://github.com/tencentyun/cos-python-sdk-v5/blob/master/qcloud_cos/test.py
+
 COS最新可用地,  参照https://www.qcloud.com/document/product/436/6224
 
 .. code:: python
@@ -101,14 +102,14 @@ COS最新可用地,  参照https://www.qcloud.com/document/product/436/6224
         Key='mutilpartfile.txt',
         UploadId=uploadid
     )
-    lst = response['Part']
+    lst = response['Part'] # list_parts最大数量为1000
 
     # 10. 完成分片上传
     response = client.complete_multipart_upload(
         Bucket='test01',
         Key='multipartfile.txt',
         UploadId=uploadid,
-        MultipartUpload={'Part': lst}
+        MultipartUpload={'Part': lst} # 超过1000个分块，请本地保存分块信息，再complete
     )
 
 
