@@ -39,7 +39,7 @@ def tearDown():
 def Test():
     conf = CosConfig(
         Appid="1252448703",
-        Region="cn-north",
+        Region="ap-beijing-1",
         Access_id=ACCESS_ID,
         Access_key=ACCESS_KEY
     )
