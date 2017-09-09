@@ -21,7 +21,8 @@ __________
 __________
 
 使用python sdk，参照https://github.com/tencentyun/cos-python-sdk-v5/blob/master/qcloud_cos/test.py
-COS最新可用地域,参照https://www.qcloud.com/document/product/436/6224
+COS最新可用地,  参照https://www.qcloud.com/document/product/436/6224
+
 .. code:: python
 
     # 设置用户属性, 包括appid, secret_id, secret_key, region
