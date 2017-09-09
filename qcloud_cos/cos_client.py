@@ -25,19 +25,31 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 maplist = {
             'ContentLength': 'Content-Length',
-            'ContentType': 'Content-Type',
             'ContentMD5': 'Content-MD5',
+            'ContentType': 'Content-Type',
             'CacheControl': 'Cache-Control',
             'ContentDisposition': 'Content-Disposition',
             'ContentEncoding': 'Content-Encoding',
+            'ContentLanguage': 'Content-Language',
             'Expires': 'Expires',
+            'ResponseContentType': 'response-content-type',
+            'ResponseContentLanguage': 'response-content-language',
+            'ResponseExpires': 'response-expires',
+            'ResponseCacheControl': 'response-cache-control',
+            'ResponseContentDisposition': 'response-content-disposition',
+            'ResponseContentEncoding': 'response-content-encoding',
             'Metadata': 'Metadata',
             'ACL': 'x-cos-acl',
             'GrantFullControl': 'x-cos-grant-full-control',
             'GrantWrite': 'x-cos-grant-write',
             'GrantRead': 'x-cos-grant-read',
             'StorageClass': 'x-cos-storage-class',
-            'EncodingType': 'encoding-type'
+            'Range': 'Range',
+            'IfMatch': 'If-Match',
+            'IfNoneMatch': 'If-None-Match',
+            'IfModifiedSince': 'If-Modified-Since',
+            'IfUnmodifiedSince': 'If-Unmodified-Since',
+            'VersionId': 'x-cos-version-id',
            }
 
 
@@ -320,6 +332,11 @@ class CosS3Client(object):
     def create_multipart_upload(self, Bucket, Key, **kwargs):
         """创建分片上传，适用于大文件上传"""
         headers = mapped(kwargs)
+        if 'Metadata' in headers.keys():
+            for i in headers['Metadata'].keys():
+                headers[i] = headers['Metadata'][i]
+            headers.pop('Metadata')
+
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
         logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -383,10 +400,16 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_parts(self, Bucket, Key, UploadId, **kwargs):
+    def list_parts(self, Bucket, Key, UploadId, EncodingType='url', MaxParts=1000, PartNumberMarker=0, **kwargs):
         """列出已上传的分片"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
+        params = {
+            'uploadId': UploadId,
+            'part-number-marker': PartNumberMarker,
+            'max-parts': MaxParts,
+            'encoding-type': EncodingType}
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("list multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
@@ -394,7 +417,8 @@ class CosS3Client(object):
                 method='GET',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                params=params)
         data = xml_to_dict(rt.text)
         if 'Part' in data.keys() and isinstance(data['Part'], dict):  # 只有一个part，将dict转为list，保持一致
             lst = []
@@ -464,7 +488,7 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="",  **kwargs):
+    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="", EncodingType="url", **kwargs):
         """获取文件列表"""
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
@@ -475,7 +499,8 @@ class CosS3Client(object):
             'delimiter': Delimiter,
             'marker': Marker,
             'max-keys': MaxKeys,
-            'prefix': Prefix}
+            'prefix': Prefix,
+            'encoding-type': EncodingType}
         rt = self.send_request(
                 method='GET',
                 url=url,
