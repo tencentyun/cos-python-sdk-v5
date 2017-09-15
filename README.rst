@@ -35,6 +35,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
     config = CosConfig(Appid=appid, Region=region, Access_id=secret_id, Access_key=secret_key, Token=token)  #获取配置对象
     client = CosS3Client(config)                                                                #获取客户端对象
 
+
     ############################################################################
     # 文件操作                                                                 #
     ############################################################################
