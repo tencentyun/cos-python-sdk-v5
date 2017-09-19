@@ -126,6 +126,25 @@ def format_region(region):
         return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
     if region == 'cn-north' or region == 'cn-south' or region == 'cn-east' or region == 'cn-south-2' or region == 'cn-southwest' or region == 'sg':
         return region  # 老域名不能加cos.
+    #  支持v4域名映射到v5
+    if region == 'cossh':
+        return 'cos.ap-shanghai'
+    if region == 'cosgz':
+        return 'cos.ap-guangzhou'
+    if region == 'cosbj':
+        return 'cos.ap-beijing'
+    if region == 'costj':
+        return 'cos.ap-beijing-1'
+    if region == 'coscd':
+        return 'cos.ap-chengdu'
+    if region == 'cossgp':
+        return 'cos.ap-singapore'
+    if region == 'coshk':
+        return 'cos.ap-hongkong'
+    if region == 'cosca':
+        return 'cos.na-toronto'
+    if region == 'cosger':
+        return 'cos.eu-frankfurt'
 
     return 'cos.' + region  # 新域名加上cos.
 
