@@ -39,7 +39,7 @@ def tearDown():
 def Test():
     conf = CosConfig(
         Appid="1252448703",
-        Region="cn-north",
+        Region="ap-beijing-1",
         Access_id=ACCESS_ID,
         Access_key=ACCESS_KEY
     )
@@ -53,7 +53,7 @@ def Test():
     print "Test Get Presigned Download URL "
     url = client.get_presigned_download_url(
             Bucket=test_bucket,
-            Key='test.txt'
+            Key='中文.txt'
     )
     print url
 
@@ -81,7 +81,7 @@ def Test():
     except CosServiceError as e:
         print_error_msg(e)
 
-    special_file_name = "对象()*'/. 存![]^&*~储{|}~()"
+    special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
     print "Test Put Object Contains Special Characters " + special_file_name
     response = client.put_object(
         Bucket=test_bucket,
