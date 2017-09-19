@@ -25,19 +25,31 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 maplist = {
             'ContentLength': 'Content-Length',
-            'ContentType': 'Content-Type',
             'ContentMD5': 'Content-MD5',
+            'ContentType': 'Content-Type',
             'CacheControl': 'Cache-Control',
             'ContentDisposition': 'Content-Disposition',
             'ContentEncoding': 'Content-Encoding',
+            'ContentLanguage': 'Content-Language',
             'Expires': 'Expires',
+            'ResponseContentType': 'response-content-type',
+            'ResponseContentLanguage': 'response-content-language',
+            'ResponseExpires': 'response-expires',
+            'ResponseCacheControl': 'response-cache-control',
+            'ResponseContentDisposition': 'response-content-disposition',
+            'ResponseContentEncoding': 'response-content-encoding',
             'Metadata': 'Metadata',
             'ACL': 'x-cos-acl',
             'GrantFullControl': 'x-cos-grant-full-control',
             'GrantWrite': 'x-cos-grant-write',
             'GrantRead': 'x-cos-grant-read',
             'StorageClass': 'x-cos-storage-class',
-            'EncodingType': 'encoding-type'
+            'Range': 'Range',
+            'IfMatch': 'If-Match',
+            'IfNoneMatch': 'If-None-Match',
+            'IfModifiedSince': 'If-Modified-Since',
+            'IfUnmodifiedSince': 'If-Unmodified-Since',
+            'VersionId': 'x-cos-version-id',
            }
 
 
@@ -109,11 +121,39 @@ def mapped(headers):
     return _headers
 
 
+def format_region(region):
+    if region.find('cos.') != -1:
+        return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
+    if region == 'cn-north' or region == 'cn-south' or region == 'cn-east' or region == 'cn-south-2' or region == 'cn-southwest' or region == 'sg':
+        return region  # 老域名不能加cos.
+    #  支持v4域名映射到v5
+    if region == 'cossh':
+        return 'cos.ap-shanghai'
+    if region == 'cosgz':
+        return 'cos.ap-guangzhou'
+    if region == 'cosbj':
+        return 'cos.ap-beijing'
+    if region == 'costj':
+        return 'cos.ap-beijing-1'
+    if region == 'coscd':
+        return 'cos.ap-chengdu'
+    if region == 'cossgp':
+        return 'cos.ap-singapore'
+    if region == 'coshk':
+        return 'cos.ap-hongkong'
+    if region == 'cosca':
+        return 'cos.na-toronto'
+    if region == 'cosger':
+        return 'cos.eu-frankfurt'
+
+    return 'cos.' + region  # 新域名加上cos.
+
+
 class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid, Region, Access_id, Access_key, Token=None):
         self._appid = Appid
-        self._region = Region
+        self._region = format_region(Region)
         self._access_id = Access_id
         self._access_key = Access_key
         self._token = Token
@@ -126,14 +166,14 @@ class CosConfig(object):
         if path:
             if path[0] == '/':
                 path = path[1:]
-            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com/{path}".format(
+            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.cos.{region}.myqcloud.com".format(
+            url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region
@@ -246,7 +286,7 @@ class CosS3Client(object):
         """生成预签名的下载url"""
         url = self._conf.uri(bucket=Bucket, path=Key)
         sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=300)
-        url = url + '?sign=' + urllib.quote(sign)
+        url = urllib.quote(url.encode('utf8'), ':/') + '?sign=' + urllib.quote(sign)
         return url
 
     def delete_object(self, Bucket, Key, **kwargs):
@@ -311,6 +351,11 @@ class CosS3Client(object):
     def create_multipart_upload(self, Bucket, Key, **kwargs):
         """创建分片上传，适用于大文件上传"""
         headers = mapped(kwargs)
+        if 'Metadata' in headers.keys():
+            for i in headers['Metadata'].keys():
+                headers[i] = headers['Metadata'][i]
+            headers.pop('Metadata')
+
         url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
         logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -374,10 +419,16 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_parts(self, Bucket, Key, UploadId, **kwargs):
+    def list_parts(self, Bucket, Key, UploadId, EncodingType='url', MaxParts=1000, PartNumberMarker=0, **kwargs):
         """列出已上传的分片"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
+        params = {
+            'uploadId': UploadId,
+            'part-number-marker': PartNumberMarker,
+            'max-parts': MaxParts,
+            'encoding-type': EncodingType}
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("list multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
@@ -385,7 +436,8 @@ class CosS3Client(object):
                 method='GET',
                 url=url,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
-                headers=headers)
+                headers=headers,
+                params=params)
         data = xml_to_dict(rt.text)
         if 'Part' in data.keys() and isinstance(data['Part'], dict):  # 只有一个part，将dict转为list，保持一致
             lst = []
@@ -455,7 +507,7 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="",  **kwargs):
+    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="", EncodingType="url", **kwargs):
         """获取文件列表"""
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
@@ -466,7 +518,8 @@ class CosS3Client(object):
             'delimiter': Delimiter,
             'marker': Marker,
             'max-keys': MaxKeys,
-            'prefix': Prefix}
+            'prefix': Prefix,
+            'encoding-type': EncodingType}
         rt = self.send_request(
                 method='GET',
                 url=url,
