@@ -60,7 +60,7 @@ def Test():
     print "Test List Buckets"
     response = client.list_buckets()
 
-    copy_source = {'Bucket': 'test01', 'Key': '/test.txt'}
+    copy_source = {'Appid': '1252408340', 'Bucket': 'test02', 'Key': '/test.txt', 'Region': 'ap-guangzhou'}
     print "Test Copy Object From Other Bucket "
 
     response = client.copy_object(

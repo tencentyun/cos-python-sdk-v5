@@ -319,16 +319,31 @@ class CosS3Client(object):
 
     def gen_copy_source_url(self, CopySource):
         """拼接拷贝源url"""
+        if 'Appid' in CopySource.keys():
+            appid = CopySource['Appid']
+        else:
+            raise CosClientError('CopySource Need Parameter Appid')
         if 'Bucket' in CopySource.keys():
             bucket = CopySource['Bucket']
         else:
             raise CosClientError('CopySource Need Parameter Bucket')
+        if 'Region' in CopySource.keys():
+            region = CopySource['Region']
+            region = format_region(region)
+        else:
+            raise CosClientError('CopySource Need Parameter Region')
         if 'Key' in CopySource.keys():
-            key = CopySource['Key']
+            path = CopySource['Key']
+            if path and path[0] == '/':
+                path = path[1:]
         else:
             raise CosClientError('CopySource Need Parameter Key')
-        url = self._conf.uri(bucket=bucket, path=key).encode('utf8')
-        url = url[7:]  # copysource不支持http://开头，去除
+        url = "{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+                bucket=bucket,
+                uid=appid,
+                region=region,
+                path=path
+            )
         return url
 
     def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
