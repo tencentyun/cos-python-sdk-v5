@@ -104,7 +104,7 @@ def Test():
     response = client.delete_bucket_lifecycle(
         Bucket=test_bucket
     )
-    '''
+
     print "Test Get Presigned Download URL "
     url = client.get_presigned_download_url(
             Bucket=test_bucket,
@@ -313,7 +313,7 @@ def Test():
         UploadId=uploadid,
         MultipartUpload={'Part': lst}
     )
-    '''
+
 if __name__ == "__main__":
     setUp()
     Test()
