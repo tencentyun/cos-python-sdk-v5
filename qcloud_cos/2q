@@ -2,12 +2,16 @@
 import random
 import sys
 import os
+import time
+import datetime
 from cos_client import CosS3Client
 from cos_client import CosConfig
 from cos_exception import CosServiceError
 
-ACCESS_ID = os.environ["ACCESS_ID"]
-ACCESS_KEY = os.environ["ACCESS_KEY"]
+ACCESS_ID = 'AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00'
+# os.environ["ACCESS_ID"]
+ACCESS_KEY = 'ciivKvnnrMvSvQpMAWuIz12pThGGlWRW'
+# os.environ["ACCESS_KEY"]
 
 
 def gen_file(path, size):
@@ -52,57 +56,53 @@ def Test():
 
     print "test put bucket cors " + test_bucket
     cors_config = {
-        'CORSRule': [
-         {
-            'ID': '1234',
-            'AllowedOrigin': ['http://www.qq.com'],
-            'AllowedMethod': ['GET', 'PUT'],
-            'AllowedHeader': ['x-cos-meta-test'],
-            'ExposeHeader': ['x-cos-meta-test1'],
-            'MaxAgeSeconds': 500
-         }]
-    }
+        'CORSRule':[
+            {'ID':'1234',
+            'AllowedOrigin':['http://www.qq.com'],
+            'AllowedMethod':['GET', 'PUT'], 
+            'AllowedHeader':['x-cos-meta-test'],
+            'ExposeHeader':['x-cos-meta-test1'],
+            'MaxAgeSeconds':500}]}
     response = client.put_bucket_cors(
-        Bucket=test_bucket,
-        CORSConfiguration=cors_config
+        Bucket = test_bucket,
+        CORSConfiguration = cors_config
     )
 
     print "test get bucket cors " + test_bucket
     response = client.get_bucket_cors(
-        Bucket=test_bucket
+        Bucket = test_bucket
     )
     print response
 
     print "test delete bucket cors " + test_bucket
     response = client.delete_bucket_cors(
-        Bucket=test_bucket
+        Bucket = test_bucket
     )
 
     print "test put bucket lifecycle " + test_bucket
-    life_config = {
+    response = client.put_bucket_lifecycle(
+        Bucket = test_bucket,
+        LifecycleConfiguration={
         'Rule': [
             {
                 'Expiration': {'Days': 100},
                 'ID': '123',
-                'Filter': {'Prefix': '456'},
+                'Filter':{'Prefix': '456'},
                 'Status': 'Enabled',
             }
         ]
-    }
-    response = client.put_bucket_lifecycle(
-        Bucket=test_bucket,
-        LifecycleConfiguration=life_config
+        }
     )
 
     print "test get bucket lifecycle " + test_bucket
     response = client.get_bucket_lifecycle(
-        Bucket=test_bucket
+        Bucket = test_bucket
     )
     print response
 
     print "test delete bucket lifecycle " + test_bucket
     response = client.delete_bucket_lifecycle(
-        Bucket=test_bucket
+        Bucket = test_bucket
     )
     '''
     print "Test Get Presigned Download URL "

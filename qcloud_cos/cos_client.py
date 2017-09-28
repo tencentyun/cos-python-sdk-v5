@@ -3,6 +3,9 @@
 import requests
 import urllib
 import logging
+import hashlib
+import base64
+import os
 import sys
 import copy
 import xml.dom.minidom
@@ -10,6 +13,7 @@ import xml.etree.ElementTree
 from requests import Request, Session
 from streambody import StreamBody
 from xml2dict import Xml2Dict
+from dicttoxml import dicttoxml
 from cos_auth import CosS3Auth
 from cos_exception import CosClientError
 from cos_exception import CosServiceError
@@ -58,6 +62,12 @@ def to_unicode(s):
         return s
     else:
         return s.decode('utf-8')
+
+
+def get_md5(data):
+    m2 = hashlib.md5(data)
+    MD5 = base64.standard_b64encode(m2.digest())
+    return MD5
 
 
 def dict_to_xml(data):
@@ -119,6 +129,14 @@ def mapped(headers):
         else:
             raise CosClientError('No Parameter Named '+i+' Please Check It')
     return _headers
+
+
+def format_xml(data, root, lst):
+    """将dict转换为xml"""
+    xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
+    for i in lst:
+        xml_config = xml_config.replace(i+i, i)
+    return xml_config
 
 
 def format_region(region):
@@ -590,11 +608,133 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
             headers=headers)
         data = xml_to_dict(rt.text)
-        if data['AccessControlList'] is not None and isinstance(data['AccessControlList']['Grant'], dict):
+        if data['AccessControlList'] is not None and not isinstance(data['AccessControlList']['Grant'], list):
             lst = []
             lst.append(data['AccessControlList']['Grant'])
             data['AccessControlList']['Grant'] = lst
         return data
+
+    def put_bucket_cors(self, Bucket, CORSConfiguration={}, **kwargs):
+        """设置bucket CORS"""
+        lst = [  # 类型为list的标签
+            '<CORSRule>',
+            '<AllowedOrigin>',
+            '<AllowedMethod>',
+            '<AllowedHeader>',
+            '<ExposeHeader>',
+            '</CORSRule>',
+            '</AllowedOrigin>',
+            '</AllowedMethod>',
+            '</AllowedHeader>',
+            '</ExposeHeader>']
+        xml_config = format_xml(data=CORSConfiguration, root='CORSConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        url = self._conf.uri(bucket=Bucket, path="?cors")
+        logger.info("put bucket cors, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def get_bucket_cors(self, Bucket, **kwargs):
+        """获取bucket CORS"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?cors")
+        logger.info("get bucket cors, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if 'CORSRule' in data.keys() and not isinstance(data['CORSRule'], list):
+            lst = []
+            lst.append(data['CORSRule'])
+            data['CORSRule'] = lst
+        if 'CORSRule' in data.keys():
+            allow_lst = ['AllowedOrigin', 'AllowedMethod', 'AllowedHeader', 'ExposeHeader']
+            for rule in data['CORSRule']:
+                for text in allow_lst:
+                    if text in rule.keys() and not isinstance(rule[text], list):
+                        lst = []
+                        lst.append(rule[text])
+                        rule[text] = lst
+        return data
+
+    def delete_bucket_cors(self, Bucket, **kwargs):
+        """删除bucket CORS"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?cors")
+        logger.info("delete bucket cors, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def put_bucket_lifecycle(self, Bucket, LifecycleConfiguration={}, **kwargs):
+        """设置bucket LifeCycle"""
+        lst = ['<Rule>', '<Tag>', '</Tag>', '</Rule>']  # 类型为list的标签
+        xml_config = format_xml(data=LifecycleConfiguration, root='LifecycleConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        url = self._conf.uri(bucket=Bucket, path="?lifecycle")
+        logger.info("put bucket lifecycle, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def get_bucket_lifecycle(self, Bucket, **kwargs):
+        """获取bucket LifeCycle"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?lifecycle")
+        logger.info("get bucket cors, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if 'Rule' in data.keys() and not isinstance(data['Rule'], list):
+            lst = []
+            lst.append(data['Rule'])
+            data['Rule'] = lst
+        return data
+
+    def delete_bucket_lifecycle(self, Bucket, **kwargs):
+        """删除bucket LifeCycle"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?lifecycle")
+        logger.info("delete bucket cors, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
 
     # service interface begin
     def list_buckets(self, **kwargs):
@@ -608,7 +748,7 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
                 )
         data = xml_to_dict(rt.text)
-        if data['Buckets'] is not None and isinstance(data['Buckets']['Bucket'], dict):
+        if data['Buckets'] is not None and not isinstance(data['Buckets']['Bucket'], list):
             lst = []
             lst.append(data['Buckets']['Bucket'])
             data['Buckets']['Bucket'] = lst
