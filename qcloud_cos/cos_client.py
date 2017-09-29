@@ -478,8 +478,14 @@ class CosS3Client(object):
             data['Part'] = lst
         return data
 
-    def put_object_acl(self, Bucket, Key, **kwargs):
+    def put_object_acl(self, Bucket, Key, AccessControlPolicy={}, **kwargs):
         """设置object ACL"""
+        lst = [  # 类型为list的标签
+            '<Grant>',
+            '</Grant>']
+        xml_config = ""
+        if AccessControlPolicy:
+            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy', lst=lst)
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=Key+"?acl")
         logger.info("put object acl, url=:{url} ,headers=:{headers}".format(
@@ -488,6 +494,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            data=xml_config,
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
             headers=headers)
         return None
@@ -581,16 +588,24 @@ class CosS3Client(object):
             headers=headers)
         return None
 
-    def put_bucket_acl(self, Bucket, **kwargs):
+    def put_bucket_acl(self, Bucket, AccessControlPolicy={}, **kwargs):
         """设置bucket ACL"""
+        lst = [  # 类型为list的标签
+            '<Grant>',
+            '</Grant>']
+        xml_config = ""
+        if AccessControlPolicy:
+            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy', lst=lst)
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?acl")
         logger.info("put bucket acl, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
+        print xml_config
         rt = self.send_request(
             method='PUT',
             url=url,
+            data=xml_config,
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
             headers=headers)
         return None
