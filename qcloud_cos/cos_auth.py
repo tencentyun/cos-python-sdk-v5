@@ -5,10 +5,26 @@ import time
 import urllib
 import hashlib
 import logging
-from urllib import quote
+from urllib import quote_plus
 from urlparse import urlparse
 from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
+
+
+def filter_headers(data):
+    """只设置host content-type 还有x开头的头部"""
+    headers = {}
+    for i in data.keys():
+        if i == 'Content-Type' or i == 'Host' or i[0] == 'x' or i[0] == 'X':
+            headers[i] = data[i]
+    return headers
+
+
+def cos_quote(value):
+    """对头部进行encode"""
+    data = quote_plus(value, '-_.~')  # 保留字为-_.~,并且要对/进行Encode
+    data = data.replace('+', '%20')  # 对于空格，需要Encode成%20,而不是+
+    return data
 
 
 class CosS3Auth(AuthBase):
@@ -19,12 +35,10 @@ class CosS3Auth(AuthBase):
         self._expire = expire
 
     def __call__(self, r):
-        method = r.method.lower()
+        method = r.method.lower()  # 获取小写method
         uri = urllib.unquote(r.url)
         uri = uri.split('?')[0]
-        http_header = r.headers
-        r.headers = {}
-        rt = urlparse(uri)
+        rt = urlparse(uri)  # 解析host以及params
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
             uri_params = dict(map(lambda s: s.lower().split('='), rt.query.split('&')))
@@ -32,7 +46,8 @@ class CosS3Auth(AuthBase):
             uri_params = {rt.query: ""}
         else:
             uri_params = {}
-        headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
+        headers = filter_headers(r.headers)
+        headers = dict([(k.lower(), cos_quote(v)) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=rt.path,
@@ -42,7 +57,7 @@ class CosS3Auth(AuthBase):
         logger.debug("format str: " + format_str)
 
         start_sign_time = int(time.time())
-        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time + self._expire)
+        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time+self._expire)
         sha1 = hashlib.sha1()
         sha1.update(format_str)
 
@@ -54,7 +69,7 @@ class CosS3Auth(AuthBase):
         logger.debug('sign: ' + str(sign))
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
 
-        http_header['Authorization'] = sign_tpl.format(
+        r.headers['Authorization'] = sign_tpl.format(
             ak=self._access_id,
             sign_time=sign_time,
             key_time=sign_time,
@@ -62,10 +77,8 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
-        r.headers = http_header
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
-
         logger.debug("request headers: " + str(r.headers))
         return r
 
