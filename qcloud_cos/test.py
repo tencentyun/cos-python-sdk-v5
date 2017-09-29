@@ -116,7 +116,7 @@ def Test():
     response = client.list_buckets()
 
     copy_source = {'Appid': '1252408340', 'Bucket': 'test02', 'Key': '/test.txt', 'Region': 'ap-guangzhou'}
-    print "Test Copy Object From Otopy Object
+    print "Test Copy Object From Otopy Object"
     response = client.copy_object(
             Bucket='test04',
             Key='test.txt',
