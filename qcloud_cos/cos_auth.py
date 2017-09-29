@@ -37,7 +37,6 @@ class CosS3Auth(AuthBase):
     def __call__(self, r):
         method = r.method.lower()  # 获取小写method
         uri = urllib.unquote(r.url)
-        uri = uri.split('?')[0]
         rt = urlparse(uri)  # 解析host以及params
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
@@ -51,7 +50,7 @@ class CosS3Auth(AuthBase):
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=rt.path,
-            params=urllib.urlencode(uri_params),
+            params=urllib.urlencode(sorted(uri_params.items())),
             headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
