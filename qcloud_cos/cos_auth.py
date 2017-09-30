@@ -29,11 +29,12 @@ class CosS3Auth(AuthBase):
 
     def __call__(self, r):
         method = r.method.lower()  # 获取小写method
-        uri = urllib.unquote(r.url)  # r.url encode ~ but reserverd for cos.fix may be r.url = r.url.replace('%7E','~')
+        uri = urllib.unquote(r.url)
         rt = urlparse(uri)  # 解析host以及params
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
             uri_params = dict(map(lambda s: s.lower().split('='), rt.query.split('&')))
+            uri_params = {}
         elif rt.query != "":
             uri_params = {rt.query: ""}
         else:
@@ -44,7 +45,7 @@ class CosS3Auth(AuthBase):
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=rt.path,
-            params=urllib.urlencode(sorted(uri_params.items())).replace('+', '%20').replace('%7E', '~'),  # use quote_plus to encode, handle that
+            params=urllib.urlencode(sorted(uri_params.items()))
             headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
