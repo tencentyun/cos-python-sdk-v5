@@ -601,7 +601,6 @@ class CosS3Client(object):
         logger.info("put bucket acl, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        print xml_config
         rt = self.send_request(
             method='PUT',
             url=url,
