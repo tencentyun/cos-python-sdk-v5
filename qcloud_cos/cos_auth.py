@@ -45,7 +45,7 @@ class CosS3Auth(AuthBase):
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=rt.path,
-            params=urllib.urlencode(sorted(uri_params.items()))
+            params=urllib.urlencode(sorted(uri_params.items())),
             headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
