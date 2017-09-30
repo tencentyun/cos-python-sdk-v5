@@ -5,7 +5,7 @@ import time
 import urllib
 import hashlib
 import logging
-from urllib import quote_plus
+from urllib import quote
 from urlparse import urlparse
 from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
@@ -20,13 +20,6 @@ def filter_headers(data):
     return headers
 
 
-def cos_quote(value):
-    """对头部进行encode"""
-    data = quote_plus(value, '-_.~')  # 保留字为-_.~,并且要对/进行Encode
-    data = data.replace('+', '%20')  # 对于空格，需要Encode成%20,而不是+
-    return data
-
-
 class CosS3Auth(AuthBase):
 
     def __init__(self, access_id, secret_key, expire=10000):
@@ -36,7 +29,7 @@ class CosS3Auth(AuthBase):
 
     def __call__(self, r):
         method = r.method.lower()  # 获取小写method
-        uri = urllib.unquote(r.url)
+        uri = urllib.unquote(r.url)  # r.url encode ~ but reserverd for cos.fix may be r.url = r.url.replace('%7E','~')
         rt = urlparse(uri)  # 解析host以及params
         logger.debug("url parse: " + str(rt))
         if rt.query != "" and ("&" in rt.query or '=' in rt.query):
@@ -46,11 +39,13 @@ class CosS3Auth(AuthBase):
         else:
             uri_params = {}
         headers = filter_headers(r.headers)
-        headers = dict([(k.lower(), cos_quote(v)) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
+        headers = r.headers
+        # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
+        headers = dict([(k.lower(), quote(v, '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=method.lower(),
             host=rt.path,
-            params=urllib.urlencode(sorted(uri_params.items())).replace('+', '%20').replace('%7E', '~'),
+            params=urllib.urlencode(sorted(uri_params.items())).replace('+', '%20').replace('%7E', '~'),  # use quote_plus to encode, handle that
             headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
