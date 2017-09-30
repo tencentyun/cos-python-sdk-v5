@@ -40,6 +40,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
     # 文件操作                                                                 #
     ############################################################################
     # 1. 上传单个文件
+    NOTICE:Key中不可包含#%;?这四个字符
     response = client.put_object(
         Bucket='test01',
         Body='TY'*1024*512*file_size,
