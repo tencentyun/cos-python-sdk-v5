@@ -39,7 +39,6 @@ class CosS3Auth(AuthBase):
         else:
             uri_params = {}
         headers = filter_headers(r.headers)
-        headers = r.headers
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(k.lower(), quote(v, '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
