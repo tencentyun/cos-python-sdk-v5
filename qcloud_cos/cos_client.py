@@ -368,6 +368,8 @@ class CosS3Client(object):
         """文件拷贝，文件信息修改"""
         headers = mapped(kwargs)
         headers['x-cos-copy-source'] = self.gen_copy_source_url(CopySource)
+        if CopyStatus != 'Copy' and CopyStatus != 'Replaced':
+            raise CosClientError('CopyStatus must be Copy or Replaced')
         headers['x-cos-metadata-directive'] = CopyStatus
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("copy object, url=:{url} ,headers=:{headers}".format(
