@@ -549,7 +549,7 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="", EncodingType="url", **kwargs):
+    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="", EncodingType="", **kwargs):
         """获取文件列表"""
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
@@ -560,8 +560,12 @@ class CosS3Client(object):
             'delimiter': Delimiter,
             'marker': Marker,
             'max-keys': MaxKeys,
-            'prefix': Prefix,
-            'encoding-type': EncodingType}
+            'prefix': Prefix
+            }
+        if EncodingType:
+            if EncodingType != 'url':
+                raise CosClientError('EncodingType must be url')
+            params['encoding-type'] = EncodingType
         rt = self.send_request(
                 method='GET',
                 url=url,
