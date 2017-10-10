@@ -100,13 +100,15 @@ def dict_to_xml(data):
     return doc.toxml('utf-8')
 
 
-def xml_to_dict(data):
+def xml_to_dict(data, origin_str="", replace_str=""):
     """V5使用xml格式，将response中的xml转换为dict"""
     root = xml.etree.ElementTree.fromstring(data)
     xmldict = Xml2Dict(root)
     xmlstr = str(xmldict)
     xmlstr = xmlstr.replace("{http://www.qcloud.com/document/product/436/7751}", "")
     xmlstr = xmlstr.replace("{http://www.w3.org/2001/XMLSchema-instance}", "")
+    if origin_str:
+        xmlstr = xmlstr.replace(origin_str, replace_str)
     xmldict = eval(xmlstr)
     return xmldict
 
@@ -513,7 +515,7 @@ class CosS3Client(object):
             url=url,
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
             headers=headers)
-        data = xml_to_dict(rt.text)
+        data = xml_to_dict(rt.text, "type", "Type")
         if data['AccessControlList'] is not None and isinstance(data['AccessControlList']['Grant'], dict):
             lst = []
             lst.append(data['AccessControlList']['Grant'])
@@ -627,7 +629,7 @@ class CosS3Client(object):
             url=url,
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
             headers=headers)
-        data = xml_to_dict(rt.text)
+        data = xml_to_dict(rt.text, "type", "Type")
         if data['AccessControlList'] is not None and not isinstance(data['AccessControlList']['Grant'], list):
             lst = []
             lst.append(data['AccessControlList']['Grant'])
