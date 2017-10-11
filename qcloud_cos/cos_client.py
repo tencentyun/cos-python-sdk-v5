@@ -267,7 +267,7 @@ class CosS3Client(object):
                 headers[i] = headers['Metadata'][i]
             headers.pop('Metadata')
 
-        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')) # 提前对key做encode
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))  # 提前对key做encode
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
