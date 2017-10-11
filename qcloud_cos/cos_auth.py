@@ -22,29 +22,28 @@ def filter_headers(data):
 
 class CosS3Auth(AuthBase):
 
-    def __init__(self, access_id, secret_key, expire=10000):
+    def __init__(self, access_id, secret_key, key='', params={}, expire=10000):
         self._access_id = access_id
         self._secret_key = secret_key
         self._expire = expire
-
-    def __call__(self, r):
-        method = r.method.lower()  # 获取小写method
-        uri = urllib.unquote(r.url)
-        rt = urlparse(uri)  # 解析host以及params
-        logger.debug("url parse: " + str(rt))
-        if rt.query != "" and ("&" in rt.query or '=' in rt.query):
-            uri_params = dict(map(lambda s: s.lower().split('='), rt.query.split('&')))
-            uri_params = {}
-        elif rt.query != "":
-            uri_params = {rt.query: ""}
+        self._params = params
+        if key:
+            if key[0] == '/':
+                self._path = key
+            else:
+                self._path = '/' + key
         else:
-            uri_params = {}
+            self._path = '/'
+     
+    def __call__(self, r):
+        path = self._path
+        uri_params = self._params
         headers = filter_headers(r.headers)
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(k.lower(), quote(v, '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
-            method=method.lower(),
-            host=rt.path,
+            method=r.method.lower(),
+            host=path,
             params=urllib.urlencode(sorted(uri_params.items())),
             headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
         )

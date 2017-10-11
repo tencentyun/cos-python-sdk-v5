@@ -11,6 +11,7 @@ import copy
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
+from urllib import quote
 from streambody import StreamBody
 from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
@@ -193,7 +194,7 @@ class CosConfig(object):
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com".format(
+            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/".format(
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region
@@ -211,11 +212,11 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_auth(self, Method, Bucket, Key=None, Expired=300, headers={}, params={}):
+    def get_auth(self, Method, Bucket, Key='', Expired=300, headers={}, params={}):
         """获取签名"""
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         r = Request(Method, url, headers=headers, params=params)
-        auth = CosS3Auth(self._conf._access_id, self._conf._access_key, Expired)
+        auth = CosS3Auth(self._conf._access_id, self._conf._access_key, Key, params, Expired)
         return auth(r).headers['Authorization']
 
     def send_request(self, method, url, timeout=30, **kwargs):
@@ -266,14 +267,14 @@ class CosS3Client(object):
                 headers[i] = headers['Metadata'][i]
             headers.pop('Metadata')
 
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')) # 提前对key做encode
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
             method='PUT',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
             data=Body,
             headers=headers)
 
@@ -284,7 +285,7 @@ class CosS3Client(object):
     def get_object(self, Bucket, Key, **kwargs):
         """单文件下载接口"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("get object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
@@ -292,7 +293,7 @@ class CosS3Client(object):
                 method='GET',
                 url=url,
                 stream=True,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 headers=headers)
 
         response = dict()
@@ -304,36 +305,36 @@ class CosS3Client(object):
 
     def get_presigned_download_url(self, Bucket, Key, Expired=300):
         """生成预签名的下载url"""
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=300)
-        url = urllib.quote(url.encode('utf8'), ':/') + '?sign=' + urllib.quote(sign)
+        url = url + '?sign=' + urllib.quote(sign)
         return url
 
     def delete_object(self, Bucket, Key, **kwargs):
         """单文件删除接口"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("delete object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
                 method='DELETE',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 headers=headers)
         return None
 
     def head_object(self, Bucket, Key, **kwargs):
         """获取文件信息"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("head object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
             method='HEAD',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
             headers=headers)
         return rt.headers
 
@@ -373,14 +374,14 @@ class CosS3Client(object):
         if CopyStatus != 'Copy' and CopyStatus != 'Replaced':
             raise CosClientError('CopyStatus must be Copy or Replaced')
         headers['x-cos-metadata-directive'] = CopyStatus
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("copy object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
             method='PUT',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
             headers=headers)
         data = xml_to_dict(rt.text)
         return data
@@ -393,14 +394,14 @@ class CosS3Client(object):
                 headers[i] = headers['Metadata'][i]
             headers.pop('Metadata')
 
-        url = self._conf.uri(bucket=Bucket, path=Key+"?uploads")
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?uploads")
         logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
                 method='POST',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 headers=headers)
 
         data = xml_to_dict(rt.text)
@@ -409,7 +410,7 @@ class CosS3Client(object):
     def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, **kwargs):
         """上传分片，单个大小不得超过5GB"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?partNumber={PartNumber}&uploadId={UploadId}".format(
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?partNumber={PartNumber}&uploadId={UploadId}".format(
             PartNumber=PartNumber,
             UploadId=UploadId))
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
@@ -419,7 +420,7 @@ class CosS3Client(object):
                 method='PUT',
                 url=url,
                 headers=headers,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 data=Body)
         response = dict()
         response['ETag'] = rt.headers['ETag']
@@ -428,14 +429,14 @@ class CosS3Client(object):
     def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):
         """完成分片上传，组装后的文件不得小于1MB,否则会返回错误"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?uploadId={UploadId}".format(UploadId=UploadId))
         logger.info("complete multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
                 method='POST',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 data=dict_to_xml(MultipartUpload),
                 timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
                 headers=headers)
@@ -445,14 +446,14 @@ class CosS3Client(object):
     def abort_multipart_upload(self, Bucket, Key, UploadId, **kwargs):
         """放弃一个已经存在的分片上传任务，删除所有已经存在的分片"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?uploadId={UploadId}".format(UploadId=UploadId))
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?uploadId={UploadId}".format(UploadId=UploadId))
         logger.info("abort multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
                 method='DELETE',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 headers=headers)
         return None
 
@@ -465,14 +466,14 @@ class CosS3Client(object):
             'max-parts': MaxParts,
             'encoding-type': EncodingType}
 
-        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("list multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
                 method='GET',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 headers=headers,
                 params=params)
         data = xml_to_dict(rt.text)
@@ -491,7 +492,7 @@ class CosS3Client(object):
         if AccessControlPolicy:
             xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy', lst=lst)
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?acl")
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?acl")
         logger.info("put object acl, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
@@ -499,21 +500,21 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
             headers=headers)
         return None
 
     def get_object_acl(self, Bucket, Key, **kwargs):
         """获取object ACL"""
         headers = mapped(kwargs)
-        url = self._conf.uri(bucket=Bucket, path=Key+"?acl")
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?acl")
         logger.info("get object acl, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
             headers=headers)
         data = xml_to_dict(rt.text, "type", "Type")
         if data['AccessControlList'] is not None and isinstance(data['AccessControlList']['Grant'], dict):
