@@ -34,7 +34,7 @@ class CosS3Auth(AuthBase):
                 self._path = '/' + key
         else:
             self._path = '/'
-     
+
     def __call__(self, r):
         path = self._path
         uri_params = self._params
