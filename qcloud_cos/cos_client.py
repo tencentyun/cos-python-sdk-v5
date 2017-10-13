@@ -370,6 +370,10 @@ class CosS3Client(object):
     def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
         """文件拷贝，文件信息修改"""
         headers = mapped(kwargs)
+        if 'Metadata' in headers.keys():
+            for i in headers['Metadata'].keys():
+                headers[i] = headers['Metadata'][i]
+            headers.pop('Metadata')
         headers['x-cos-copy-source'] = self.gen_copy_source_url(CopySource)
         if CopyStatus != 'Copy' and CopyStatus != 'Replaced':
             raise CosClientError('CopyStatus must be Copy or Replaced')
