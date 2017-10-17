@@ -461,14 +461,17 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_parts(self, Bucket, Key, UploadId, EncodingType='url', MaxParts=1000, PartNumberMarker=0, **kwargs):
+    def list_parts(self, Bucket, Key, UploadId, EncodingType='', MaxParts=1000, PartNumberMarker=0, **kwargs):
         """列出已上传的分片"""
         headers = mapped(kwargs)
         params = {
             'uploadId': UploadId,
             'part-number-marker': PartNumberMarker,
-            'max-parts': MaxParts,
-            'encoding-type': EncodingType}
+            'max-parts': MaxParts}
+        if EncodingType:
+            if EncodingType != 'url':
+                raise CosClientError('EncodingType must be url')
+            params['encoding-type'] = EncodingType
 
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("list multipart upload, url=:{url} ,headers=:{headers}".format(
