@@ -278,8 +278,7 @@ class CosS3Client(object):
             data=Body,
             headers=headers)
 
-        response = dict()
-        response['ETag'] = rt.headers['ETag']
+        response = rt.headers
         return response
 
     def get_object(self, Bucket, Key, **kwargs):
@@ -296,11 +295,9 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
                 headers=headers)
 
-        response = dict()
+        response = rt.headers
         response['Body'] = StreamBody(rt)
 
-        for k in rt.headers.keys():
-            response[k] = rt.headers[k]
         return response
 
     def get_presigned_download_url(self, Bucket, Key, Expired=300):
