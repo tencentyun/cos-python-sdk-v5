@@ -54,6 +54,10 @@ maplist = {
             'IfNoneMatch': 'If-None-Match',
             'IfModifiedSince': 'If-Modified-Since',
             'IfUnmodifiedSince': 'If-Unmodified-Since',
+            'CopySourceIfMatch': 'x-cos-copy-source-If-Match',
+            'CopySourceIfNoneMatch': 'x-cos-copy-source-If-None-Match',
+            'CopySourceIfModifiedSince': 'x-cos-copy-source-If-Modified-Since',
+            'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
             'VersionId': 'x-cos-version-id',
            }
 
