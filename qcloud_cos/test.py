@@ -105,6 +105,29 @@ def Test():
         Bucket=test_bucket
     )
 
+    print "test put bucket versioning " + test_bucket
+    response = client.put_bucket_versioning(
+        Bucket=test_bucket,
+        Status='Enabled'
+    )
+
+    print "test get bucket versioning " + test_bucket
+    response = client.get_bucket_versioning(
+        Bucket=test_bucket
+    )
+    print response
+
+    print "test get bucket location " + test_bucket
+    response = client.get_bucket_location(
+        Bucket=test_bucket
+    )
+    print response
+
+    print "test head bucket " + test_bucket
+    response = client.head_bucket(
+        Bucket=test_bucket
+    )
+
     print "Test Get Presigned Download URL "
     url = client.get_presigned_download_url(
             Bucket=test_bucket,
