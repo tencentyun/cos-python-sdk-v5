@@ -138,7 +138,7 @@ def mapped(headers):
     return _headers
 
 
-def format_xml(data, root, lst):
+def format_xml(data, root, lst=list()):
     """将dict转换为xml"""
     xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
     for i in lst:
@@ -814,7 +814,9 @@ class CosS3Client(object):
             url=url,
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
             headers=headers)
-        data = xml_to_dict(rt.text)
+        root = xml.etree.ElementTree.fromstring(rt.text)
+        data = dict()
+        data['LocationConstraint'] = root.text
         return data
 
     def head_bucket(self, Bucket, **kwargs):
