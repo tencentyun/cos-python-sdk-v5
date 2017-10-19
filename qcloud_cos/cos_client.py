@@ -767,6 +767,70 @@ class CosS3Client(object):
             headers=headers)
         return None
 
+    def put_bucket_versioning(self, Bucket, Status, **kwargs):
+        """设置bucket版本控制"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?versioning")
+        logger.info("put bucket versioning, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        if Status != 'Enabled' and Status != 'Disabled':
+            raise CosClientError('versioning status must be set to Enabled or Disabled!')
+        config = dict()
+        config['Status'] = Status
+        xml_config = format_xml(data=config, root='VersioningConfiguration')
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def get_bucket_versioning(self, Bucket, **kwargs):
+        """查询bucket版本控制"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?versioning")
+        logger.info("get bucket versioning, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        return data
+
+    def get_bucket_location(self, Bucket, **kwargs):
+        """查询bucket所属地域"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?location")
+        logger.info("get bucket location, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        return data
+
+    def head_bucket(self, Bucket, **kwargs):
+        """确认Bucket是否存在"""
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("head bucket, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='HEAD',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
     # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket"""
