@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def filter_headers(data):
-    """只设置host content-type 还有x开头的头部"""
+    """只设置host content-type 还有x开头的头部.
+
+    :param data(dict): 所有的头部信息.
+    :return(dict): 计算进签名的头部.
+    """
     headers = {}
     for i in data.keys():
         if i == 'Content-Type' or i == 'Host' or i[0] == 'x' or i[0] == 'X':
