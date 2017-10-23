@@ -75,4 +75,3 @@ except CosServiceError as e:
     print e.get_resource_location()
     print e.get_trace_id()
     print e.get_request_id()
-
