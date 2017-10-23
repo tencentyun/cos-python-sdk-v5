@@ -138,7 +138,7 @@ def Test():
     print "Test List Buckets"
     response = client.list_buckets()
 
-    copy_source = {'Appid': '1252408340', 'Bucket': 'test02', 'Key': '/test.txt', 'Region': 'ap-guangzhou'}
+    copy_source = {'Appid': '1252448703', 'Bucket': 'test04', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
     print "Test Copy Object From Otopy Object"
     response = client.copy_object(
             Bucket='test04',
