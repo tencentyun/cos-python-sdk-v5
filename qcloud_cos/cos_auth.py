@@ -24,11 +24,22 @@ def filter_headers(data):
     return headers
 
 
+def to_string(data):
+    """转换unicode为string.
+
+    :param data(unicode|string): 待转换的unicode|string.
+    :return(string): 转换后的string.
+    """
+    if isinstance(data, unicode):
+        return data.encode('utf8')
+    return data
+
+
 class CosS3Auth(AuthBase):
 
-    def __init__(self, access_id, secret_key, key='', params={}, expire=10000):
-        self._access_id = access_id
-        self._secret_key = secret_key
+    def __init__(self, secret_id, secret_key, key='', params={}, expire=10000):
+        self._secret_id = to_string(secret_id)
+        self._secret_key = to_string(secret_key)
         self._expire = expire
         self._params = params
         if key:
@@ -67,7 +78,7 @@ class CosS3Auth(AuthBase):
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
 
         r.headers['Authorization'] = sign_tpl.format(
-            ak=self._access_id,
+            ak=self._secret_id,
             sign_time=sign_time,
             key_time=sign_time,
             params=';'.join(sorted(map(lambda k: k.lower(), uri_params.keys()))),
