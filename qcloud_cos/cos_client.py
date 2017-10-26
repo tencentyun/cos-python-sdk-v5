@@ -960,7 +960,7 @@ class CosS3Client(object):
     def put_bucket_versioning(self, Bucket, Status, **kwargs):
         """设置bucket版本控制
         :param Bucket(string): 存储桶名称.
-        :param Status(string): 设置Bucket版本控制的状态，可选值为'Enabled'|'Disabled'.
+        :param Status(string): 设置Bucket版本控制的状态，可选值为'Enabled'|'Suspended'.
         :param kwargs(dict): 设置请求headers.
         :return: None.
         """
@@ -969,8 +969,8 @@ class CosS3Client(object):
         logger.info("put bucket versioning, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        if Status != 'Enabled' and Status != 'Disabled':
-            raise CosClientError('versioning status must be set to Enabled or Disabled!')
+        if Status != 'Enabled' and Status != 'Suspended':
+            raise CosClientError('versioning status must be set to Enabled or Suspended!')
         config = dict()
         config['Status'] = Status
         xml_config = format_xml(data=config, root='VersioningConfiguration')
