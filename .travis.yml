@@ -1,16 +1,22 @@
 sudo: false
 language: python
-
 python:
-  - "2.6"
-  - "2.7"
-
+- '2.6'
+- '2.7'
 install:
-    - pip install requests
-    - pip install nose
-    - pip install pep8
-    - pip install dicttoxml
-    
+- pip install requests
+- pip install nose
+- pip install pep8
+- pip install dicttoxml
 script:
-    - pep8 --max-line-length=180 qcloud_cos/.
-    - nosetests -s -v
+- pep8 --max-line-length=180 qcloud_cos/.
+- nosetests -s -v
+deploy:
+  provider: pypi
+  distributions: "sdist bdist bdist_wheel"
+  user: dt3310321
+  password:
+    secure: LPiyxt41FBOXUM4WyzMjQvFz9ctQMcJQl7fTKkZ58fgD15XIWb/JXG2+tpCF/hFe6Fa8Kk1qL3cD+FxnQMWeTftebeWz35cn3EqWpd43/5BoSXjf0n2XTg2Ere6USCmTlosmW6A3GF18+DtsD2xzWTf6uWzdpJCHpBdNaxuph4poLfd4A/SCmggfEi7MN8d99sdJ8ENa3iUo51TWqCt5o57N7QLMII2nW8UpntP2XJ5aHZD1KDd8J8RMuDjtGBOvKbWjKCdFSZXT2Rcj/BDsacCUyACnDXdUAQ+Ic55eTtgpQFc7vm9yk5ApNrLC0xtf3WspO0HZO0ZgzsT1a5eGYYckeh2uVudCeC3VMgp3NQE7bLsO/ZLAhg8mQKr16bUNF+rfs59CL1/8/CeLxuIgKm6MnT1NRMsltdDqPjPsQTeEXpZQZ7urgMrXPCte8HgcCsgfZe39v0TrzZ4jES3orB68MnIsusDzoDfQzN2Z4UkkEEktihEwRjel6vzzMs1XGhC0ksvV+Tb6YUpdpnx6FO9ioZJS4ml4kDk3y8iowRcXBOvtMqrA7QwGmwpBARqts6bSa6ziXNqzFiiGWwbY7eeFscsX3uy84+5UIkABRylSl5C+C2B6jEXFD2T5r7YBQ+30eoPucLELyPxVgMkWTZTg8BVOfM2do4fkZQ+H0Rk=
+  on:
+    tags: true
+    branch: master
