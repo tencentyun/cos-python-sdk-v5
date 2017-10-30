@@ -11,38 +11,61 @@ from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
 
 
+def filter_headers(data):
+    """只设置host content-type 还有x开头的头部.
+
+    :param data(dict): 所有的头部信息.
+    :return(dict): 计算进签名的头部.
+    """
+    headers = {}
+    for i in data.keys():
+        if i == 'Content-Type' or i == 'Host' or i[0] == 'x' or i[0] == 'X':
+            headers[i] = data[i]
+    return headers
+
+
+def to_string(data):
+    """转换unicode为string.
+
+    :param data(unicode|string): 待转换的unicode|string.
+    :return(string): 转换后的string.
+    """
+    if isinstance(data, unicode):
+        return data.encode('utf8')
+    return data
+
+
 class CosS3Auth(AuthBase):
 
-    def __init__(self, access_id, secret_key, expire=10000):
-        self._access_id = access_id
-        self._secret_key = secret_key
+    def __init__(self, secret_id, secret_key, key='', params={}, expire=10000):
+        self._secret_id = to_string(secret_id)
+        self._secret_key = to_string(secret_key)
         self._expire = expire
+        self._params = params
+        if key:
+            if key[0] == '/':
+                self._path = key
+            else:
+                self._path = '/' + key
+        else:
+            self._path = '/'
 
     def __call__(self, r):
-        method = r.method.lower()
-        uri = urllib.unquote(r.url)
-        uri = uri.split('?')[0]
-        http_header = r.headers
-        r.headers = {}
-        rt = urlparse(uri)
-        logger.debug("url parse: " + str(rt))
-        if rt.query != "" and ("&" in rt.query or '=' in rt.query):
-            uri_params = dict(map(lambda s: s.lower().split('='), rt.query.split('&')))
-        elif rt.query != "":
-            uri_params = {rt.query: ""}
-        else:
-            uri_params = {}
-        headers = dict([(k.lower(), quote(v).lower()) for k, v in r.headers.items()])
+        path = self._path
+        uri_params = self._params
+        headers = filter_headers(r.headers)
+        # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
+        headers = dict([(k.lower(), quote(v, '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
-            method=method.lower(),
-            host=rt.path,
-            params=urllib.urlencode(uri_params),
+            method=r.method.lower(),
+            host=path,
+            params=urllib.urlencode(sorted(uri_params.items())),
             headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
 
         start_sign_time = int(time.time())
-        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time + self._expire)
+        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time+self._expire)
         sha1 = hashlib.sha1()
         sha1.update(format_str)
 
@@ -54,18 +77,16 @@ class CosS3Auth(AuthBase):
         logger.debug('sign: ' + str(sign))
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
 
-        http_header['Authorization'] = sign_tpl.format(
-            ak=self._access_id,
+        r.headers['Authorization'] = sign_tpl.format(
+            ak=self._secret_id,
             sign_time=sign_time,
             key_time=sign_time,
             params=';'.join(sorted(map(lambda k: k.lower(), uri_params.keys()))),
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
-        r.headers = http_header
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
-
         logger.debug("request headers: " + str(r.headers))
         return r
 

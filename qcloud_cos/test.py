@@ -50,6 +50,84 @@ def Test():
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
 
+    print "test put bucket cors " + test_bucket
+    cors_config = {
+        'CORSRule': [
+         {
+            'ID': '1234',
+            'AllowedOrigin': ['http://www.qq.com'],
+            'AllowedMethod': ['GET', 'PUT'],
+            'AllowedHeader': ['x-cos-meta-test'],
+            'ExposeHeader': ['x-cos-meta-test1'],
+            'MaxAgeSeconds': 500
+         }]
+    }
+    response = client.put_bucket_cors(
+        Bucket=test_bucket,
+        CORSConfiguration=cors_config
+    )
+
+    print "test get bucket cors " + test_bucket
+    response = client.get_bucket_cors(
+        Bucket=test_bucket
+    )
+    print response
+
+    print "test delete bucket cors " + test_bucket
+    response = client.delete_bucket_cors(
+        Bucket=test_bucket
+    )
+
+    print "test put bucket lifecycle " + test_bucket
+    life_config = {
+        'Rule': [
+            {
+                'Expiration': {'Days': 100},
+                'ID': '123',
+                'Filter': {'Prefix': '456'},
+                'Status': 'Enabled',
+            }
+        ]
+    }
+    response = client.put_bucket_lifecycle(
+        Bucket=test_bucket,
+        LifecycleConfiguration=life_config
+    )
+
+    print "test get bucket lifecycle " + test_bucket
+    response = client.get_bucket_lifecycle(
+        Bucket=test_bucket
+    )
+    print response
+
+    print "test delete bucket lifecycle " + test_bucket
+    response = client.delete_bucket_lifecycle(
+        Bucket=test_bucket
+    )
+
+    print "test put bucket versioning " + test_bucket
+    response = client.put_bucket_versioning(
+        Bucket=test_bucket,
+        Status='Enabled'
+    )
+
+    print "test get bucket versioning " + test_bucket
+    response = client.get_bucket_versioning(
+        Bucket=test_bucket
+    )
+    print response
+
+    print "test get bucket location " + test_bucket
+    response = client.get_bucket_location(
+        Bucket=test_bucket
+    )
+    print response
+
+    print "test head bucket " + test_bucket
+    response = client.head_bucket(
+        Bucket=test_bucket
+    )
+
     print "Test Get Presigned Download URL "
     url = client.get_presigned_download_url(
             Bucket=test_bucket,
@@ -60,9 +138,8 @@ def Test():
     print "Test List Buckets"
     response = client.list_buckets()
 
-    copy_source = {'Bucket': 'test01', 'Key': '/test.txt'}
-    print "Test Copy Object From Other Bucket "
-
+    copy_source = {'Appid': '1252448703', 'Bucket': 'test01', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+    print "Test Copy Object From Other Object"
     response = client.copy_object(
             Bucket='test04',
             Key='test.txt',
