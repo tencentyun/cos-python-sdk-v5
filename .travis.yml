@@ -17,4 +17,5 @@ deploy:
   user: dt3310321
   password: RnG199352433
   on:
+    tags: true
     branch: master
