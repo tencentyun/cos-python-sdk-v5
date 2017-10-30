@@ -13,9 +13,8 @@ script:
 - nosetests -s -v
 deploy:
   provider: pypi
-  distributions: sdist
+  distributions: sdist bdist bdist_wheel
   user: dt3310321
-  password:
-    secure: uKjUoO/Ah4qOnP/Zjq4U/RnvUYL9MqoLhPSxxyjLjWDpINETPe9w9Dbp2DeCHG6L+oZBMalgnWqo3rYqVC2oGi82l5gXhK8Il1LYhXeMXi8l+CoC+jax9ivvzxkcMFs8173SUiB92qfPjW2wJ/xjHe2sOg+T5jUheioNH7Ok+kUqKHaZzZg4TV4xQUjwEfQx62wHRG5s3E8aoC9cL+54J3ybm2CSsrJGg4kW854l3Xvg7T0+UlLGOie73BPiigchf0KIngMuITDDjG/Y3bxZl3wWHZALAjx8Zdj2NYjb54PZwOtLoFNmPcxW5S/CaXVDNWqJMv/jBoRmMCs3RINEX0JtChEsPctCggBen3amahH1/cuksk/o1XBlL9c3m+LJh5RFXJKN1bCGdOZnHXnVj2RJSDRJCnZTnzCukagOjbndyq7DQEjDOBlAxn+TfeeToRJ+PQA3uOO3lK3rBziv882X7+2FU5s+sAG3N+s9drwS7h78d3KUcYgMR2+ZbJDSLHtPa4gIaBnm5Gj0dDxMD9uLcdK+dxlBmld9vceLkj2DitHtQO7XBx8D7aZiVK/BkfNoCZTMtkTakLWoQSo8Lz/KQMUDMUOXoXudajTum1urLEQx/FbrRd1ukrlwxnyXz/uiNP5H4HHMhTTdyduKDD0B9pEAdlNF9orHGNRAdxs=
+  password: RnG199352433
   on:
     branch: master
