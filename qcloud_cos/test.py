@@ -8,7 +8,6 @@ from cos_client import CosS3Client
 from cos_client import CosConfig
 from cos_exception import CosServiceError
 
-sys.path.append("..")
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
 test_bucket = "test01"
@@ -61,17 +60,18 @@ def test_put_get_delete_object_10MB():
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
     gen_file(file_name, 10)
-    fp = open(file_name, 'rb')
-    etag = get_raw_md5(fp.read())
+    with open(file_name, 'rb') as f:
+        etag = get_raw_md5(f.read())
     try:
         # put object
-        put_response = client.put_object(
-            Bucket=test_bucket,
-            Body=fp,
-            Key=file_name,
-            CacheControl='no-cache',
-            ContentDisposition='download.txt'
-        )
+        with open(file_name, 'rb') as fp:
+            put_response = client.put_object(
+                Bucket=test_bucket,
+                Body=fp,
+                Key=file_name,
+                CacheControl='no-cache',
+                ContentDisposition='download.txt'
+            )
         assert etag == put_response['ETag']
         # head object
         head_response = client.get_object(
@@ -94,7 +94,6 @@ def test_put_get_delete_object_10MB():
         )
     except CosServiceError as e:
         print_error_msg(e)
-    fp.close()
     if os.path.exists(file_name):
         os.remove(file_name)
 
@@ -481,6 +480,7 @@ def test_list_multipart_uploads():
 
 if __name__ == "__main__":
     setUp()
+    test_put_get_delete_object_10MB()
     test_put_get_versioning()
     test_put_get_delete_replication()
     tearDown()
