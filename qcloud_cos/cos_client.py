@@ -382,6 +382,40 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
+    def delete_objects(self, Bucket, Delete={}, **kwargs):
+        """文件批量删除接口,单次最多支持1000个object
+
+        :param Bucket(string): 存储桶名称.
+        :param Delete(dict): 批量删除的object信息.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 批量删除的结果.
+        """
+        lst = ['<Object>', '</Object>']  # 类型为list的标签
+        xml_config = format_xml(data=Delete, root='Delete', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        url = self._conf.uri(bucket=Bucket, path="?delete")
+        logger.info("put bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if 'Deleted' in data.keys() and not isinstance(data['Deleted'], list):
+            lst = []
+            lst.append(data['Deleted'])
+            data['Deleted'] = lst
+        if 'Error' in data.keys() and not isinstance(data['Error'], list):
+            lst = []
+            lst.append(data['Error'])
+            data['Error'] = lst
+        return data
+
     def head_object(self, Bucket, Key, **kwargs):
         """获取文件信息
 
@@ -694,14 +728,14 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="", EncodingType="", **kwargs):
+    def list_objects(self, Bucket, Prefix="", Delimiter="", Marker="", MaxKeys=1000, EncodingType="", **kwargs):
         """获取文件列表
 
         :param Bucket(string): 存储桶名称.
+        :param Prefix(string): 设置匹配文件的前缀.
         :param Delimiter(string): 分隔符.
         :param Marker(string): 从marker开始列出条目.
         :param MaxKeys(int): 设置单次返回最大的数量,最大为1000.
-        :param Prefix(string): 设置匹配文件的前缀.
         :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 文件的相关信息，包括Etag等信息.
@@ -712,10 +746,10 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         params = {
+            'prefix': Prefix,
             'delimiter': Delimiter,
             'marker': Marker,
-            'max-keys': MaxKeys,
-            'prefix': Prefix
+            'max-keys': MaxKeys
             }
         if EncodingType:
             if EncodingType != 'url':
@@ -733,6 +767,92 @@ class CosS3Client(object):
                 lst = []
                 lst.append(data['Contents'])
                 data['Contents'] = lst
+        return data
+
+    def list_objects_versions(self, Bucket, Prefix="", Delimiter="", KeyMarker="", VersionIdMarker="", MaxKeys=1000, EncodingType="", **kwargs):
+        """获取文件列表
+
+        :param Bucket(string): 存储桶名称.
+        :param Prefix(string): 设置匹配文件的前缀.
+        :param Delimiter(string): 分隔符.
+        :param KeyMarker(string): 从KeyMarker指定的Key开始列出条目.
+        :param VersionIdMarker(string): 从VersionIdMarker指定的版本开始列出条目.
+        :param MaxKeys(int): 设置单次返回最大的数量,最大为1000.
+        :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 文件的相关信息，包括Etag等信息.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path='?versions')
+        logger.info("list objects versions, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        params = {
+            'prefix': Prefix,
+            'delimiter': Delimiter,
+            'key-marker': KeyMarker,
+            'version-id-marker': VersionIdMarker,
+            'max-keys': MaxKeys
+            }
+        if EncodingType:
+            if EncodingType != 'url':
+                raise CosClientError('EncodingType must be url')
+            params['encoding-type'] = EncodingType
+        rt = self.send_request(
+                method='GET',
+                url=url,
+                params=params,
+                headers=headers,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+
+        data = xml_to_dict(rt.text)
+        if 'Version' in data.keys() and isinstance(data['Version'], dict):  # 只有一个Version，将dict转为list，保持一致
+                lst = []
+                lst.append(data['Version'])
+                data['Version'] = lst
+        return data
+
+    def list_multipart_uploads(self, Bucket, Prefix="", Delimiter="", KeyMarker="", UploadIdMarker="", MaxUploads=1000, EncodingType="", **kwargs):
+        """获取Bucket中正在进行的分块上传
+
+        :param Bucket(string): 存储桶名称.
+        :param Prefix(string): 设置匹配文件的前缀.
+        :param Delimiter(string): 分隔符.
+        :param KeyMarker(string): 从KeyMarker指定的Key开始列出条目.
+        :param UploadIdMarker(string): 从UploadIdMarker指定的UploadID开始列出条目.
+        :param MaxUploads(int): 设置单次返回最大的数量,最大为1000.
+        :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 文件的相关信息，包括Etag等信息.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path='?uploads')
+        logger.info("get multipart uploads, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        params = {
+            'prefix': Prefix,
+            'delimiter': Delimiter,
+            'key-marker': KeyMarker,
+            'upload-id-marker': UploadIdMarker,
+            'max-uploads': MaxUploads
+            }
+        if EncodingType:
+            if EncodingType != 'url':
+                raise CosClientError('EncodingType must be url')
+            params['encoding-type'] = EncodingType
+        rt = self.send_request(
+                method='GET',
+                url=url,
+                params=params,
+                headers=headers,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+
+        data = xml_to_dict(rt.text)
+        if 'Upload' in data.keys() and isinstance(data['Upload'], dict):  # 只有一个Upload，将dict转为list，保持一致
+                lst = []
+                lst.append(data['Upload'])
+                data['Upload'] = lst
         return data
 
     def head_bucket(self, Bucket, **kwargs):
@@ -842,6 +962,7 @@ class CosS3Client(object):
 
     def get_bucket_cors(self, Bucket, **kwargs):
         """获取bucket CORS
+
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 获取Bucket对应的跨域配置.
@@ -892,6 +1013,7 @@ class CosS3Client(object):
 
     def put_bucket_lifecycle(self, Bucket, LifecycleConfiguration={}, **kwargs):
         """设置bucket LifeCycle
+
         :param Bucket(string): 存储桶名称.
         :param LifecycleConfiguration(dict): 设置Bucket的生命周期规则.
         :param kwargs(dict): 设置请求headers.
@@ -959,6 +1081,7 @@ class CosS3Client(object):
 
     def put_bucket_versioning(self, Bucket, Status, **kwargs):
         """设置bucket版本控制
+
         :param Bucket(string): 存储桶名称.
         :param Status(string): 设置Bucket版本控制的状态，可选值为'Enabled'|'Suspended'.
         :param kwargs(dict): 设置请求headers.
@@ -1023,6 +1146,74 @@ class CosS3Client(object):
         data = dict()
         data['LocationConstraint'] = root.text
         return data
+
+    def put_bucket_replication(self, Bucket, ReplicationConfiguration={}, **kwargs):
+        """设置bucket跨区域复制配置
+
+        :param Bucket(string): 存储桶名称.
+        :param ReplicationConfiguration(dict): 设置Bucket的跨区域复制规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+        """
+        lst = ['<Rule>', '</Rule>']  # 类型为list的标签
+        xml_config = format_xml(data=ReplicationConfiguration, root='ReplicationConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        url = self._conf.uri(bucket=Bucket, path="?replication")
+        logger.info("put bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def get_bucket_replication(self, Bucket, **kwargs):
+        """获取bucket 跨区域复制配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的跨区域复制配置.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?replication")
+        logger.info("get bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if 'Rule' in data.keys() and not isinstance(data['Rule'], list):
+            lst = []
+            lst.append(data['Rule'])
+            data['Rule'] = lst
+        return data
+
+    def delete_bucket_replication(self, Bucket, **kwargs):
+        """删除bucket 跨区域复制配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?replication")
+        logger.info("delete bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
 
     # service interface begin
     def list_buckets(self, **kwargs):
