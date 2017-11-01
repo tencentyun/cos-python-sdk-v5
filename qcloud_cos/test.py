@@ -9,10 +9,8 @@ from cos_client import CosConfig
 from cos_exception import CosServiceError
 
 sys.path.append("..")
-ACCESS_ID = 'AKID15IsskiBQKTZbAo6WhgcBqVls9SmuG00'
-# os.environ["ACCESS_ID"]
-ACCESS_KEY = 'ciivKvnnrMvSvQpMAWuIz12pThGGlWRW'
-# os.environ["ACCESS_KEY"]
+ACCESS_ID = os.environ["ACCESS_ID"]
+ACCESS_KEY = os.environ["ACCESS_KEY"]
 test_bucket = "test01"
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
