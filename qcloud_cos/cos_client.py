@@ -177,6 +177,16 @@ def format_region(region):
     return 'cos.' + region  # 新域名加上cos.
 
 
+def format_bucket(bucket, appid):
+    """去除bucket结尾含有的appid"""
+    if not isinstance(bucket, str):
+        raise CosClientError("bucket is not str")
+    if bucket.endswith("-"+appid):
+        index = bucket.find("-"+appid)
+        return bucket[0:index]
+    return bucket
+
+
 class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid, Region, Access_id, Access_key, Token=None):
@@ -204,6 +214,7 @@ class CosConfig(object):
         :param path(string): 请求COS的路径.
         :return(string): 请求COS的URL地址.
         """
+        bucket = format_bucket(bucket, self._appid)
         if path:
             if path[0] == '/':
                 path = path[1:]
