@@ -541,7 +541,7 @@ def test_list_multipart_uploads():
         )
 
 
-def test_upload_file_multithreading():
+def _test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
     file_name = "thread_100MB"
     gen_file(file_name, 100)
@@ -564,5 +564,5 @@ if __name__ == "__main__":
     test_put_get_versioning()
     test_put_get_delete_replication()
     test_upload_part_copy()
-    test_upload_file_multithreading()
+    _test_upload_file_multithreading()
     tearDown()
