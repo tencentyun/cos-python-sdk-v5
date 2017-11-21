@@ -16,6 +16,7 @@ from streambody import StreamBody
 from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
 from cos_auth import CosS3Auth
+from cos_threadpool import SimpleThreadPool
 from cos_exception import CosClientError
 from cos_exception import CosServiceError
 
@@ -504,6 +505,35 @@ class CosS3Client(object):
             url=url,
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
             headers=headers)
+        data = xml_to_dict(rt.text)
+        return data
+
+    def upload_part_copy(self, Bucket, Key, PartNumber, UploadId, CopySource, CopySourceRange='', **kwargs):
+        """拷贝指定文件至分块上传
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 上传COS路径.
+        :param PartNumber(int): 上传分块的编号.
+        :param UploadId(string): 分块上传创建的UploadId.
+        :param CopySource(dict): 拷贝源,包含Appid,Bucket,Region,Key.
+        :param CopySourceRange(string): 拷贝源的字节范围,bytes=first-last。
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 拷贝成功的结果.
+        """
+        headers = mapped(kwargs)
+        headers['x-cos-copy-source'] = self.gen_copy_source_url(CopySource)
+        headers['x-cos-copy-source-range'] = CopySourceRange
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?partNumber={PartNumber}&uploadId={UploadId}".format(
+            PartNumber=PartNumber,
+            UploadId=UploadId))
+        logger.info("upload part copy, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+                method='PUT',
+                url=url,
+                headers=headers,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key))
         data = xml_to_dict(rt.text)
         return data
 
@@ -1246,6 +1276,80 @@ class CosS3Client(object):
             lst.append(data['Buckets']['Bucket'])
             data['Buckets']['Bucket'] = lst
         return data
+
+    # Advanced interface
+    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst):
+        """从本地文件中读取分块, 上传单个分块,将结果记录在md5——list中
+
+        :param bucket(string): 存储桶名称.
+        :param key(string): 分块上传路径名.
+        :param local_path(string): 本地文件路径名.
+        :param offset(int): 读取本地文件的分块偏移量.
+        :param size(int): 读取本地文件的分块大小.
+        :param part_num(int): 上传分块的序号.
+        :param uploadid(string): 分块上传的uploadid.
+        :param md5_lst(list): 保存上传成功分块的MD5和序号.
+        :return: None.
+        """
+        print part_num
+        with open(local_path, 'rb') as fp:
+            fp.seek(offset, 0)
+            data = fp.read(size)
+        rt = self.upload_part(bucket, key, data, part_num, uploadid)
+        md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
+        return None
+
+    def upload_file(self, Bucket, Key, LocalFilePath, MAXThread=5, **kwargs):
+        """小于100MB的文件简单上传，大于等于100MB的文件使用分块上传
+
+        :param Bucket(string): 存储桶名称.
+        :param key(string): 分块上传路径名.
+        :param LocalFilePath(string): 本地文件路径名.
+        :param MAXThread(int): 并发上传的最大线程数.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+        """
+        file_size = os.path.getsize(LocalFilePath)
+        if file_size < 100*1024*1024:
+            with open(LocalFilePath, 'rb') as fp:
+                rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, **kwargs)
+            return rt
+        else:
+            part_size = 10*1024*1024  # 默认按照10MB分块,最大支持100G的文件，超过100G的分块数固定为10000
+            last_size = 0  # 最后一块可以小于1MB
+            parts_num = file_size / part_size
+            last_size = file_size % part_size
+
+            if last_size != 0:
+                parts_num += 1
+            if parts_num > 10000:
+                parts_num = 10000
+                part_size = file_size / parts_num
+                last_size = file_size % parts_num
+                last_size += part_size
+
+            # 创建分块上传
+            rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
+            uploadid = rt['UploadId']
+
+            # 上传分块
+            offset = 0  # 记录文件偏移量
+            lst = list()  # 记录分块信息
+            pool = SimpleThreadPool(MAXThread)
+
+            for i in range(1, parts_num+1):
+                if i == parts_num:  # 最后一块
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst)
+                else:
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst)
+                    offset += part_size
+
+            pool.wait_completion()
+            lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
+
+            # 完成分片上传
+            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+            return rt
 
 if __name__ == "__main__":
     pass

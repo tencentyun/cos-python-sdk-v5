@@ -227,6 +227,56 @@ def test_create_complete_multipart_upload():
     )
 
 
+def test_upload_part_copy():
+    """创建一个分块上传，上传分块拷贝，列出分块，完成分块上传"""
+    # create
+    response = client.create_multipart_upload(
+        Bucket=test_bucket,
+        Key='multipartfile.txt',
+    )
+    uploadid = response['UploadId']
+    # upload part
+    response = client.upload_part(
+        Bucket=test_bucket,
+        Key='multipartfile.txt',
+        UploadId=uploadid,
+        PartNumber=1,
+        Body='A'*1024*1024*2
+    )
+
+    response = client.upload_part(
+        Bucket=test_bucket,
+        Key='multipartfile.txt',
+        UploadId=uploadid,
+        PartNumber=2,
+        Body='B'*1024*1024*2
+    )
+
+    # upload part copy
+    copy_source = {'Appid': '1252448703', 'Bucket': 'test04', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+    response = client.upload_part_copy(
+        Bucket=test_bucket,
+        Key='multipartfile.txt',
+        UploadId=uploadid,
+        PartNumber=3,
+        CopySource=copy_source
+    )
+    # list parts
+    response = client.list_parts(
+        Bucket=test_bucket,
+        Key='multipartfile.txt',
+        UploadId=uploadid
+    )
+    lst = response['Part']
+    # complete
+    response = client.complete_multipart_upload(
+        Bucket=test_bucket,
+        Key='multipartfile.txt',
+        UploadId=uploadid,
+        MultipartUpload={'Part': lst}
+    )
+
+
 def test_delete_multiple_objects():
     """批量删除文件"""
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
@@ -454,14 +504,27 @@ def test_put_get_delete_replication():
 
 def test_list_multipart_uploads():
     """获取所有正在进行的分块上传"""
-    # create
+    response = client.list_multipart_uploads(
+        Bucket=test_bucket,
+        Prefix="multipart",
+        MaxUploads=100
+    )
+    # abort make sure delete all uploads
+    if 'Upload' in response.keys():
+        for data in response['Upload']:
+            response = client.abort_multipart_upload(
+                Bucket=test_bucket,
+                Key=data['Key'],
+                UploadId=data['UploadId']
+            )
+    # create a new upload
     response = client.create_multipart_upload(
         Bucket=test_bucket,
         Key='multipartfile.txt',
     )
     assert response
     uploadid = response['UploadId']
-    # list
+    # list again
     response = client.list_multipart_uploads(
         Bucket=test_bucket,
         Prefix="multipart",
@@ -469,7 +532,7 @@ def test_list_multipart_uploads():
     )
     assert response['Upload'][0]['Key'] == "multipartfile.txt"
     assert response['Upload'][0]['UploadId'] == uploadid
-    # abort make sure delete all uploads
+    # abort again make sure delete all uploads
     for data in response['Upload']:
         response = client.abort_multipart_upload(
             Bucket=test_bucket,
@@ -478,9 +541,28 @@ def test_list_multipart_uploads():
         )
 
 
+def test_upload_file_multithreading():
+    """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
+    file_name = "thread_100MB"
+    gen_file(file_name, 100)
+    st = time.time()  # 记录开始时间
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=file_name,
+        LocalFilePath=file_name,
+        CacheControl='no-cache',
+        ContentDisposition='download.txt'
+    )
+    ed = time.time()  # 记录结束时间
+    if os.path.exists(file_name):
+        os.remove(file_name)
+    print ed - st
+
 if __name__ == "__main__":
     setUp()
     test_put_get_delete_object_10MB()
     test_put_get_versioning()
     test_put_get_delete_replication()
+    test_upload_part_copy()
+    test_upload_file_multithreading()
     tearDown()
