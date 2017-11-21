@@ -190,19 +190,21 @@ def format_bucket(bucket, appid):
 
 class CosConfig(object):
     """config类，保存用户相关信息"""
-    def __init__(self, Appid, Region, Access_id, Access_key, Token=None):
+    def __init__(self, Appid, Region, Access_id, Access_key, Scheme='http', Token=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
         :param Region(string): 地域信息.
         :param Access_id(string): 秘钥SecretId.
         :param Access_key(string): 秘钥SecretKey.
+        :param Scheme(string): http/https.
         :param Token(string): 临时秘钥使用的token.
         """
         self._appid = Appid
         self._region = format_region(Region)
         self._access_id = Access_id
         self._access_key = Access_key
+        self._scheme = Scheme
         self._token = Token
         logger.info("config parameter-> appid: {appid}, region: {region}".format(
                  appid=Appid,
@@ -219,14 +221,16 @@ class CosConfig(object):
         if path:
             if path[0] == '/':
                 path = path[1:]
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = u"{scheme}://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+                scheme=self._scheme,
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/".format(
+            url = u"{scheme}://{bucket}-{uid}.{region}.myqcloud.com/".format(
+                scheme=self._scheme,
                 bucket=to_unicode(bucket),
                 uid=self._appid,
                 region=self._region
