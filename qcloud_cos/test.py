@@ -10,7 +10,7 @@ from cos_exception import CosServiceError
 
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
-test_bucket = "testbucket"
+test_bucket = "test01"
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
