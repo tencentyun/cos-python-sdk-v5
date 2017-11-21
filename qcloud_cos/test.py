@@ -10,7 +10,7 @@ from cos_exception import CosServiceError
 
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
-test_bucket = "test01"
+test_bucket = "testbucket"
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
@@ -541,15 +541,16 @@ def test_list_multipart_uploads():
         )
 
 
-def _test_upload_file_multithreading():
+def test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
-    file_name = "thread_100MB"
-    gen_file(file_name, 100)
+    file_name = "thread_1GB"
+    gen_file(file_name, 12)  # set 12MB beacuse travis too slow
     st = time.time()  # 记录开始时间
     response = client.upload_file(
         Bucket=test_bucket,
         Key=file_name,
         LocalFilePath=file_name,
+        MAXThread=10,
         CacheControl='no-cache',
         ContentDisposition='download.txt'
     )
@@ -564,5 +565,5 @@ if __name__ == "__main__":
     test_put_get_versioning()
     test_put_get_delete_replication()
     test_upload_part_copy()
-    _test_upload_file_multithreading()
+    test_upload_file_multithreading()
     tearDown()
