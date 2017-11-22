@@ -179,18 +179,21 @@ def format_region(region):
 
 
 def format_bucket(bucket, appid):
-    """去除bucket结尾含有的appid"""
+    """兼容新老bucket长短命名,appid为空默认为长命名,appid不为空则认为是短命名"""
     if not isinstance(bucket, str):
         raise CosClientError("bucket is not str")
+    # appid为空直接返回bucket
+    if appid == "":
+        return bucket
+    # appid不为空,检查是否以-appid结尾
     if bucket.endswith("-"+appid):
-        index = bucket.find("-"+appid)
-        return bucket[0:index]
-    return bucket
+        return bucket
+    return bucket + "-" + appid
 
 
 class CosConfig(object):
     """config类，保存用户相关信息"""
-    def __init__(self, Appid, Region, Access_id, Access_key, Scheme='http', Token=None):
+    def __init__(self, Region, Access_id, Access_key, Appid='', Scheme='http', Token=None, Timeout=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -199,6 +202,7 @@ class CosConfig(object):
         :param Access_key(string): 秘钥SecretKey.
         :param Scheme(string): http/https.
         :param Token(string): 临时秘钥使用的token.
+        :param Timeout(int): http超时时间.
         """
         self._appid = Appid
         self._region = format_region(Region)
@@ -206,6 +210,7 @@ class CosConfig(object):
         self._access_key = Access_key
         self._scheme = Scheme
         self._token = Token
+        self._timeout = Timeout
         logger.info("config parameter-> appid: {appid}, region: {region}".format(
                  appid=Appid,
                  region=Region))
@@ -221,18 +226,16 @@ class CosConfig(object):
         if path:
             if path[0] == '/':
                 path = path[1:]
-            url = u"{scheme}://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = u"{scheme}://{bucket}.{region}.myqcloud.com/{path}".format(
                 scheme=self._scheme,
                 bucket=to_unicode(bucket),
-                uid=self._appid,
                 region=self._region,
                 path=to_unicode(path)
             )
         else:
-            url = u"{scheme}://{bucket}-{uid}.{region}.myqcloud.com/".format(
+            url = u"{scheme}://{bucket}.{region}.myqcloud.com/".format(
                 scheme=self._scheme,
                 bucket=to_unicode(bucket),
-                uid=self._appid,
                 region=self._region
             )
         return url
@@ -272,6 +275,8 @@ class CosS3Client(object):
 
     def send_request(self, method, url, timeout=30, **kwargs):
         """封装request库发起http请求"""
+        if self._conf._timeout is not None:  # 用户自定义超时时间
+            timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
         kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5'
@@ -454,12 +459,12 @@ class CosS3Client(object):
 
     def gen_copy_source_url(self, CopySource):
         """拼接拷贝源url"""
+        appid = None
         if 'Appid' in CopySource.keys():
             appid = CopySource['Appid']
-        else:
-            raise CosClientError('CopySource Need Parameter Appid')
         if 'Bucket' in CopySource.keys():
             bucket = CopySource['Bucket']
+            bucket = format_bucket(bucket, appid)
         else:
             raise CosClientError('CopySource Need Parameter Bucket')
         if 'Region' in CopySource.keys():
@@ -473,9 +478,8 @@ class CosS3Client(object):
                 path = path[1:]
         else:
             raise CosClientError('CopySource Need Parameter Key')
-        url = "{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+        url = "{bucket}.{region}.myqcloud.com/{path}".format(
                 bucket=bucket,
-                uid=appid,
                 region=region,
                 path=path
             )
