@@ -215,7 +215,7 @@ class CosConfig(object):
                  appid=Appid,
                  region=Region))
 
-    def uri(self, bucket, path=None):
+    def uri(self, bucket, path=None, scheme=None, region=None):
         """拼接url
 
         :param bucket(string): 存储桶名称.
@@ -223,13 +223,17 @@ class CosConfig(object):
         :return(string): 请求COS的URL地址.
         """
         bucket = format_bucket(bucket, self._appid)
+        if scheme is None:
+            scheme = self._scheme
+        if region is None:
+            region = self._region
         if path:
             if path[0] == '/':
                 path = path[1:]
             url = u"{scheme}://{bucket}.{region}.myqcloud.com/{path}".format(
-                scheme=self._scheme,
+                scheme=scheme,
                 bucket=to_unicode(bucket),
-                region=self._region,
+                region=region,
                 path=to_unicode(path)
             )
         else:
