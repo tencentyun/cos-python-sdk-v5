@@ -20,7 +20,9 @@ class WorkerThread(Thread):
     def run(self):
         while True:
             func, args, kwargs = self._task_queue.get()
-
+            # 判断线程是否需要退出
+            if func is None:
+                return
             try:
                 ret = func(*args, **kwargs)
                 self._succ_task_num += 1
@@ -53,6 +55,7 @@ class SimpleThreadPool:
         if not self._active:
             with self._lock:
                 if not self._active:
+                    self._workers = []
                     self._active = True
 
                     for i in range(self._num_threads):
@@ -65,6 +68,11 @@ class SimpleThreadPool:
     def wait_completion(self):
         self._queue.join()
         self._finished = True
+        # 已经结束的任务, 需要将线程都退出, 防止卡死
+        for i in range(self._num_threads):
+            self._queue.put((None, None, None))
+
+        self._active = False
 
     def get_result(self):
         assert self._finished
