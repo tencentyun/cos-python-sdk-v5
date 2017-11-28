@@ -12,6 +12,7 @@ from dicttoxml import dicttoxml
 from cos_exception import CosClientError
 from cos_exception import CosServiceError
 
+SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5G
 # kwargs中params到http headers的映射
 maplist = {
             'ContentLength': 'Content-Length',
@@ -165,7 +166,7 @@ def format_bucket(bucket, appid):
     if not isinstance(bucket, str):
         raise CosClientError("bucket is not str")
     # appid为空直接返回bucket
-    if appid == "":
+    if not appid:
         return bucket
     # appid不为空,检查是否以-appid结尾
     if bucket.endswith("-"+appid):
@@ -175,7 +176,7 @@ def format_bucket(bucket, appid):
 
 def get_copy_source_info(CopySource):
     """获取拷贝源的所有信息"""
-    appid = None
+    appid = ""
     if 'Appid' in CopySource.keys():
         appid = CopySource['Appid']
     if 'Bucket' in CopySource.keys():
@@ -190,8 +191,6 @@ def get_copy_source_info(CopySource):
         raise CosClientError('CopySource Need Parameter Region')
     if 'Key' in CopySource.keys():
         path = CopySource['Key']
-        if path and path[0] == '/':
-            path = path[1:]
     else:
         raise CosClientError('CopySource Need Parameter Key')
     return bucket, path, region
@@ -200,9 +199,20 @@ def get_copy_source_info(CopySource):
 def gen_copy_source_url(CopySource):
     """拼接拷贝源url"""
     bucket, path, region = get_copy_source_info(CopySource)
+    if path and path[0] == '/':
+        path = path[1:]
     url = "{bucket}.{region}.myqcloud.com/{path}".format(
             bucket=bucket,
             region=region,
             path=path
             )
     return url
+
+
+def gen_copy_source_range(begin_range, end_range):
+    """拼接bytes=begin-end形式的字符串"""
+    range = "bytes={first}-{end}".format(
+            first=begin_range,
+            end=end_range
+            )
+    return range

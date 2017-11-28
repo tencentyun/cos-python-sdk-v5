@@ -82,9 +82,11 @@ def test_put_get_delete_object_10MB():
         # get object
         get_response = client.get_object(
             Bucket=test_bucket,
-            Key=file_name
+            Key=file_name,
+            ResponseCacheControl='private'
         )
         assert etag == get_response['ETag']
+        assert 'private' == get_response['Cache-Control']
         download_fp = get_response['Body'].get_raw_stream()
         assert download_fp
         # delete object
@@ -494,7 +496,6 @@ def test_put_get_delete_replication():
     response = client.get_bucket_replication(
         Bucket=test_bucket
     )
-    print response
     assert response
     # delete lifecycle
     response = client.delete_bucket_replication(
@@ -559,6 +560,18 @@ def test_upload_file_multithreading():
         os.remove(file_name)
     print ed - st
 
+
+def test_copy_file_automatically():
+    """根据拷贝源文件的大小自动选择拷贝策略，小于5G直接copy_object，大于5G分块拷贝"""
+    copy_source = {'Appid': '1252448703', 'Bucket': 'testbucket', 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
+    response = client.copy(
+        Bucket=test_bucket,
+        Key='copy_10G.txt',
+        CopySource=copy_source,
+        MAXThread=10
+    )
+
+
 if __name__ == "__main__":
     setUp()
     test_put_get_delete_object_10MB()
@@ -566,4 +579,5 @@ if __name__ == "__main__":
     test_put_get_delete_replication()
     test_upload_part_copy()
     test_upload_file_multithreading()
+    test_copy_file_automatically()
     tearDown()
