@@ -56,7 +56,7 @@ def tearDown():
 
 def test_put_get_delete_object_10MB():
     """简单上传下载删除10MB小文件"""
-    file_size = 10
+    file_size = 5
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
     gen_file(file_name, 10)
@@ -545,7 +545,7 @@ def test_list_multipart_uploads():
 def test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
     file_name = "thread_1GB"
-    gen_file(file_name, 12)  # set 12MB beacuse travis too slow
+    gen_file(file_name, 5)  # set 5MB beacuse travis too slow
     st = time.time()  # 记录开始时间
     response = client.upload_file(
         Bucket=test_bucket,
@@ -572,8 +572,24 @@ def test_copy_file_automatically():
     )
 
 
+def test_upload_empty_file():
+    """上传一个空文件,不能返回411错误"""
+    file_name = "empty.txt"
+    with open(file_name, 'wb') as f:
+        pass
+    with open(file_name, 'rb') as fp:
+        response = client.put_object(
+            Bucket=test_bucket,
+            Body=fp,
+            Key=file_name,
+            CacheControl='no-cache',
+            ContentDisposition='download.txt'
+        )
+
+
 if __name__ == "__main__":
     setUp()
+    test_upload_empty_file()
     test_put_get_delete_object_10MB()
     test_put_get_versioning()
     test_put_get_delete_replication()

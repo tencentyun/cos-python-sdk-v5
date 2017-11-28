@@ -3,6 +3,7 @@
 import hashlib
 import base64
 import os
+import io
 import sys
 import xml.dom.minidom
 import xml.etree.ElementTree
@@ -216,3 +217,17 @@ def gen_copy_source_range(begin_range, end_range):
             end=end_range
             )
     return range
+
+
+def deal_with_empty_file_stream(data):
+    """对于文件流的剩余长度为0的情况下，返回空字节流"""
+    if hasattr(data, 'fileno') and hasattr(data, 'tell'):
+        try:
+            fileno = data.fileno()
+            total_length = os.fstat(fileno).st_size
+            current_position = data.tell()
+            if total_length - current_position == 0:
+                return ""
+        except io.UnsupportedOperation:
+            return ""
+    return data
