@@ -199,6 +199,11 @@ class CosS3Client(object):
         :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
         """
         headers = mapped(kwargs)
+        params = {}
+        for key in headers.keys():
+            if key.startswith("response"):
+                params[key] = headers[key]
+                headers.pop(key)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("get object, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -208,6 +213,7 @@ class CosS3Client(object):
                 url=url,
                 stream=True,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                params=params,
                 headers=headers)
 
         response = rt.headers
@@ -1116,7 +1122,6 @@ class CosS3Client(object):
         :param md5_lst(list): 保存上传成功分块的MD5和序号.
         :return: None.
         """
-        print part_num
         with open(local_path, 'rb') as fp:
             fp.seek(offset, 0)
             data = fp.read(size)
@@ -1124,23 +1129,24 @@ class CosS3Client(object):
         md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
         return None
 
-    def upload_file(self, Bucket, Key, LocalFilePath, MAXThread=5, **kwargs):
-        """小于100MB的文件简单上传，大于等于100MB的文件使用分块上传
+    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=10, MAXThread=5, **kwargs):
+        """小于等于100MB的文件简单上传，大于等于100MB的文件使用分块上传
 
         :param Bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
         :param LocalFilePath(string): 本地文件路径名.
+        :param PartSize(int): 分块的大小设置.
         :param MAXThread(int): 并发上传的最大线程数.
         :param kwargs(dict): 设置请求headers.
         :return: None.
         """
         file_size = os.path.getsize(LocalFilePath)
-        if file_size < 100*1024*1024:
+        if file_size <= 1024*1024*100:
             with open(LocalFilePath, 'rb') as fp:
                 rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, **kwargs)
             return rt
         else:
-            part_size = 10*1024*1024  # 默认按照10MB分块,最大支持100G的文件，超过100G的分块数固定为10000
+            part_size = 1024*1024*PartSize  # 默认按照10MB分块,最大支持100G的文件，超过100G的分块数固定为10000
             last_size = 0  # 最后一块可以小于1MB
             parts_num = file_size / part_size
             last_size = file_size % part_size
@@ -1173,8 +1179,98 @@ class CosS3Client(object):
             lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
 
             # 完成分片上传
-            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+            try:
+                rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+            except Exception as e:
+                abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
+                raise e
             return rt
+
+    def _inner_head_object(self, CopySource):
+        """查询源文件的长度"""
+        bucket, path, region = get_copy_source_info(CopySource)
+        url = self._conf.uri(bucket=bucket, path=quote(path, '/-_.~'), scheme=self._conf._scheme, region=region)
+        rt = self.send_request(
+            method='HEAD',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, path),
+            headers={})
+        return int(rt.headers['Content-Length'])
+
+    def _upload_part_copy(self, bucket, key, part_number, upload_id, copy_source, copy_source_range, md5_lst):
+        """拷贝指定文件至分块上传,记录结果到lst中去
+
+        :param bucket(string): 存储桶名称.
+        :param key(string): 上传COS路径.
+        :param part_number(int): 上传分块的编号.
+        :param upload_id(string): 分块上传创建的UploadId.
+        :param copy_source(dict): 拷贝源,包含Appid,Bucket,Region,Key.
+        :param copy_source_range(string): 拷贝源的字节范围,bytes=first-last。
+        :param md5_lst(list): 保存上传成功分块的MD5和序号.
+        :return: None.
+        """
+        rt = self.upload_part_copy(bucket, key, part_number, upload_id, copy_source, copy_source_range)
+        md5_lst.append({'PartNumber': part_number, 'ETag': rt['ETag']})
+        return None
+
+    def copy(self, Bucket, Key, CopySource, CopyStatus='Copy', PartSize=10, MAXThread=5, **kwargs):
+        """文件拷贝，小于5G的文件调用copy_object，大于等于5G的文件调用分块上传的upload_part_copy
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 上传COS路径.
+        :param CopySource(dict): 拷贝源,包含Appid,Bucket,Region,Key.
+        :param CopyStatus(string): 拷贝状态,可选值'Copy'|'Replaced'.
+        :param PartSize(int): 分块的大小设置.
+        :param MAXThread(int): 并发上传的最大线程数.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 拷贝成功的结果.
+        """
+        # 查询拷贝源object的content-length
+        file_size = self._inner_head_object(CopySource)
+        # 如果源文件大小小于5G，则直接调用copy_object接口
+        if file_size < SINGLE_UPLOAD_LENGTH:
+            response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
+            return response
+
+        # 如果源文件大小大于等于5G，则先创建分块上传，在调用upload_part
+        part_size = 1024*1024*PartSize  # 默认按照10MB分块
+        last_size = 0  # 最后一块可以小于1MB
+        parts_num = file_size / part_size
+        last_size = file_size % part_size
+        if last_size != 0:
+            parts_num += 1
+        if parts_num > 10000:
+            parts_num = 10000
+            part_size = file_size / parts_num
+            last_size = file_size % parts_num
+            last_size += part_size
+        # 创建分块上传
+        rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
+        uploadid = rt['UploadId']
+
+        # 上传分块拷贝
+        offset = 0  # 记录文件偏移量
+        lst = list()  # 记录分块信息
+        pool = SimpleThreadPool(MAXThread)
+
+        for i in range(1, parts_num+1):
+            if i == parts_num:  # 最后一块
+                copy_range = gen_copy_source_range(offset, file_size-1)
+                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
+            else:
+                copy_range = gen_copy_source_range(offset, offset+part_size-1)
+                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
+                offset += part_size
+
+        pool.wait_completion()
+        lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
+        # 完成分片上传
+        try:
+            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+        except Exception as e:
+            abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
+            raise e
+        return rt
 
 if __name__ == "__main__":
     pass
