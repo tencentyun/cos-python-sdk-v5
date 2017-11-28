@@ -180,6 +180,7 @@ class CosS3Client(object):
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
+        Body = deal_with_empty_file_stream(Body)
         rt = self.send_request(
             method='PUT',
             url=url,
@@ -413,6 +414,7 @@ class CosS3Client(object):
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
+        Body = deal_with_empty_file_stream(Body)
         rt = self.send_request(
                 method='PUT',
                 url=url,
