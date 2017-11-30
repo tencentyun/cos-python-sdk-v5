@@ -102,7 +102,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_auth(self, Method, Bucket, Key='', Expired=300, headers={}, params={}):
+    def get_auth(self, Method, Bucket, Key='', Expired=300, Headers={}, Params={}):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
@@ -114,8 +114,8 @@ class CosS3Client(object):
         :return (string): 计算出的V5签名.
         """
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
-        r = Request(Method, url, headers=headers, params=params)
-        auth = CosS3Auth(self._conf._access_id, self._conf._access_key, Key, params, Expired)
+        r = Request(Method, url, headers=Headers, params=Params)
+        auth = CosS3Auth(self._conf._access_id, self._conf._access_key, Key, Params, Expired)
         return auth(r).headers['Authorization']
 
     def send_request(self, method, url, timeout=30, **kwargs):
@@ -1215,6 +1215,16 @@ class CosS3Client(object):
         md5_lst.append({'PartNumber': part_number, 'ETag': rt['ETag']})
         return None
 
+    def _check_same_region(self, dst_region, CopySource):
+        if 'Region' in CopySource.keys():
+            src_region = CopySource['Region']
+            src_region = format_region(src_region)
+        else:
+            raise CosClientError('CopySource Need Parameter Region')
+        if src_region == dst_region:
+            return True
+        return False
+
     def copy(self, Bucket, Key, CopySource, CopyStatus='Copy', PartSize=10, MAXThread=5, **kwargs):
         """文件拷贝，小于5G的文件调用copy_object，大于等于5G的文件调用分块上传的upload_part_copy
 
@@ -1227,7 +1237,12 @@ class CosS3Client(object):
         :param kwargs(dict): 设置请求headers.
         :return(dict): 拷贝成功的结果.
         """
-        # 查询拷贝源object的content-length
+        # 同园区直接走copy_object
+        if self._check_same_region(self._conf._region, CopySource):
+            response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
+            return response
+
+        # 不同园区查询拷贝源object的content-length
         file_size = self._inner_head_object(CopySource)
         # 如果源文件大小小于5G，则直接调用copy_object接口
         if file_size < SINGLE_UPLOAD_LENGTH:
