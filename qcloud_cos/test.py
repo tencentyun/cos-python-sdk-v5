@@ -4,6 +4,7 @@ import sys
 import time
 import hashlib
 import os
+import requests
 from cos_client import CosS3Client
 from cos_client import CosConfig
 from cos_exception import CosServiceError
@@ -562,7 +563,7 @@ def test_upload_file_multithreading():
 
 
 def test_copy_file_automatically():
-    """根据拷贝源文件的大小自动选择拷贝策略，小于5G直接copy_object，大于5G分块拷贝"""
+    """根据拷贝源文件的大小自动选择拷贝策略，不同园区,小于5G直接copy_object，大于5G分块拷贝"""
     copy_source = {'Appid': '1252448703', 'Bucket': 'testbucket', 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
     response = client.copy(
         Bucket=test_bucket,
@@ -587,6 +588,29 @@ def test_upload_empty_file():
         )
 
 
+def test_copy_10G_file_in_same_region():
+    """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
+    copy_source = {'Appid': '1252448703', 'Bucket': 'test01', 'Key': '/10G.txt', 'Region': 'ap-beijing-1'}
+    response = client.copy(
+        Bucket='test04',
+        Key='10G.txt',
+        CopySource=copy_source,
+        MAXThread=10
+    )
+
+
+def test_use_get_auth():
+    """测试利用get_auth方法直接生产签名,然后访问COS"""
+    auth = client.get_auth(
+        Method='GET',
+        Bucket=test_bucket,
+        Key='test.txt',
+        Params={'acl': '', 'unsed': '123'}
+    )
+    response = requests.get('http://test01-1252448703.cos.ap-beijing-1.myqcloud.com/test.txt?acl&unsed=123', headers={'Authorization': auth})
+    assert response.status_code == 200
+
+
 if __name__ == "__main__":
     setUp()
     test_upload_empty_file()
@@ -596,4 +620,6 @@ if __name__ == "__main__":
     test_upload_part_copy()
     test_upload_file_multithreading()
     test_copy_file_automatically()
+    test_copy_10G_file_in_same_region()
+    test_use_get_auth()
     tearDown()
