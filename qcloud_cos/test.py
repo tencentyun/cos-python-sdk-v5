@@ -11,11 +11,10 @@ from cos_exception import CosServiceError
 
 ACCESS_ID = os.environ["ACCESS_ID"]
 ACCESS_KEY = os.environ["ACCESS_KEY"]
-test_bucket = "test01"
+test_bucket = "test01-1252448703"
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
-    Appid="1252448703",
     Region="ap-beijing-1",
     Access_id=ACCESS_ID,
     Access_key=ACCESS_KEY
@@ -134,7 +133,7 @@ def test_put_object_non_exist_bucket():
     """文件上传至不存在bucket"""
     try:
         response = client.put_object(
-            Bucket='test0xx',
+            Bucket='test0xx-1252448703',
             Body='T'*1024*1024,
             Key=test_object,
             CacheControl='no-cache',
@@ -164,7 +163,7 @@ def test_get_object_acl():
 
 def test_copy_object_diff_bucket():
     """从另外的bucket拷贝object"""
-    copy_source = {'Appid': '1252448703', 'Bucket': 'test04', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
     response = client.copy_object(
         Bucket=test_bucket,
         Key='test.txt',
@@ -256,7 +255,7 @@ def test_upload_part_copy():
     )
 
     # upload part copy
-    copy_source = {'Appid': '1252448703', 'Bucket': 'test04', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
     response = client.upload_part_copy(
         Bucket=test_bucket,
         Key='multipartfile.txt',
@@ -318,7 +317,7 @@ def test_delete_multiple_objects():
 def test_create_head_delete_bucket():
     """创建一个bucket,head它是否存在,最后删除一个空bucket"""
     bucket_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
-    bucket_name = 'buckettest' + bucket_id
+    bucket_name = 'buckettest' + bucket_id + '-1252448703'
     response = client.create_bucket(
         Bucket=bucket_name,
         ACL='public-read'
@@ -564,7 +563,7 @@ def test_upload_file_multithreading():
 
 def test_copy_file_automatically():
     """根据拷贝源文件的大小自动选择拷贝策略，不同园区,小于5G直接copy_object，大于5G分块拷贝"""
-    copy_source = {'Appid': '1252448703', 'Bucket': 'testbucket', 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
+    copy_source = {'Bucket': 'testtiedu-1252448703', 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
     response = client.copy(
         Bucket=test_bucket,
         Key='copy_10G.txt',
@@ -590,9 +589,9 @@ def test_upload_empty_file():
 
 def test_copy_10G_file_in_same_region():
     """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
-    copy_source = {'Appid': '1252448703', 'Bucket': 'test01', 'Key': '/10G.txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test01-1252448703', 'Key': '/10G.txt', 'Region': 'ap-beijing-1'}
     response = client.copy(
-        Bucket='test04',
+        Bucket='test04-1252448703',
         Key='10G.txt',
         CopySource=copy_source,
         MAXThread=10
