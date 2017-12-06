@@ -431,7 +431,7 @@ def test_put_get_delete_lifecycle():
             {
                 'Expiration': {'Days': 100},
                 'ID': '123',
-                'Filter': {'Prefix': '456'},
+                'Filter': {'Prefix': ''},
                 'Status': 'Enabled',
             }
         ]
