@@ -20,7 +20,7 @@ __________
 使用方法
 __________
 
-使用python sdk，参照https://github.com/tencentyun/cos-python-sdk-v5/blob/master/qcloud_cos/test.py
+使用python sdk，参照https://github.com/tencentyun/cos-python-sdk-v5/blob/master/qcloud_cos/demo.py
 
 cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 
