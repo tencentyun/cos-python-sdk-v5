@@ -26,13 +26,12 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 
 .. code:: python
 
-    # 设置用户属性, 包括appid, secret_id, secret_key, region
-    appid = '100000'           # 替换为用户的appid
+    # 设置用户属性, 包括secret_id, secret_key, region
     secret_id = 'xxxxxxxx'     # 替换为用户的secret_id
     secret_key = 'xxxxxxx'     # 替换为用户的secret_key
     region = 'ap-beiging-1'    # 替换为用户的region 
     token = ''                 # 使用临时秘钥需要传入Token，默认为空,可不填
-    config = CosConfig(Appid=appid, Region=region, Access_id=secret_id, Access_key=secret_key, Token=token)  #获取配置对象
+    config = CosConfig(Region=region, Access_id=secret_id, Access_key=secret_key, Token=token)  #获取配置对象
     client = CosS3Client(config)                                                                #获取客户端对象
 
 
@@ -41,7 +40,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
     ############################################################################
     # 1. 上传单个文件
     response = client.put_object(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Body='TY'*1024*512*file_size,
         Key=file_name,
         CacheControl='no-cache',
@@ -50,46 +49,46 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 
     # 2. 下载单个文件
     response = client.get_object(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key=file_name,
     )
 
     # 3. 获取文件属性
     response = client.head_object(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key=file_name
     )
 
     # 4. 删除单个文件
     response = client.delete_object(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key=file_name
     )
 
     # 5. 创建分片上传
     response = client.create_multipart_upload(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key='multipartfile.txt',
     )
     uploadid = get_id_from_xml(response.text)
 
     # 6. 删除分片上传
     response = client.abort_multipart_upload(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key='multipartfile.txt',
         UploadId=uploadid
     )
 
     # 7. 再次创建分片上传
     response = client.create_multipart_upload(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key='multipartfile.txt',
     )
     uploadid = response['UploadId']
 
     # 8. 上传分片
     response = client.upload_part(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=1,
@@ -99,7 +98,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 
     # 9. 列出分片
     response = clieent.list_parts(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key='mutilpartfile.txt',
         UploadId=uploadid
     )
@@ -107,7 +106,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 
     # 10. 完成分片上传
     response = client.complete_multipart_upload(
-        Bucket='test01',
+        Bucket='test01-123456789',
         Key='multipartfile.txt',
         UploadId=uploadid,
         MultipartUpload={'Part': lst} # 超过1000个分块，请本地保存分块信息，再complete
@@ -119,16 +118,16 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
     ############################################################################
     # 1. 创建Bucket
     response = client.create_bucket(
-        Bucket='test02',
+        Bucket='test02-123456789',
         ACL='public-read'
     )   
 
     # 2. 删除Bucket
     response = client.delete_bucket(
-        Bucket='test02'
+        Bucket='test02-123456789'
     )
 
     # 3. 获取文件列表
     response = client.list_objects(
-        Bucket='test01'
+        Bucket='test01-123456789'
     )
