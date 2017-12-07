@@ -16,6 +16,8 @@ from streambody import StreamBody
 from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
 from cos_auth import CosS3Auth
+from cos_comm import *
+from cos_threadpool import SimpleThreadPool
 from cos_exception import CosClientError
 from cos_exception import CosServiceError
 
@@ -29,194 +31,56 @@ logger = logging.getLogger(__name__)
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-# kwargs中params到http headers的映射
-maplist = {
-            'ContentLength': 'Content-Length',
-            'ContentMD5': 'Content-MD5',
-            'ContentType': 'Content-Type',
-            'CacheControl': 'Cache-Control',
-            'ContentDisposition': 'Content-Disposition',
-            'ContentEncoding': 'Content-Encoding',
-            'ContentLanguage': 'Content-Language',
-            'Expires': 'Expires',
-            'ResponseContentType': 'response-content-type',
-            'ResponseContentLanguage': 'response-content-language',
-            'ResponseExpires': 'response-expires',
-            'ResponseCacheControl': 'response-cache-control',
-            'ResponseContentDisposition': 'response-content-disposition',
-            'ResponseContentEncoding': 'response-content-encoding',
-            'Metadata': 'Metadata',
-            'ACL': 'x-cos-acl',
-            'GrantFullControl': 'x-cos-grant-full-control',
-            'GrantWrite': 'x-cos-grant-write',
-            'GrantRead': 'x-cos-grant-read',
-            'StorageClass': 'x-cos-storage-class',
-            'Range': 'Range',
-            'IfMatch': 'If-Match',
-            'IfNoneMatch': 'If-None-Match',
-            'IfModifiedSince': 'If-Modified-Since',
-            'IfUnmodifiedSince': 'If-Unmodified-Since',
-            'CopySourceIfMatch': 'x-cos-copy-source-If-Match',
-            'CopySourceIfNoneMatch': 'x-cos-copy-source-If-None-Match',
-            'CopySourceIfModifiedSince': 'x-cos-copy-source-If-Modified-Since',
-            'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
-            'VersionId': 'x-cos-version-id',
-           }
-
-
-def to_unicode(s):
-    if isinstance(s, unicode):
-        return s
-    else:
-        return s.decode('utf-8')
-
-
-def get_md5(data):
-    m2 = hashlib.md5(data)
-    MD5 = base64.standard_b64encode(m2.digest())
-    return MD5
-
-
-def dict_to_xml(data):
-    """V5使用xml格式，将输入的dict转换为xml"""
-    doc = xml.dom.minidom.Document()
-    root = doc.createElement('CompleteMultipartUpload')
-    doc.appendChild(root)
-
-    if 'Part' not in data.keys():
-        raise CosClientError("Invalid Parameter, Part Is Required!")
-
-    for i in data['Part']:
-        nodePart = doc.createElement('Part')
-
-        if 'PartNumber' not in i.keys():
-            raise CosClientError("Invalid Parameter, PartNumber Is Required!")
-
-        nodeNumber = doc.createElement('PartNumber')
-        nodeNumber.appendChild(doc.createTextNode(str(i['PartNumber'])))
-
-        if 'ETag' not in i.keys():
-            raise CosClientError("Invalid Parameter, ETag Is Required!")
-
-        nodeETag = doc.createElement('ETag')
-        nodeETag.appendChild(doc.createTextNode(str(i['ETag'])))
-
-        nodePart.appendChild(nodeNumber)
-        nodePart.appendChild(nodeETag)
-        root.appendChild(nodePart)
-    return doc.toxml('utf-8')
-
-
-def xml_to_dict(data, origin_str="", replace_str=""):
-    """V5使用xml格式，将response中的xml转换为dict"""
-    root = xml.etree.ElementTree.fromstring(data)
-    xmldict = Xml2Dict(root)
-    xmlstr = str(xmldict)
-    xmlstr = xmlstr.replace("{http://www.qcloud.com/document/product/436/7751}", "")
-    xmlstr = xmlstr.replace("{http://www.w3.org/2001/XMLSchema-instance}", "")
-    if origin_str:
-        xmlstr = xmlstr.replace(origin_str, replace_str)
-    xmldict = eval(xmlstr)
-    return xmldict
-
-
-def get_id_from_xml(data, name):
-    """解析xml中的特定字段"""
-    tree = xml.dom.minidom.parseString(data)
-    root = tree.documentElement
-    result = root.getElementsByTagName(name)
-    # use childNodes to get a list, if has no child get itself
-    return result[0].childNodes[0].nodeValue
-
-
-def mapped(headers):
-    """S3到COS参数的一个映射"""
-    _headers = dict()
-    for i in headers.keys():
-        if i in maplist:
-            _headers[maplist[i]] = headers[i]
-        else:
-            raise CosClientError('No Parameter Named '+i+' Please Check It')
-    return _headers
-
-
-def format_xml(data, root, lst=list()):
-    """将dict转换为xml"""
-    xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
-    for i in lst:
-        xml_config = xml_config.replace(i+i, i)
-    return xml_config
-
-
-def format_region(region):
-    """格式化地域"""
-    if region.find('cos.') != -1:
-        return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
-    if region == 'cn-north' or region == 'cn-south' or region == 'cn-east' or region == 'cn-south-2' or region == 'cn-southwest' or region == 'sg':
-        return region  # 老域名不能加cos.
-    #  支持v4域名映射到v5
-    if region == 'cossh':
-        return 'cos.ap-shanghai'
-    if region == 'cosgz':
-        return 'cos.ap-guangzhou'
-    if region == 'cosbj':
-        return 'cos.ap-beijing'
-    if region == 'costj':
-        return 'cos.ap-beijing-1'
-    if region == 'coscd':
-        return 'cos.ap-chengdu'
-    if region == 'cossgp':
-        return 'cos.ap-singapore'
-    if region == 'coshk':
-        return 'cos.ap-hongkong'
-    if region == 'cosca':
-        return 'cos.na-toronto'
-    if region == 'cosger':
-        return 'cos.eu-frankfurt'
-
-    return 'cos.' + region  # 新域名加上cos.
-
 
 class CosConfig(object):
     """config类，保存用户相关信息"""
-    def __init__(self, Appid, Region, Access_id, Access_key, Token=None):
+    def __init__(self, Region, Access_id, Access_key, Appid='', Scheme='http', Token=None, Timeout=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
         :param Region(string): 地域信息.
         :param Access_id(string): 秘钥SecretId.
         :param Access_key(string): 秘钥SecretKey.
+        :param Scheme(string): http/https.
         :param Token(string): 临时秘钥使用的token.
+        :param Timeout(int): http超时时间.
         """
         self._appid = Appid
         self._region = format_region(Region)
         self._access_id = Access_id
         self._access_key = Access_key
+        self._scheme = Scheme
         self._token = Token
+        self._timeout = Timeout
         logger.info("config parameter-> appid: {appid}, region: {region}".format(
                  appid=Appid,
                  region=Region))
 
-    def uri(self, bucket, path=None):
+    def uri(self, bucket, path=None, scheme=None, region=None):
         """拼接url
 
         :param bucket(string): 存储桶名称.
         :param path(string): 请求COS的路径.
         :return(string): 请求COS的URL地址.
         """
+        bucket = format_bucket(bucket, self._appid)
+        if scheme is None:
+            scheme = self._scheme
+        if region is None:
+            region = self._region
         if path:
             if path[0] == '/':
                 path = path[1:]
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
+            url = u"{scheme}://{bucket}.{region}.myqcloud.com/{path}".format(
+                scheme=scheme,
                 bucket=to_unicode(bucket),
-                uid=self._appid,
-                region=self._region,
+                region=region,
                 path=to_unicode(path)
             )
         else:
-            url = u"http://{bucket}-{uid}.{region}.myqcloud.com/".format(
+            url = u"{scheme}://{bucket}.{region}.myqcloud.com/".format(
+                scheme=self._scheme,
                 bucket=to_unicode(bucket),
-                uid=self._appid,
                 region=self._region
             )
         return url
@@ -238,7 +102,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_auth(self, Method, Bucket, Key='', Expired=300, headers={}, params={}):
+    def get_auth(self, Method, Bucket, Key='', Expired=300, Headers={}, Params={}):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
@@ -250,12 +114,14 @@ class CosS3Client(object):
         :return (string): 计算出的V5签名.
         """
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
-        r = Request(Method, url, headers=headers, params=params)
-        auth = CosS3Auth(self._conf._access_id, self._conf._access_key, Key, params, Expired)
+        r = Request(Method, url, headers=Headers, params=Params)
+        auth = CosS3Auth(self._conf._access_id, self._conf._access_key, Key, Params, Expired)
         return auth(r).headers['Authorization']
 
     def send_request(self, method, url, timeout=30, **kwargs):
         """封装request库发起http请求"""
+        if self._conf._timeout is not None:  # 用户自定义超时时间
+            timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
         kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5'
@@ -314,6 +180,7 @@ class CosS3Client(object):
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
+        Body = deal_with_empty_file_stream(Body)
         rt = self.send_request(
             method='PUT',
             url=url,
@@ -333,6 +200,11 @@ class CosS3Client(object):
         :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
         """
         headers = mapped(kwargs)
+        params = {}
+        for key in headers.keys():
+            if key.startswith("response"):
+                params[key] = headers[key]
+                headers.pop(key)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         logger.info("get object, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -342,6 +214,7 @@ class CosS3Client(object):
                 url=url,
                 stream=True,
                 auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                params=params,
                 headers=headers)
 
         response = rt.headers
@@ -382,6 +255,40 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
+    def delete_objects(self, Bucket, Delete={}, **kwargs):
+        """文件批量删除接口,单次最多支持1000个object
+
+        :param Bucket(string): 存储桶名称.
+        :param Delete(dict): 批量删除的object信息.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 批量删除的结果.
+        """
+        lst = ['<Object>', '</Object>']  # 类型为list的标签
+        xml_config = format_xml(data=Delete, root='Delete', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        url = self._conf.uri(bucket=Bucket, path="?delete")
+        logger.info("put bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if 'Deleted' in data.keys() and not isinstance(data['Deleted'], list):
+            lst = []
+            lst.append(data['Deleted'])
+            data['Deleted'] = lst
+        if 'Error' in data.keys() and not isinstance(data['Error'], list):
+            lst = []
+            lst.append(data['Error'])
+            data['Error'] = lst
+        return data
+
     def head_object(self, Bucket, Key, **kwargs):
         """获取文件信息
 
@@ -402,35 +309,6 @@ class CosS3Client(object):
             headers=headers)
         return rt.headers
 
-    def gen_copy_source_url(self, CopySource):
-        """拼接拷贝源url"""
-        if 'Appid' in CopySource.keys():
-            appid = CopySource['Appid']
-        else:
-            raise CosClientError('CopySource Need Parameter Appid')
-        if 'Bucket' in CopySource.keys():
-            bucket = CopySource['Bucket']
-        else:
-            raise CosClientError('CopySource Need Parameter Bucket')
-        if 'Region' in CopySource.keys():
-            region = CopySource['Region']
-            region = format_region(region)
-        else:
-            raise CosClientError('CopySource Need Parameter Region')
-        if 'Key' in CopySource.keys():
-            path = CopySource['Key']
-            if path and path[0] == '/':
-                path = path[1:]
-        else:
-            raise CosClientError('CopySource Need Parameter Key')
-        url = "{bucket}-{uid}.{region}.myqcloud.com/{path}".format(
-                bucket=bucket,
-                uid=appid,
-                region=region,
-                path=path
-            )
-        return url
-
     def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
         """文件拷贝，文件信息修改
 
@@ -446,7 +324,7 @@ class CosS3Client(object):
             for i in headers['Metadata'].keys():
                 headers[i] = headers['Metadata'][i]
             headers.pop('Metadata')
-        headers['x-cos-copy-source'] = self.gen_copy_source_url(CopySource)
+        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource)
         if CopyStatus != 'Copy' and CopyStatus != 'Replaced':
             raise CosClientError('CopyStatus must be Copy or Replaced')
         headers['x-cos-metadata-directive'] = CopyStatus
@@ -459,6 +337,35 @@ class CosS3Client(object):
             url=url,
             auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
             headers=headers)
+        data = xml_to_dict(rt.text)
+        return data
+
+    def upload_part_copy(self, Bucket, Key, PartNumber, UploadId, CopySource, CopySourceRange='', **kwargs):
+        """拷贝指定文件至分块上传
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 上传COS路径.
+        :param PartNumber(int): 上传分块的编号.
+        :param UploadId(string): 分块上传创建的UploadId.
+        :param CopySource(dict): 拷贝源,包含Appid,Bucket,Region,Key.
+        :param CopySourceRange(string): 拷贝源的字节范围,bytes=first-last。
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 拷贝成功的结果.
+        """
+        headers = mapped(kwargs)
+        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource)
+        headers['x-cos-copy-source-range'] = CopySourceRange
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?partNumber={PartNumber}&uploadId={UploadId}".format(
+            PartNumber=PartNumber,
+            UploadId=UploadId))
+        logger.info("upload part copy, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+                method='PUT',
+                url=url,
+                headers=headers,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key))
         data = xml_to_dict(rt.text)
         return data
 
@@ -507,6 +414,7 @@ class CosS3Client(object):
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
+        Body = deal_with_empty_file_stream(Body)
         rt = self.send_request(
                 method='PUT',
                 url=url,
@@ -694,14 +602,14 @@ class CosS3Client(object):
                 headers=headers)
         return None
 
-    def list_objects(self, Bucket, Delimiter="", Marker="", MaxKeys=1000, Prefix="", EncodingType="", **kwargs):
+    def list_objects(self, Bucket, Prefix="", Delimiter="", Marker="", MaxKeys=1000, EncodingType="", **kwargs):
         """获取文件列表
 
         :param Bucket(string): 存储桶名称.
+        :param Prefix(string): 设置匹配文件的前缀.
         :param Delimiter(string): 分隔符.
         :param Marker(string): 从marker开始列出条目.
         :param MaxKeys(int): 设置单次返回最大的数量,最大为1000.
-        :param Prefix(string): 设置匹配文件的前缀.
         :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 文件的相关信息，包括Etag等信息.
@@ -712,10 +620,10 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         params = {
+            'prefix': Prefix,
             'delimiter': Delimiter,
             'marker': Marker,
-            'max-keys': MaxKeys,
-            'prefix': Prefix
+            'max-keys': MaxKeys
             }
         if EncodingType:
             if EncodingType != 'url':
@@ -733,6 +641,92 @@ class CosS3Client(object):
                 lst = []
                 lst.append(data['Contents'])
                 data['Contents'] = lst
+        return data
+
+    def list_objects_versions(self, Bucket, Prefix="", Delimiter="", KeyMarker="", VersionIdMarker="", MaxKeys=1000, EncodingType="", **kwargs):
+        """获取文件列表
+
+        :param Bucket(string): 存储桶名称.
+        :param Prefix(string): 设置匹配文件的前缀.
+        :param Delimiter(string): 分隔符.
+        :param KeyMarker(string): 从KeyMarker指定的Key开始列出条目.
+        :param VersionIdMarker(string): 从VersionIdMarker指定的版本开始列出条目.
+        :param MaxKeys(int): 设置单次返回最大的数量,最大为1000.
+        :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 文件的相关信息，包括Etag等信息.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path='?versions')
+        logger.info("list objects versions, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        params = {
+            'prefix': Prefix,
+            'delimiter': Delimiter,
+            'key-marker': KeyMarker,
+            'version-id-marker': VersionIdMarker,
+            'max-keys': MaxKeys
+            }
+        if EncodingType:
+            if EncodingType != 'url':
+                raise CosClientError('EncodingType must be url')
+            params['encoding-type'] = EncodingType
+        rt = self.send_request(
+                method='GET',
+                url=url,
+                params=params,
+                headers=headers,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+
+        data = xml_to_dict(rt.text)
+        if 'Version' in data.keys() and isinstance(data['Version'], dict):  # 只有一个Version，将dict转为list，保持一致
+                lst = []
+                lst.append(data['Version'])
+                data['Version'] = lst
+        return data
+
+    def list_multipart_uploads(self, Bucket, Prefix="", Delimiter="", KeyMarker="", UploadIdMarker="", MaxUploads=1000, EncodingType="", **kwargs):
+        """获取Bucket中正在进行的分块上传
+
+        :param Bucket(string): 存储桶名称.
+        :param Prefix(string): 设置匹配文件的前缀.
+        :param Delimiter(string): 分隔符.
+        :param KeyMarker(string): 从KeyMarker指定的Key开始列出条目.
+        :param UploadIdMarker(string): 从UploadIdMarker指定的UploadID开始列出条目.
+        :param MaxUploads(int): 设置单次返回最大的数量,最大为1000.
+        :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 文件的相关信息，包括Etag等信息.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path='?uploads')
+        logger.info("get multipart uploads, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        params = {
+            'prefix': Prefix,
+            'delimiter': Delimiter,
+            'key-marker': KeyMarker,
+            'upload-id-marker': UploadIdMarker,
+            'max-uploads': MaxUploads
+            }
+        if EncodingType:
+            if EncodingType != 'url':
+                raise CosClientError('EncodingType must be url')
+            params['encoding-type'] = EncodingType
+        rt = self.send_request(
+                method='GET',
+                url=url,
+                params=params,
+                headers=headers,
+                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+
+        data = xml_to_dict(rt.text)
+        if 'Upload' in data.keys() and isinstance(data['Upload'], dict):  # 只有一个Upload，将dict转为list，保持一致
+                lst = []
+                lst.append(data['Upload'])
+                data['Upload'] = lst
         return data
 
     def head_bucket(self, Bucket, **kwargs):
@@ -842,6 +836,7 @@ class CosS3Client(object):
 
     def get_bucket_cors(self, Bucket, **kwargs):
         """获取bucket CORS
+
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 获取Bucket对应的跨域配置.
@@ -892,6 +887,7 @@ class CosS3Client(object):
 
     def put_bucket_lifecycle(self, Bucket, LifecycleConfiguration={}, **kwargs):
         """设置bucket LifeCycle
+
         :param Bucket(string): 存储桶名称.
         :param LifecycleConfiguration(dict): 设置Bucket的生命周期规则.
         :param kwargs(dict): 设置请求headers.
@@ -959,6 +955,7 @@ class CosS3Client(object):
 
     def put_bucket_versioning(self, Bucket, Status, **kwargs):
         """设置bucket版本控制
+
         :param Bucket(string): 存储桶名称.
         :param Status(string): 设置Bucket版本控制的状态，可选值为'Enabled'|'Suspended'.
         :param kwargs(dict): 设置请求headers.
@@ -1024,6 +1021,74 @@ class CosS3Client(object):
         data['LocationConstraint'] = root.text
         return data
 
+    def put_bucket_replication(self, Bucket, ReplicationConfiguration={}, **kwargs):
+        """设置bucket跨区域复制配置
+
+        :param Bucket(string): 存储桶名称.
+        :param ReplicationConfiguration(dict): 设置Bucket的跨区域复制规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+        """
+        lst = ['<Rule>', '</Rule>']  # 类型为list的标签
+        xml_config = format_xml(data=ReplicationConfiguration, root='ReplicationConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        url = self._conf.uri(bucket=Bucket, path="?replication")
+        logger.info("put bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
+    def get_bucket_replication(self, Bucket, **kwargs):
+        """获取bucket 跨区域复制配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的跨区域复制配置.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?replication")
+        logger.info("get bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        if 'Rule' in data.keys() and not isinstance(data['Rule'], list):
+            lst = []
+            lst.append(data['Rule'])
+            data['Rule'] = lst
+        return data
+
+    def delete_bucket_replication(self, Bucket, **kwargs):
+        """删除bucket 跨区域复制配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?replication")
+        logger.info("delete bucket replication, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            headers=headers)
+        return None
+
     # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket
@@ -1044,6 +1109,185 @@ class CosS3Client(object):
             lst.append(data['Buckets']['Bucket'])
             data['Buckets']['Bucket'] = lst
         return data
+
+    # Advanced interface
+    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst):
+        """从本地文件中读取分块, 上传单个分块,将结果记录在md5——list中
+
+        :param bucket(string): 存储桶名称.
+        :param key(string): 分块上传路径名.
+        :param local_path(string): 本地文件路径名.
+        :param offset(int): 读取本地文件的分块偏移量.
+        :param size(int): 读取本地文件的分块大小.
+        :param part_num(int): 上传分块的序号.
+        :param uploadid(string): 分块上传的uploadid.
+        :param md5_lst(list): 保存上传成功分块的MD5和序号.
+        :return: None.
+        """
+        with open(local_path, 'rb') as fp:
+            fp.seek(offset, 0)
+            data = fp.read(size)
+        rt = self.upload_part(bucket, key, data, part_num, uploadid)
+        md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
+        return None
+
+    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=10, MAXThread=5, **kwargs):
+        """小于等于100MB的文件简单上传，大于等于100MB的文件使用分块上传
+
+        :param Bucket(string): 存储桶名称.
+        :param key(string): 分块上传路径名.
+        :param LocalFilePath(string): 本地文件路径名.
+        :param PartSize(int): 分块的大小设置.
+        :param MAXThread(int): 并发上传的最大线程数.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+        """
+        file_size = os.path.getsize(LocalFilePath)
+        if file_size <= 1024*1024*100:
+            with open(LocalFilePath, 'rb') as fp:
+                rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, **kwargs)
+            return rt
+        else:
+            part_size = 1024*1024*PartSize  # 默认按照10MB分块,最大支持100G的文件，超过100G的分块数固定为10000
+            last_size = 0  # 最后一块可以小于1MB
+            parts_num = file_size / part_size
+            last_size = file_size % part_size
+
+            if last_size != 0:
+                parts_num += 1
+            if parts_num > 10000:
+                parts_num = 10000
+                part_size = file_size / parts_num
+                last_size = file_size % parts_num
+                last_size += part_size
+
+            # 创建分块上传
+            rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
+            uploadid = rt['UploadId']
+
+            # 上传分块
+            offset = 0  # 记录文件偏移量
+            lst = list()  # 记录分块信息
+            pool = SimpleThreadPool(MAXThread)
+
+            for i in range(1, parts_num+1):
+                if i == parts_num:  # 最后一块
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst)
+                else:
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst)
+                    offset += part_size
+
+            pool.wait_completion()
+            lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
+
+            # 完成分片上传
+            try:
+                rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+            except Exception as e:
+                abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
+                raise e
+            return rt
+
+    def _inner_head_object(self, CopySource):
+        """查询源文件的长度"""
+        bucket, path, region = get_copy_source_info(CopySource)
+        url = self._conf.uri(bucket=bucket, path=quote(path, '/-_.~'), scheme=self._conf._scheme, region=region)
+        rt = self.send_request(
+            method='HEAD',
+            url=url,
+            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, path),
+            headers={})
+        return int(rt.headers['Content-Length'])
+
+    def _upload_part_copy(self, bucket, key, part_number, upload_id, copy_source, copy_source_range, md5_lst):
+        """拷贝指定文件至分块上传,记录结果到lst中去
+
+        :param bucket(string): 存储桶名称.
+        :param key(string): 上传COS路径.
+        :param part_number(int): 上传分块的编号.
+        :param upload_id(string): 分块上传创建的UploadId.
+        :param copy_source(dict): 拷贝源,包含Appid,Bucket,Region,Key.
+        :param copy_source_range(string): 拷贝源的字节范围,bytes=first-last。
+        :param md5_lst(list): 保存上传成功分块的MD5和序号.
+        :return: None.
+        """
+        rt = self.upload_part_copy(bucket, key, part_number, upload_id, copy_source, copy_source_range)
+        md5_lst.append({'PartNumber': part_number, 'ETag': rt['ETag']})
+        return None
+
+    def _check_same_region(self, dst_region, CopySource):
+        if 'Region' in CopySource.keys():
+            src_region = CopySource['Region']
+            src_region = format_region(src_region)
+        else:
+            raise CosClientError('CopySource Need Parameter Region')
+        if src_region == dst_region:
+            return True
+        return False
+
+    def copy(self, Bucket, Key, CopySource, CopyStatus='Copy', PartSize=10, MAXThread=5, **kwargs):
+        """文件拷贝，小于5G的文件调用copy_object，大于等于5G的文件调用分块上传的upload_part_copy
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 上传COS路径.
+        :param CopySource(dict): 拷贝源,包含Appid,Bucket,Region,Key.
+        :param CopyStatus(string): 拷贝状态,可选值'Copy'|'Replaced'.
+        :param PartSize(int): 分块的大小设置.
+        :param MAXThread(int): 并发上传的最大线程数.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 拷贝成功的结果.
+        """
+        # 同园区直接走copy_object
+        if self._check_same_region(self._conf._region, CopySource):
+            response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
+            return response
+
+        # 不同园区查询拷贝源object的content-length
+        file_size = self._inner_head_object(CopySource)
+        # 如果源文件大小小于5G，则直接调用copy_object接口
+        if file_size < SINGLE_UPLOAD_LENGTH:
+            response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
+            return response
+
+        # 如果源文件大小大于等于5G，则先创建分块上传，在调用upload_part
+        part_size = 1024*1024*PartSize  # 默认按照10MB分块
+        last_size = 0  # 最后一块可以小于1MB
+        parts_num = file_size / part_size
+        last_size = file_size % part_size
+        if last_size != 0:
+            parts_num += 1
+        if parts_num > 10000:
+            parts_num = 10000
+            part_size = file_size / parts_num
+            last_size = file_size % parts_num
+            last_size += part_size
+        # 创建分块上传
+        rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
+        uploadid = rt['UploadId']
+
+        # 上传分块拷贝
+        offset = 0  # 记录文件偏移量
+        lst = list()  # 记录分块信息
+        pool = SimpleThreadPool(MAXThread)
+
+        for i in range(1, parts_num+1):
+            if i == parts_num:  # 最后一块
+                copy_range = gen_copy_source_range(offset, file_size-1)
+                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
+            else:
+                copy_range = gen_copy_source_range(offset, offset+part_size-1)
+                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
+                offset += part_size
+
+        pool.wait_completion()
+        lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
+        # 完成分片上传
+        try:
+            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+        except Exception as e:
+            abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
+            raise e
+        return rt
 
 if __name__ == "__main__":
     pass
