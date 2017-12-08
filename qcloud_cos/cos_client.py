@@ -684,6 +684,10 @@ class CosS3Client(object):
                 lst = []
                 lst.append(data['Version'])
                 data['Version'] = lst
+        if 'DeleteMarker' in data.keys() and isinstance(data['DeleteMarker'], dict):
+                lst = []
+                lst.append(data['DeleteMarker'])
+                data['DeleteMarker'] = lst
         return data
 
     def list_multipart_uploads(self, Bucket, Prefix="", Delimiter="", KeyMarker="", UploadIdMarker="", MaxUploads=1000, EncodingType="", **kwargs):
