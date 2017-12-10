@@ -40,7 +40,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
     ############################################################################
     # 1. 上传单个文件
     response = client.put_object(
-        Bucket='test01-123456789',
+        Bucket='test01-123456789',  # Bucket由bucketname-appid组成
         Body='TY'*1024*512*file_size,
         Key=file_name,
         CacheControl='no-cache',
