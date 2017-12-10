@@ -22,7 +22,7 @@ client = CosS3Client(config)
 file_name = 'test.txt'
 with open('test.txt', 'rb') as fp:
     response = client.put_object(
-        Bucket='test04-123456789',
+        Bucket='test04-123456789',  # Bucket由bucketname-appid组成
         Body=fp,
         Key=file_name,
         StorageClass='STANDARD',
