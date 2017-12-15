@@ -15,7 +15,7 @@ secret_id = 'AKID15IsskiBQACGbAo6WhgcQbVls7HmuG00'     # 替换为用户的secre
 secret_key = 'csivKvxxrMvSvQpMWHuIz12pThQQlWRW'     # 替换为用户的secret_key
 region = 'ap-beijing-1'    # 替换为用户的region
 token = ''                 # 使用临时秘钥需要传入Token，默认为空,可不填
-config = CosConfig(Region=region, Access_id=secret_id, Access_key=secret_key, Token=token)  # 获取配置对象
+config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
 client = CosS3Client(config)
 
 # 文件流 简单上传
