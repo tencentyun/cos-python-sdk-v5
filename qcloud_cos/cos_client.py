@@ -85,6 +85,8 @@ class CosConfig(object):
         if region is None:
             region = self._region
         if path is not None:
+            if path == "":
+                raise CosClientError("Key can't be empty string")
             if path[0] == '/':
                 path = path[1:]
             url = u"{scheme}://{bucket}.{region}.myqcloud.com/{path}".format(
