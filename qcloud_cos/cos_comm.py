@@ -135,6 +135,8 @@ def format_xml(data, root, lst=list()):
 
 def format_region(region):
     """格式化地域"""
+    if not region:
+        raise CosClientError("region is required not empty!")
     if region.find('cos.') != -1:
         return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
     if region == 'cn-north' or region == 'cn-south' or region == 'cn-east' or region == 'cn-south-2' or region == 'cn-southwest' or region == 'sg':
@@ -175,6 +177,19 @@ def format_bucket(bucket, appid):
     return bucket + "-" + appid
 
 
+def format_path(path):
+    """检查path是否合法,格式化path"""
+    if not isinstance(path, str):
+        raise CosClientError("your Key is not str")
+    if path == "":
+        raise CosClientError("Key can't be empty string")
+    if path[0] == '/':
+        path = path[1:]
+    # 提前对path进行encode
+    path = quote(path, '/-_.~')
+    return path
+
+
 def get_copy_source_info(CopySource):
     """获取拷贝源的所有信息"""
     appid = ""
@@ -200,8 +215,7 @@ def get_copy_source_info(CopySource):
 def gen_copy_source_url(CopySource):
     """拼接拷贝源url"""
     bucket, path, region = get_copy_source_info(CopySource)
-    if path and path[0] == '/':
-        path = path[1:]
+    path = format_path(path)
     url = "{bucket}.{region}.myqcloud.com/{path}".format(
             bucket=bucket,
             region=region,
