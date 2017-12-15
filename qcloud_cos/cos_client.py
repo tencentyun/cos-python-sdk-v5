@@ -34,24 +34,40 @@ sys.setdefaultencoding('utf-8')
 
 class CosConfig(object):
     """config类，保存用户相关信息"""
-    def __init__(self, Region, Access_id, Access_key, Appid='', Scheme='http', Token=None, Timeout=None):
+    def __init__(self, Appid=None, Region=None, Secret_id=None, Secret_key=None, Token=None, Scheme=None, Timeout=None, Access_id=None, Access_key=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
         :param Region(string): 地域信息.
-        :param Access_id(string): 秘钥SecretId.
-        :param Access_key(string): 秘钥SecretKey.
-        :param Scheme(string): http/https.
+        :param Secret_id(string): 秘钥SecretId.
+        :param Secret_key(string): 秘钥SecretKey.
         :param Token(string): 临时秘钥使用的token.
+        :param Schema(string): http/https
         :param Timeout(int): http超时时间.
+        :param Access_id(string): 秘钥AccessId(兼容).
+        :param Access_key(string): 秘钥AccessKey(兼容).
         """
         self._appid = Appid
         self._region = format_region(Region)
-        self._access_id = Access_id
-        self._access_key = Access_key
-        self._scheme = Scheme
         self._token = Token
         self._timeout = Timeout
+
+        if Scheme is None:
+            Scheme = 'http'
+        if(Scheme != 'http' and Scheme != 'https'):
+            raise CosCosClientError('Scheme can be only set to http/https')
+        self._scheme = Scheme
+
+        # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
+        if(Secret_id and Secret_key):
+            self._secret_id = Secret_id
+            self._secret_key = Secret_key
+        elif(Access_id and Access_key):
+            self._secret_id = Access_id
+            self._secret_key = Access_key
+        else:
+            raise CosClientError('SecretId and SecretKey is Required!')
+
         logger.info("config parameter-> appid: {appid}, region: {region}".format(
                  appid=Appid,
                  region=Region))
@@ -68,7 +84,7 @@ class CosConfig(object):
             scheme = self._scheme
         if region is None:
             region = self._region
-        if path:
+        if path is not None:
             if path[0] == '/':
                 path = path[1:]
             url = u"{scheme}://{bucket}.{region}.myqcloud.com/{path}".format(
@@ -115,7 +131,7 @@ class CosS3Client(object):
         """
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         r = Request(Method, url, headers=Headers, params=Params)
-        auth = CosS3Auth(self._conf._access_id, self._conf._access_key, Key, Params, Expired)
+        auth = CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, Params, Expired)
         return auth(r).headers['Authorization']
 
     def send_request(self, method, url, timeout=30, **kwargs):
@@ -184,7 +200,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             data=Body,
             headers=headers)
 
@@ -213,7 +229,7 @@ class CosS3Client(object):
                 method='GET',
                 url=url,
                 stream=True,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 params=params,
                 headers=headers)
 
@@ -251,7 +267,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='DELETE',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 headers=headers)
         return None
 
@@ -276,7 +292,7 @@ class CosS3Client(object):
             method='POST',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
         if 'Deleted' in data.keys() and not isinstance(data['Deleted'], list):
@@ -305,7 +321,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='HEAD',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers)
         return rt.headers
 
@@ -335,7 +351,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers)
         data = xml_to_dict(rt.text)
         return data
@@ -365,7 +381,7 @@ class CosS3Client(object):
                 method='PUT',
                 url=url,
                 headers=headers,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key))
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key))
         data = xml_to_dict(rt.text)
         return data
 
@@ -390,7 +406,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='POST',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 headers=headers)
 
         data = xml_to_dict(rt.text)
@@ -419,7 +435,7 @@ class CosS3Client(object):
                 method='PUT',
                 url=url,
                 headers=headers,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 data=Body)
         response = dict()
         response['ETag'] = rt.headers['ETag']
@@ -443,7 +459,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='POST',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 data=dict_to_xml(MultipartUpload),
                 timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
                 headers=headers)
@@ -467,7 +483,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='DELETE',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 headers=headers)
         return None
 
@@ -500,7 +516,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 headers=headers,
                 params=params)
         data = xml_to_dict(rt.text)
@@ -534,7 +550,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers)
         return None
 
@@ -554,7 +570,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, Key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers)
         data = xml_to_dict(rt.text, "type", "Type")
         if data['AccessControlList'] is not None and isinstance(data['AccessControlList']['Grant'], dict):
@@ -579,7 +595,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='PUT',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
                 headers=headers)
         return None
 
@@ -598,7 +614,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='DELETE',
                 url=url,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
                 headers=headers)
         return None
 
@@ -634,7 +650,7 @@ class CosS3Client(object):
                 url=url,
                 params=params,
                 headers=headers,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
 
         data = xml_to_dict(rt.text)
         if 'Contents' in data.keys() and isinstance(data['Contents'], dict):  # 只有一个Contents，将dict转为list，保持一致
@@ -677,7 +693,7 @@ class CosS3Client(object):
                 url=url,
                 params=params,
                 headers=headers,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
 
         data = xml_to_dict(rt.text)
         if 'Version' in data.keys() and isinstance(data['Version'], dict):  # 只有一个Version，将dict转为list，保持一致
@@ -724,7 +740,7 @@ class CosS3Client(object):
                 url=url,
                 params=params,
                 headers=headers,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key))
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
 
         data = xml_to_dict(rt.text)
         if 'Upload' in data.keys() and isinstance(data['Upload'], dict):  # 只有一个Upload，将dict转为list，保持一致
@@ -748,7 +764,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='HEAD',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -775,7 +791,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -794,7 +810,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text, "type", "Type")
         if data['AccessControlList'] is not None and not isinstance(data['AccessControlList']['Grant'], list):
@@ -834,7 +850,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -853,7 +869,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
         if 'CORSRule' in data.keys() and not isinstance(data['CORSRule'], list):
@@ -885,7 +901,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='DELETE',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -910,7 +926,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -929,7 +945,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
         if 'Rule' in data.keys() and not isinstance(data['Rule'], list):
@@ -953,7 +969,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='DELETE',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -979,7 +995,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -998,7 +1014,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
         return data
@@ -1018,7 +1034,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         root = xml.etree.ElementTree.fromstring(rt.text)
         data = dict()
@@ -1046,7 +1062,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             data=xml_config,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -1065,7 +1081,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
         if 'Rule' in data.keys() and not isinstance(data['Rule'], list):
@@ -1089,7 +1105,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='DELETE',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
 
@@ -1105,7 +1121,7 @@ class CosS3Client(object):
                 method='GET',
                 url=url,
                 headers=headers,
-                auth=CosS3Auth(self._conf._access_id, self._conf._access_key),
+                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
                 )
         data = xml_to_dict(rt.text)
         if data['Buckets'] is not None and not isinstance(data['Buckets']['Bucket'], list):
@@ -1199,7 +1215,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='HEAD',
             url=url,
-            auth=CosS3Auth(self._conf._access_id, self._conf._access_key, path),
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, path),
             headers={})
         return int(rt.headers['Content-Length'])
 
@@ -1215,6 +1231,7 @@ class CosS3Client(object):
         :param md5_lst(list): 保存上传成功分块的MD5和序号.
         :return: None.
         """
+        print part_number
         rt = self.upload_part_copy(bucket, key, part_number, upload_id, copy_source, copy_source_range)
         md5_lst.append({'PartNumber': part_number, 'ETag': rt['ETag']})
         return None
