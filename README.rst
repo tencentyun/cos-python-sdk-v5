@@ -31,7 +31,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
     secret_key = 'xxxxxxx'     # 替换为用户的secret_key
     region = 'ap-beiging-1'    # 替换为用户的region 
     token = ''                 # 使用临时秘钥需要传入Token，默认为空,可不填
-    config = CosConfig(Region=region, Access_id=secret_id, Access_key=secret_key, Token=token)  #获取配置对象
+    config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  #获取配置对象
     client = CosS3Client(config)                                                                #获取客户端对象
 
 

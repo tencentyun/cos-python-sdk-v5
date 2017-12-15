@@ -9,15 +9,15 @@ from cos_client import CosS3Client
 from cos_client import CosConfig
 from cos_exception import CosServiceError
 
-ACCESS_ID = os.environ["ACCESS_ID"]
-ACCESS_KEY = os.environ["ACCESS_KEY"]
+SECRET_ID = os.environ["SECRET_ID"]
+SECRET_KEY = os.environ["SECRET_KEY"]
 test_bucket = "test01-1252448703"
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
     Region="ap-beijing-1",
-    Access_id=ACCESS_ID,
-    Access_key=ACCESS_KEY
+    Secret_id=SECRET_ID,
+    Secret_key=SECRET_KEY
 )
 client = CosS3Client(conf)
 
