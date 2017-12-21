@@ -27,6 +27,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 .. code:: python
 
     # 设置用户属性, 包括secret_id, secret_key, region
+    # appid已在配置中移除,请在参数Bucket中带上appid。Bucket由bucketname-appid组成
     secret_id = 'xxxxxxxx'     # 替换为用户的secret_id
     secret_key = 'xxxxxxx'     # 替换为用户的secret_key
     region = 'ap-beiging-1'    # 替换为用户的region 
