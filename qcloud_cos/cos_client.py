@@ -1311,6 +1311,37 @@ class CosS3Client(object):
             abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
             raise e
         return rt
+   
+    def append_object(self, Bucket, Key, Position, Data, **kwargs):
+        """文件块追加接口
 
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Position(int): 追加内容的起始位置.
+        :param Data(string): 追加的内容
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功返回的结果，包含ETag等信息.
+        """
+        headers = mapped(kwargs)
+        if 'Metadata' in headers.keys():
+            for i in headers['Metadata'].keys():
+                headers[i] = headers['Metadata'][i]
+            headers.pop('Metadata')
+
+        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?append&position="+str(Position))
+        logger.info("append object, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        Body = deal_with_empty_file_stream(Data)
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
+            data=Body,
+            headers=headers)
+        response = rt.headers
+        return response
+      
+      
 if __name__ == "__main__":
     pass
