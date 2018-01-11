@@ -1279,6 +1279,9 @@ class CosS3Client(object):
                     offset += part_size
 
             pool.wait_completion()
+            result = pool.get_result()
+            if not result['success_all']:
+                raise CosClientError('some upload_part fail after max_retry')
             lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
 
             # 完成分片上传
@@ -1385,6 +1388,10 @@ class CosS3Client(object):
                 offset += part_size
 
         pool.wait_completion()
+        result = pool.get_result()
+        if not result['success_all']:
+            raise CosClientError('some upload_part_copy fail after max_retry')
+
         lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
         # 完成分片上传
         try:
@@ -1450,6 +1457,9 @@ class CosS3Client(object):
             data = Body.read(part_size)
 
         pool.wait_completion()
+        result = pool.get_result()
+        if not result['success_all']:
+            raise CosClientError('some upload_part fail after max_retry')
         lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
 
         # 完成分片上传
