@@ -353,7 +353,9 @@ def test_list_objects():
     """列出bucket下的objects"""
     response = client.list_objects(
         Bucket=test_bucket,
-        MaxKeys=100
+        MaxKeys=100,
+        Prefix='中文',
+        Delimiter='/'
     )
     assert response
 
@@ -589,7 +591,7 @@ def test_upload_empty_file():
 
 def test_copy_10G_file_in_same_region():
     """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
-    copy_source = {'Bucket': 'test01-1252448703', 'Key': '/10G.txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test01-1252448703', 'Key': '/10:G .txt', 'Region': 'ap-beijing-1'}
     response = client.copy(
         Bucket='test04-1252448703',
         Key='10G.txt',
@@ -620,5 +622,6 @@ if __name__ == "__main__":
     test_upload_file_multithreading()
     test_copy_file_automatically()
     test_copy_10G_file_in_same_region()
+    test_list_objects()
     test_use_get_auth()
     tearDown()
