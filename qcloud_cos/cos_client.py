@@ -1241,7 +1241,7 @@ class CosS3Client(object):
         :param PartSize(int): 分块的大小设置.
         :param MAXThread(int): 并发上传的最大线程数.
         :param kwargs(dict): 设置请求headers.
-        :return: None.
+        :return(dict): 成功上传文件的元信息.
         """
         file_size = os.path.getsize(LocalFilePath)
         if file_size <= 1024*1024*100:
@@ -1416,10 +1416,11 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
         :param Body(fp): 文件流,必须实现了read方法.
-        :param PartSize(int): 分块的大小设置.
+        :param MaxBufferSize(int): 缓存文件的大小,单位为MB,MaxBufferSize/PartSize决定线程池中最大等待调度的任务数量
+        :param PartSize(int): 分块的大小设置,单位为MB
         :param MAXThread(int): 并发上传的最大线程数.
         :param kwargs(dict): 设置请求headers.
-        :return: None.
+        :return(dict): 成功上传的文件的结果.
         """
         if not hasattr(Body, 'read'):
             raise CosClientError("Body must has attr read")
@@ -1454,7 +1455,6 @@ class CosS3Client(object):
         # 完成分片上传
         try:
             rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
-            print rt
         except Exception as e:
             abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
             raise e
