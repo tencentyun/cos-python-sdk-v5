@@ -12,6 +12,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
 from urllib import quote
+from hashlib import md5
 from streambody import StreamBody
 from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
@@ -55,7 +56,7 @@ class CosConfig(object):
         if Scheme is None:
             Scheme = 'http'
         if(Scheme != 'http' and Scheme != 'https'):
-            raise CosCosClientError('Scheme can be only set to http/https')
+            raise CosClientError('Scheme can be only set to http/https')
         self._scheme = Scheme
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
@@ -440,6 +441,10 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 data=Body)
         response = dict()
+        logger.debug("local md5: {key}".format(key=rt.headers['ETag'][1:-1]))
+        logger.debug("cos md5: {key}".format(key=md5(Body).hexdigest()))
+        if md5(Body).hexdigest() != rt.headers['ETag'][1:-1]:
+            raise CosClientError("MD5 inconsistencies")
         response['ETag'] = rt.headers['ETag']
         return response
 
@@ -1311,7 +1316,7 @@ class CosS3Client(object):
             abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
             raise e
         return rt
-   
+
     def append_object(self, Bucket, Key, Position, Data, **kwargs):
         """文件块追加接口
 
@@ -1341,7 +1346,7 @@ class CosS3Client(object):
             headers=headers)
         response = rt.headers
         return response
-      
-      
+
+
 if __name__ == "__main__":
     pass
