@@ -12,6 +12,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
 from urllib import quote
+from hashlib import md5
 from streambody import StreamBody
 from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
@@ -440,6 +441,10 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 data=Body)
         response = dict()
+        logger.debug("local md5: {key}".format(key=rt.headers['ETag'][1:-1]))
+        logger.debug("cos md5: {key}".format(key=md5(Body).hexdigest()))
+        if md5(Body).hexdigest() != rt.headers['ETag'][1:-1]:
+            raise CosClientError("MD5 inconsistencies")
         response['ETag'] = rt.headers['ETag']
         return response
 
