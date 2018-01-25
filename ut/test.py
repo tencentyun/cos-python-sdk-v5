@@ -5,9 +5,9 @@ import time
 import hashlib
 import os
 import requests
-from cos_client import CosS3Client
-from cos_client import CosConfig
-from cos_exception import CosServiceError
+from qcloud_cos import CosS3Client
+from qcloud_cos import CosConfig
+from qcloud_cos import CosServiceError
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -591,7 +591,7 @@ def test_upload_empty_file():
 
 def test_copy_10G_file_in_same_region():
     """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
-    copy_source = {'Bucket': 'test01-1252448703', 'Key': '/10:G .txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test01-1252448703', 'Key': '10G.txt', 'Region': 'ap-beijing-1'}
     response = client.copy(
         Bucket='test04-1252448703',
         Key='10G.txt',
