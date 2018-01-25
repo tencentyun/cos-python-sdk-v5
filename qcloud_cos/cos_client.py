@@ -620,6 +620,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='POST',
             url=url,
+            data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers,
             params=params)
@@ -1297,7 +1298,7 @@ class CosS3Client(object):
         bucket, path, region, versionid = get_copy_source_info(CopySource)
         params = {}
         if versionid != '':
-            params[versionId] = versionid
+            params['versionId'] = versionid
         url = self._conf.uri(bucket=bucket, path=quote(path, '/-_.~'), scheme=self._conf._scheme, region=region)
         rt = self.send_request(
             method='HEAD',
