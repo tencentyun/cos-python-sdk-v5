@@ -297,7 +297,7 @@ def test_delete_multiple_objects():
     )
     assert response2
     objects = {
-        "Quite": "true",
+        "Quiet": "true",
         "Object": [
             {
                 "Key": file_name1
