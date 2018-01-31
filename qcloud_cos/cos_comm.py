@@ -47,6 +47,7 @@ maplist = {
             'CopySourceIfModifiedSince': 'x-cos-copy-source-If-Modified-Since',
             'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
             'VersionId': 'versionId',
+            'ServerSideEncryption': 'x-cos-server-side-encryption'
            }
 
 

@@ -611,9 +611,19 @@ def test_use_get_auth():
     response = requests.get('http://test01-1252448703.cos.ap-beijing-1.myqcloud.com/test.txt?acl&unsed=123', headers={'Authorization': auth})
     assert response.status_code == 200
 
+def test_upload_with_server_side_encryption():
+    """上传带上加密头部,下载时验证有该头部"""
+    response = client.put_object(
+        Bucket=test_bucket,
+        Key=test_object,
+        Body='123',
+        ServerSideEncryption='AES256'
+    )
+    assert response['x-cos-server-side-encryption'] == 'AES256'
 
 if __name__ == "__main__":
     setUp()
+    test_upload_with_server_side_encryption()
     test_upload_empty_file()
     test_put_get_delete_object_10MB()
     test_put_get_versioning()
