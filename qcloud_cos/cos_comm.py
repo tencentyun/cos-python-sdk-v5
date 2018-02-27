@@ -15,6 +15,7 @@ from cos_exception import CosClientError
 from cos_exception import CosServiceError
 
 SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5G
+LOGGING_UIN = 'id="qcs::cam::uin/100001001014:uin/100001001014"'
 # kwargs中params到http headers的映射
 maplist = {
             'ContentLength': 'Content-Length',
@@ -100,6 +101,7 @@ def xml_to_dict(data, origin_str="", replace_str=""):
     xmldict = Xml2Dict(root)
     xmlstr = str(xmldict)
     xmlstr = xmlstr.replace("{http://www.qcloud.com/document/product/436/7751}", "")
+    xmlstr = xmlstr.replace("{http://doc.s3.amazonaws.com/2006-03-01}", "")
     xmlstr = xmlstr.replace("{http://www.w3.org/2001/XMLSchema-instance}", "")
     if origin_str:
         xmlstr = xmlstr.replace(origin_str, replace_str)

@@ -1021,7 +1021,7 @@ class CosS3Client(object):
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?lifecycle")
-        logger.info("get bucket cors, url=:{url} ,headers=:{headers}".format(
+        logger.info("get bucket lifecycle, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
@@ -1184,6 +1184,51 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
+
+    def put_bucket_logging(self, Bucket, BucketLoggingStatus={}, **kwargs):
+        """设置bucket logging
+
+        :param Bucket(string): 存储桶名称.
+        :param BucketLoggingStatus(dict): 设置Bucket的日志配置.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+        """
+        xml_config = format_xml(data=BucketLoggingStatus, root='BucketLoggingStatus')
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        url = self._conf.uri(bucket=Bucket, path="?logging")
+        logger.info("put bucket logging, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        logging_rt = self.send_request(
+            method='PUT',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+            headers=headers)
+        grant_rt = self.put_bucket_acl(Bucket=Bucket, GrantFullControl=LOGGING_UIN)
+        return None
+
+    def get_bucket_logging(self, Bucket, **kwargs):
+        """获取bucket logging
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的logging配置.
+        """
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path="?logging")
+        logger.info("get bucket logging, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+            headers=headers)
+        data = xml_to_dict(rt.text)
+        return data
 
     # service interface begin
     def list_buckets(self, **kwargs):
