@@ -311,7 +311,6 @@ def test_delete_multiple_objects():
         Bucket=test_bucket,
         Delete=objects
     )
-    assert response
 
 
 def test_create_head_delete_bucket():
@@ -611,6 +610,7 @@ def test_use_get_auth():
     response = requests.get('http://test01-1252448703.cos.ap-beijing-1.myqcloud.com/test.txt?acl&unsed=123', headers={'Authorization': auth})
     assert response.status_code == 200
 
+
 def test_upload_with_server_side_encryption():
     """上传带上加密头部,下载时验证有该头部"""
     response = client.put_object(
@@ -620,6 +620,34 @@ def test_upload_with_server_side_encryption():
         ServerSideEncryption='AES256'
     )
     assert response['x-cos-server-side-encryption'] == 'AES256'
+
+
+def test_put_get_bucket_logging():
+    """测试bucket的logging服务"""
+    logging_bucket = 'logging-beijing-1252448703'
+    logging_config = {
+        'LoggingEnabled': {
+            'TargetBucket': logging_bucket,
+            'TargetPrefix': 'test'
+        }
+    }
+    beijing_conf = CosConfig(
+        Region="ap-beijing",
+        Secret_id=SECRET_ID,
+        Secret_key=SECRET_KEY
+    )
+    logging_client = CosS3Client(beijing_conf)
+    response = logging_client.put_bucket_logging(
+        Bucket=logging_bucket,
+        BucketLoggingStatus=logging_config
+    )
+    time.sleep(4)
+    response = logging_client.get_bucket_logging(
+        Bucket=logging_bucket
+    )
+    assert response['LoggingEnabled']['TargetBucket'] == logging_bucket
+    assert response['LoggingEnabled']['TargetPrefix'] == 'test'
+
 
 if __name__ == "__main__":
     setUp()
@@ -634,4 +662,5 @@ if __name__ == "__main__":
     test_copy_10G_file_in_same_region()
     test_list_objects()
     test_use_get_auth()
+    test_put_get_bucket_logging()
     tearDown()
