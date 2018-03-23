@@ -124,6 +124,21 @@ class CosS3Client(object):
         :param headers(dict): 签名中的http headers.
         :param params(dict): 签名中的http params.
         :return (string): 计算出的V5签名.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取上传请求的签名
+            auth_string = client.get_auth(
+                    Method='PUT'
+                    Bucket='bucket',
+                    Key='test.txt',
+                    Expired=600,
+                    Headers={'header1': 'value1'},
+                    Params={'param1': 'value1'}
+                )
+            print auth_string
         """
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         r = Request(Method, url, headers=Headers, params=Params)
@@ -183,6 +198,19 @@ class CosS3Client(object):
         :param Key(string): COS路径.
         :kwargs(dict): 设置上传的headers.
         :return(dict): 上传成功返回的结果，包含ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            with open('test.txt', 'rb') as fp:
+                response = client.put_object(
+                    Bucket='bucket',
+                    Body=fp,
+                    Key='test.txt'
+                )
+                print response['ETag']
         """
         headers = mapped(kwargs)
         if 'Metadata' in headers.keys():
@@ -212,6 +240,17 @@ class CosS3Client(object):
         :param Key(string): COS路径.
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 下载cos上的文件到本地
+            response = client.get_object(
+                Bucket='bucket'
+                Key='test.txt'
+            )
+            response['Body'].get_stream_to_file('local_file.txt')
         """
         headers = mapped(kwargs)
         params = {}
@@ -247,6 +286,16 @@ class CosS3Client(object):
         :param Key(string): COS路径.
         :param Expired(int): 签名过期时间.
         :return(string): 预先签名的下载URL.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取预签名文件下载链接
+            response = client.get_presigned_download_url(
+                Bucket='bucket'
+                Key='test.txt'
+            )
         """
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~'))
         sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=300)
@@ -260,6 +309,16 @@ class CosS3Client(object):
         :param Key(string): COS路径.
         :param kwargs(dict): 设置请求headers.
         :return: dict.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除一个文件
+            response = client.delete_object(
+                Bucket='bucket'
+                Key='test.txt'
+            )
         """
         headers = mapped(kwargs)
         params = {}
@@ -286,6 +345,27 @@ class CosS3Client(object):
         :param Delete(dict): 批量删除的object信息.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 批量删除的结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 批量删除文件
+            objects = {
+                "Quiet": "true",
+                "Object": [
+                    {
+                        "Key": "file_name1"
+                    },
+                    {
+                        "Key": "file_name2"
+                    }
+                ]
+            }
+            response = client.delete_objects(
+                Bucket='bucket'
+                Delete=objects
+            )
         """
         lst = ['<Object>', '</Object>']  # 类型为list的标签
         xml_config = format_xml(data=Delete, root='Delete', lst=lst)
@@ -313,6 +393,16 @@ class CosS3Client(object):
         :param Key(string): COS路径.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 文件的metadata信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询文件属性
+            response = client.head_object(
+                Bucket='bucket'
+                Key='test.txt'
+            )
         """
         headers = mapped(kwargs)
         params = {}
@@ -340,6 +430,18 @@ class CosS3Client(object):
         :param CopyStatus(string): 拷贝状态,可选值'Copy'|'Replaced'.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 拷贝成功的结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 文件拷贝
+            copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+            response = client.copy_object(
+                Bucket='bucket',
+                Key='test.txt',
+                CopySource=copy_source
+            )
         """
         headers = mapped(kwargs)
         if 'Metadata' in headers.keys():
@@ -375,6 +477,20 @@ class CosS3Client(object):
         :param CopySourceRange(string): 拷贝源的字节范围,bytes=first-last。
         :param kwargs(dict): 设置请求headers.
         :return(dict): 拷贝成功的结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 分块上传拷贝分块
+            copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+            response = client.upload_part_copy(
+                Bucket='bucket',
+                Key='test.txt',
+                PartNumber=1,
+                UploadId='your uploadid',
+                CopySource=copy_source
+            )
         """
         headers = mapped(kwargs)
         headers['x-cos-copy-source'] = gen_copy_source_url(CopySource)
@@ -396,12 +512,22 @@ class CosS3Client(object):
         return data
 
     def create_multipart_upload(self, Bucket, Key, **kwargs):
-        """创建分片上传，适用于大文件上传
+        """创建分块上传，适用于大文件上传
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 初始化分块上传返回的结果，包含UploadId等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建分块上传
+            response = client.create_multipart_upload(
+                Bucket='bucket',
+                Key='test.txt'
+            )
         """
         headers = mapped(kwargs)
         if 'Metadata' in headers.keys():
@@ -423,7 +549,7 @@ class CosS3Client(object):
         return data
 
     def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, **kwargs):
-        """上传分片，单个大小不得超过5GB
+        """上传分块，单个大小不得超过5GB
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
@@ -432,6 +558,19 @@ class CosS3Client(object):
         :param UploadId(string): 分块上传创建的UploadId.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 上传成功返回的结果，包含单个分块ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 分块上传
+            with open('test.txt', 'rb') as fp:
+                data = fp.read(1024*1024)
+                response = client.upload_part(
+                    Bucket='bucket',
+                    Body=data,
+                    Key='test.txt'
+                )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?partNumber={PartNumber}&uploadId={UploadId}".format(
@@ -460,6 +599,18 @@ class CosS3Client(object):
         :param MultipartUpload(dict): 所有分块的信息,包含Etag和PartNumber.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 上传成功返回的结果，包含整个文件的ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 分块上传
+            response = client.complete_multipart_upload(
+                Bucket='bucket',
+                Key='multipartfile.txt',
+                UploadId='uploadid',
+                MultipartUpload={'Part': lst}
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?uploadId={UploadId}".format(UploadId=UploadId))
@@ -486,6 +637,17 @@ class CosS3Client(object):
         :param UploadId(string): 分块上传创建的UploadId.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 分块上传
+            response = client.abort_multipart_upload(
+                Bucket='bucket',
+                Key='multipartfile.txt',
+                UploadId='uploadid'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?uploadId={UploadId}".format(UploadId=UploadId))
@@ -510,6 +672,17 @@ class CosS3Client(object):
         :param PartNumberMarker(int): 设置返回的开始处,从PartNumberMarker下一个分块开始列出.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 分块的相关信息，包括Etag和PartNumber等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 列出分块
+            response = client.list_parts(
+                Bucket='bucket',
+                Key='multipartfile.txt',
+                UploadId='uploadid'
+            )
         """
         headers = mapped(kwargs)
         decodeflag = True
@@ -549,6 +722,18 @@ class CosS3Client(object):
         :param AccessControlPolicy(dict): 设置object ACL规则.
         :param kwargs(dict): 通过headers来设置ACL.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置 object ACL
+            response = client.put_object_acl(
+                Bucket='bucket',
+                Key='multipartfile.txt',
+                ACL='public-read',
+                GrantRead='id="qcs::cam::uin/123:uin/456",id="qcs::cam::uin/123:uin/123"'
+            )
         """
         lst = [  # 类型为list的标签
             '<Grant>',
@@ -576,6 +761,16 @@ class CosS3Client(object):
         :param Key(string): COS路径.
         :param kwargs(dict): 设置请求headers.
         :return(dict): Object对应的ACL信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取object ACL
+            response = client.get_object_acl(
+                Bucket='bucket',
+                Key='multipartfile.txt'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?acl")
@@ -629,6 +824,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建bucket
+            response = client.create_bucket(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
@@ -648,6 +852,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket
+            response = client.delete_bucket(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
@@ -672,6 +885,18 @@ class CosS3Client(object):
         :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 文件的相关信息，包括Etag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 列出bucket
+            response = client.list_objects(
+                Bucket='bucket',
+                MaxKeys=100,
+                Prefix='中文',
+                Delimiter='/'
+            )
         """
         decodeflag = True  # 是否需要对结果进行decode
         headers = mapped(kwargs)
@@ -727,6 +952,18 @@ class CosS3Client(object):
         :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 文件的相关信息，包括Etag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 列出bucket带版本
+            response = client.list_objects_versions(
+                Bucket='bucket',
+                MaxKeys=100,
+                Prefix='中文',
+                Delimiter='/'
+            )
         """
         headers = mapped(kwargs)
         decodeflag = True
@@ -786,6 +1023,18 @@ class CosS3Client(object):
         :param EncodingType(string): 设置返回结果编码方式,只能设置为url.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 文件的相关信息，包括Etag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 列出所有分块上传
+            response = client.list_multipart_uploads(
+                Bucket='bucket',
+                MaxUploads=100,
+                Prefix='中文',
+                Delimiter='/'
+            )
         """
         headers = mapped(kwargs)
         decodeflag = True
@@ -839,6 +1088,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 确认bucket是否存在
+            response = client.head_bucket(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
@@ -859,6 +1117,17 @@ class CosS3Client(object):
         :param AccessControlPolicy(dict): 设置bucket ACL规则.
         :param kwargs(dict): 通过headers来设置ACL.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置 object ACL
+            response = client.put_bucket_acl(
+                Bucket='bucket',
+                ACL='private',
+                GrantRead='id="qcs::cam::uin/123:uin/456",id="qcs::cam::uin/123:uin/123"'
+            )
         """
         lst = [  # 类型为list的标签
             '<Grant>',
@@ -885,6 +1154,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置headers.
         :return(dict): Bucket对应的ACL信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置 object ACL
+            response = client.get_bucket_acl(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?acl")
@@ -910,6 +1188,28 @@ class CosS3Client(object):
         :param CORSConfiguration(dict): 设置Bucket跨域规则.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket跨域配置
+            cors_config = {
+                'CORSRule': [
+                    {
+                        'ID': '1234',
+                        'AllowedOrigin': ['http://www.qq.com'],
+                        'AllowedMethod': ['GET', 'PUT'],
+                        'AllowedHeader': ['x-cos-meta-test'],
+                        'ExposeHeader': ['x-cos-meta-test1'],
+                        'MaxAgeSeconds': 500
+                    }
+                ]
+            }
+            response = client.put_bucket_cors(
+                Bucket='bucket',
+                CORSConfiguration=cors_config
+            )
         """
         lst = [  # 类型为list的标签
             '<CORSRule>',
@@ -944,6 +1244,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 获取Bucket对应的跨域配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket跨域配置
+            response = client.get_bucket_cors(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?cors")
@@ -976,6 +1285,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket跨域配置
+            response = client.delete_bucket_cors(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?cors")
@@ -996,6 +1314,26 @@ class CosS3Client(object):
         :param LifecycleConfiguration(dict): 设置Bucket的生命周期规则.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket生命周期配置
+            lifecycle_config = {
+                'Rule': [
+                    {
+                        'Expiration': {'Days': 100},
+                        'ID': '123',
+                        'Filter': {'Prefix': ''},
+                        'Status': 'Enabled',
+                    }
+                ]
+            }
+            response = client.put_bucket_lifecycle(
+                Bucket='bucket',
+                LifecycleConfiguration=lifecycle_config
+            )
         """
         lst = ['<Rule>', '<Tag>', '</Tag>', '</Rule>']  # 类型为list的标签
         xml_config = format_xml(data=LifecycleConfiguration, root='LifecycleConfiguration', lst=lst)
@@ -1020,6 +1358,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): Bucket对应的生命周期配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket生命周期配置
+            response = client.get_bucket_lifecycle(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?lifecycle")
@@ -1041,6 +1388,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket生命周期配置
+            response = client.delete_bucket_lifecycle(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?lifecycle")
@@ -1061,6 +1417,16 @@ class CosS3Client(object):
         :param Status(string): 设置Bucket版本控制的状态，可选值为'Enabled'|'Suspended'.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 打开多版本配置
+            response = client.put_bucket_versioning(
+                Bucket='bucket',
+                Status='Enabled'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?versioning")
@@ -1086,6 +1452,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 获取Bucket版本控制的配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取多版本配置
+            response = client.get_bucket_versioning(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?versioning")
@@ -1106,6 +1481,16 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 存储桶的地域信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket所在地域信息
+            response = client.get_bucket_location(
+                Bucket='bucket'
+            )
+            print response['LocationConstraint']
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?location")
@@ -1129,6 +1514,29 @@ class CosS3Client(object):
         :param ReplicationConfiguration(dict): 设置Bucket的跨区域复制规则.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket跨区域复制配置
+            replication_config = {
+                'Role': 'qcs::cam::uin/735905558:uin/735905558',
+                'Rule': [
+                    {
+                        'ID': '123',
+                        'Status': 'Enabled',
+                        'Prefix': 'replication',
+                        'Destination': {
+                            'Bucket': 'qcs:id/0:cos:cn-south:appid/1252448703:replicationsouth'
+                        }
+                    }
+                ]
+            }
+            response = client.put_bucket_replication(
+                Bucket='bucket',
+                ReplicationConfiguration=replication_config
+            )
         """
         lst = ['<Rule>', '</Rule>']  # 类型为list的标签
         xml_config = format_xml(data=ReplicationConfiguration, root='ReplicationConfiguration', lst=lst)
@@ -1153,6 +1561,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): Bucket对应的跨区域复制配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket跨区域复制配置
+            response = client.get_bucket_replication(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?replication")
@@ -1174,6 +1591,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket跨区域复制配置
+            response = client.delete_bucket_replication(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?replication")
@@ -1194,6 +1620,23 @@ class CosS3Client(object):
         :param BucketLoggingStatus(dict): 设置Bucket的日志配置.
         :param kwargs(dict): 设置请求headers.
         :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket logging服务
+            logging_bucket = 'logging-beijing-1252448703'
+            logging_config = {
+                'LoggingEnabled': {
+                    'TargetBucket': logging_bucket,
+                    'TargetPrefix': 'test'
+                }
+            }
+            response = logging_client.put_bucket_logging(
+                Bucket=logging_bucket,
+                BucketLoggingStatus=logging_config
+            )
         """
         xml_config = format_xml(data=BucketLoggingStatus, root='BucketLoggingStatus')
         headers = mapped(kwargs)
@@ -1218,6 +1661,15 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): Bucket对应的logging配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket logging服务配置
+            response = logging_client.get_bucket_logging(
+                Bucket=logging_bucket
+            )
         """
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path="?logging")
@@ -1237,6 +1689,15 @@ class CosS3Client(object):
         """列出所有bucket
 
         :return(dict): 账号下bucket相关信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取账户下所有存储桶信息
+            response = logging_client.list_buckets(
+                Bucket='bucket'
+            )
         """
         headers = mapped(kwargs)
         url = 'http://service.cos.myqcloud.com/'
@@ -1284,6 +1745,21 @@ class CosS3Client(object):
         :param MAXThread(int): 并发上传的最大线程数.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 成功上传文件的元信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 根据文件大小自动选择分块大小,多线程并发上传提高上传速度
+            file_name = 'thread_1GB_test'
+            response = client.upload_file(
+                Bucket='bucket',
+                Key=file_name,
+                LocalFilePath=file_name,
+                MAXThread=10,
+                CacheControl='no-cache',
+                ContentDisposition='download.txt'
+            )
         """
         file_size = os.path.getsize(LocalFilePath)
         if file_size <= 1024*1024*100:
@@ -1386,6 +1862,19 @@ class CosS3Client(object):
         :param MAXThread(int): 并发上传的最大线程数.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 拷贝成功的结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 根据拷贝源文件的大小自动选择拷贝策略
+            copy_source = {'Bucket': 'testcopt-1252468703', 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
+            response = client.copy(
+                Bucket='test',
+                Key='copy_10G.txt',
+                CopySource=copy_source,
+                MAXThread=10
+            )
         """
         # 同园区直接走copy_object
         if self._check_same_region(self._conf._region, CopySource):
