@@ -645,12 +645,35 @@ def test_put_get_bucket_logging():
     response = logging_client.get_bucket_logging(
         Bucket=logging_bucket
     )
+    print response
     assert response['LoggingEnabled']['TargetBucket'] == logging_bucket
     assert response['LoggingEnabled']['TargetPrefix'] == 'test'
 
 
+def test_put_object_enable_md5():
+    """上传文件,SDK计算content-md5头部"""
+    file_size = 10
+    file_name = 'test_object_sdk_caculate_md5.file'
+    gen_file(file_name, 10)
+    with open(file_name, 'rb') as f:
+        etag = get_raw_md5(f.read())
+    with open(file_name, 'rb') as fp:
+        put_response = client.put_object(
+            Bucket=test_bucket,
+            Body=fp,
+            Key=file_name,
+            EnableMD5=True,
+            CacheControl='no-cache',
+            ContentDisposition='download.txt'
+        )
+        assert etag == put_response['Etag']
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+
 if __name__ == "__main__":
     setUp()
+    test_put_object_enable_md5()
     test_upload_with_server_side_encryption()
     test_upload_empty_file()
     test_put_get_delete_object_10MB()

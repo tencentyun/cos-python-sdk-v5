@@ -69,6 +69,21 @@ def get_md5(data):
     return MD5
 
 
+def get_content_md5(body):
+    body_type = type(body)
+    if body_type == str:
+        return get_md5(body)
+    elif body_type == file:
+        if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+            file_position = body.tell()  # 记录文件当前位置
+            md5_str = get_md5(body.read())
+            body.seek(file_position)  # 恢复初始的文件位置
+            return md5_str
+        else:
+            raise CosClientError('can not get md5 digest for file without necessary attrs, including tell, seek and read')
+    return None
+
+
 def dict_to_xml(data):
     """V5使用xml格式，将输入的dict转换为xml"""
     doc = xml.dom.minidom.Document()
@@ -105,6 +120,7 @@ def xml_to_dict(data, origin_str="", replace_str=""):
     xmldict = Xml2Dict(root)
     xmlstr = str(xmldict)
     xmlstr = xmlstr.replace("{http://www.qcloud.com/document/product/436/7751}", "")
+    xmlstr = xmlstr.replace("{https://cloud.tencent.com/document/product/436}", "")
     xmlstr = xmlstr.replace("{http://doc.s3.amazonaws.com/2006-03-01}", "")
     xmlstr = xmlstr.replace("{http://www.w3.org/2001/XMLSchema-instance}", "")
     if origin_str:
