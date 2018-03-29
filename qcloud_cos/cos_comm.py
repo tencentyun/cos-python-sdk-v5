@@ -48,7 +48,11 @@ maplist = {
             'CopySourceIfModifiedSince': 'x-cos-copy-source-If-Modified-Since',
             'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
             'VersionId': 'versionId',
-            'ServerSideEncryption': 'x-cos-server-side-encryption'
+            'ServerSideEncryption': 'x-cos-server-side-encryption',
+            'SSECustomerAlgorithm': 'x-cos-server-side-encryption-customer-algorithm',
+            'SSECustomerKey': 'x-cos-server-side-encryption-customer-key',
+            'SSECustomerKeyMD5': 'x-cos-server-side-encryption-customer-key-MD5',
+            'SSEKMSKeyId': 'x-cos-server-side-encryption-cos-kms-key-id'
            }
 
 
