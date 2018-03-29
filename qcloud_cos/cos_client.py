@@ -190,12 +190,13 @@ class CosS3Client(object):
         return None
 
     #  s3 object interface begin
-    def put_object(self, Bucket, Body, Key, **kwargs):
+    def put_object(self, Bucket, Body, Key, EnableMD5=False, **kwargs):
         """单文件上传接口，适用于小文件，最大不得超过5GB
 
         :param Bucket(string): 存储桶名称.
         :param Body(file|string): 上传的文件内容，类型为文件流或字节流.
         :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
         :kwargs(dict): 设置上传的headers.
         :return(dict): 上传成功返回的结果，包含ETag等信息.
 
@@ -223,6 +224,10 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         Body = deal_with_empty_file_stream(Body)
+        if EnableMD5:
+            md5_str = get_content_md5(Body)
+            if md5_str:
+                headers['Content-MD5'] = md5_str
         rt = self.send_request(
             method='PUT',
             url=url,
