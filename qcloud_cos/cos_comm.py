@@ -8,12 +8,14 @@ import sys
 import xml.dom.minidom
 import xml.etree.ElementTree
 from urllib import quote
+from urllib import unquote
 from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
 from cos_exception import CosClientError
 from cos_exception import CosServiceError
 
 SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5G
+LOGGING_UIN = 'id="qcs::cam::uin/100001001014:uin/100001001014"'
 # kwargs中params到http headers的映射
 maplist = {
             'ContentLength': 'Content-Length',
@@ -45,7 +47,12 @@ maplist = {
             'CopySourceIfNoneMatch': 'x-cos-copy-source-If-None-Match',
             'CopySourceIfModifiedSince': 'x-cos-copy-source-If-Modified-Since',
             'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
-            'VersionId': 'x-cos-version-id',
+            'VersionId': 'versionId',
+            'ServerSideEncryption': 'x-cos-server-side-encryption',
+            'SSECustomerAlgorithm': 'x-cos-server-side-encryption-customer-algorithm',
+            'SSECustomerKey': 'x-cos-server-side-encryption-customer-key',
+            'SSECustomerKeyMD5': 'x-cos-server-side-encryption-customer-key-MD5',
+            'SSEKMSKeyId': 'x-cos-server-side-encryption-cos-kms-key-id'
            }
 
 
@@ -60,6 +67,21 @@ def get_md5(data):
     m2 = hashlib.md5(data)
     MD5 = base64.standard_b64encode(m2.digest())
     return MD5
+
+
+def get_content_md5(body):
+    body_type = type(body)
+    if body_type == str:
+        return get_md5(body)
+    elif body_type == file:
+        if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+            file_position = body.tell()  # 记录文件当前位置
+            md5_str = get_md5(body.read())
+            body.seek(file_position)  # 恢复初始的文件位置
+            return md5_str
+        else:
+            raise CosClientError('can not get md5 digest for file without necessary attrs, including tell, seek and read')
+    return None
 
 
 def dict_to_xml(data):
@@ -98,6 +120,8 @@ def xml_to_dict(data, origin_str="", replace_str=""):
     xmldict = Xml2Dict(root)
     xmlstr = str(xmldict)
     xmlstr = xmlstr.replace("{http://www.qcloud.com/document/product/436/7751}", "")
+    xmlstr = xmlstr.replace("{https://cloud.tencent.com/document/product/436}", "")
+    xmlstr = xmlstr.replace("{http://doc.s3.amazonaws.com/2006-03-01}", "")
     xmlstr = xmlstr.replace("{http://www.w3.org/2001/XMLSchema-instance}", "")
     if origin_str:
         xmlstr = xmlstr.replace(origin_str, replace_str)
@@ -193,6 +217,7 @@ def format_path(path):
 def get_copy_source_info(CopySource):
     """获取拷贝源的所有信息"""
     appid = ""
+    versionid = ""
     if 'Appid' in CopySource.keys():
         appid = CopySource['Appid']
     if 'Bucket' in CopySource.keys():
@@ -209,13 +234,17 @@ def get_copy_source_info(CopySource):
         path = CopySource['Key']
     else:
         raise CosClientError('CopySource Need Parameter Key')
-    return bucket, path, region
+    if 'VersionId' in CopySource.keys():
+        versionid = CopySource['VersionId']
+    return bucket, path, region, versionid
 
 
 def gen_copy_source_url(CopySource):
     """拼接拷贝源url"""
-    bucket, path, region = get_copy_source_info(CopySource)
+    bucket, path, region, versionid = get_copy_source_info(CopySource)
     path = format_path(path)
+    if versionid != '':
+        path = path + '?versionId=' + versionid
     url = "{bucket}.{region}.myqcloud.com/{path}".format(
             bucket=bucket,
             region=region,
@@ -244,4 +273,28 @@ def deal_with_empty_file_stream(data):
                 return ""
         except io.UnsupportedOperation:
             return ""
+    return data
+
+
+def format_dict(data, key_lst):
+    """转换返回dict中的可重复字段为list"""
+    for key in key_lst:
+        # 将dict转为list，保持一致
+        if key in data.keys() and isinstance(data[key], dict):
+            lst = []
+            lst.append(data[key])
+            data[key] = lst
+    return data
+
+
+def decode_result(data, key_lst, multi_key_list):
+    """decode结果中的字段"""
+    for key in key_lst:
+        if key in data.keys() and data[key]:
+            data[key] = unquote(data[key])
+    for multi_key in multi_key_list:
+        if multi_key[0] in data.keys():
+            for item in data[multi_key[0]]:
+                if multi_key[1] in item.keys() and item[multi_key[1]]:
+                    item[multi_key[1]] = unquote(item[multi_key[1]])
     return data

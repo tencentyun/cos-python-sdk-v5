@@ -4,11 +4,15 @@ from qcloud_cos import CosS3Client
 from qcloud_cos import CosServiceError
 from qcloud_cos import CosClientError
 
+import logging
+
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7
 
 # pip安装指南:pip install -U cos-python-sdk-v5
 
 # cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
+
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
 # 设置用户属性, 包括secret_id, secret_key, region
 # appid已在配置中移除,请在参数Bucket中带上appid。Bucket由bucketname-appid组成
