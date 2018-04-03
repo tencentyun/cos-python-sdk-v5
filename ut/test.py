@@ -5,9 +5,9 @@ import time
 import hashlib
 import os
 import requests
-from cos_client import CosS3Client
-from cos_client import CosConfig
-from cos_exception import CosServiceError
+from qcloud_cos import CosS3Client
+from qcloud_cos import CosConfig
+from qcloud_cos import CosServiceError
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -297,7 +297,7 @@ def test_delete_multiple_objects():
     )
     assert response2
     objects = {
-        "Quite": "true",
+        "Quiet": "true",
         "Object": [
             {
                 "Key": file_name1
@@ -311,7 +311,6 @@ def test_delete_multiple_objects():
         Bucket=test_bucket,
         Delete=objects
     )
-    assert response
 
 
 def test_create_head_delete_bucket():
@@ -353,7 +352,9 @@ def test_list_objects():
     """列出bucket下的objects"""
     response = client.list_objects(
         Bucket=test_bucket,
-        MaxKeys=100
+        MaxKeys=100,
+        Prefix='中文',
+        Delimiter='/'
     )
     assert response
 
@@ -589,7 +590,7 @@ def test_upload_empty_file():
 
 def test_copy_10G_file_in_same_region():
     """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
-    copy_source = {'Bucket': 'test01-1252448703', 'Key': '/10G.txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test01-1252448703', 'Key': '10G.txt', 'Region': 'ap-beijing-1'}
     response = client.copy(
         Bucket='test04-1252448703',
         Key='10G.txt',
@@ -610,8 +611,70 @@ def test_use_get_auth():
     assert response.status_code == 200
 
 
+def test_upload_with_server_side_encryption():
+    """上传带上加密头部,下载时验证有该头部"""
+    response = client.put_object(
+        Bucket=test_bucket,
+        Key=test_object,
+        Body='123',
+        ServerSideEncryption='AES256'
+    )
+    assert response['x-cos-server-side-encryption'] == 'AES256'
+
+
+def test_put_get_bucket_logging():
+    """测试bucket的logging服务"""
+    logging_bucket = 'logging-beijing-1252448703'
+    logging_config = {
+        'LoggingEnabled': {
+            'TargetBucket': logging_bucket,
+            'TargetPrefix': 'test'
+        }
+    }
+    beijing_conf = CosConfig(
+        Region="ap-beijing",
+        Secret_id=SECRET_ID,
+        Secret_key=SECRET_KEY
+    )
+    logging_client = CosS3Client(beijing_conf)
+    response = logging_client.put_bucket_logging(
+        Bucket=logging_bucket,
+        BucketLoggingStatus=logging_config
+    )
+    time.sleep(4)
+    response = logging_client.get_bucket_logging(
+        Bucket=logging_bucket
+    )
+    print response
+    assert response['LoggingEnabled']['TargetBucket'] == logging_bucket
+    assert response['LoggingEnabled']['TargetPrefix'] == 'test'
+
+
+def test_put_object_enable_md5():
+    """上传文件,SDK计算content-md5头部"""
+    file_size = 10
+    file_name = 'test_object_sdk_caculate_md5.file'
+    gen_file(file_name, 10)
+    with open(file_name, 'rb') as f:
+        etag = get_raw_md5(f.read())
+    with open(file_name, 'rb') as fp:
+        put_response = client.put_object(
+            Bucket=test_bucket,
+            Body=fp,
+            Key=file_name,
+            EnableMD5=True,
+            CacheControl='no-cache',
+            ContentDisposition='download.txt'
+        )
+        assert etag == put_response['Etag']
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+
 if __name__ == "__main__":
     setUp()
+    test_put_object_enable_md5()
+    test_upload_with_server_side_encryption()
     test_upload_empty_file()
     test_put_get_delete_object_10MB()
     test_put_get_versioning()
@@ -620,5 +683,7 @@ if __name__ == "__main__":
     test_upload_file_multithreading()
     test_copy_file_automatically()
     test_copy_10G_file_in_same_region()
+    test_list_objects()
     test_use_get_auth()
+    test_put_get_bucket_logging()
     tearDown()
