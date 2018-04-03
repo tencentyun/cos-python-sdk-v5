@@ -27,9 +27,10 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 .. code:: python
 
     # 设置用户属性, 包括secret_id, secret_key, region
+    # appid已在配置中移除,请在参数Bucket中带上appid。Bucket由bucketname-appid组成
     secret_id = 'xxxxxxxx'     # 替换为用户的secret_id
     secret_key = 'xxxxxxx'     # 替换为用户的secret_key
-    region = 'ap-beiging-1'    # 替换为用户的region 
+    region = 'ap-beijing-1'    # 替换为用户的region 
     token = ''                 # 使用临时秘钥需要传入Token，默认为空,可不填
     config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  #获取配置对象
     client = CosS3Client(config)                                                                #获取客户端对象
@@ -40,7 +41,7 @@ cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
     ############################################################################
     # 1. 上传单个文件
     response = client.put_object(
-        Bucket='test01-123456789',
+        Bucket='test01-123456789',  # Bucket由bucketname-appid组成
         Body='TY'*1024*512*file_size,
         Key=file_name,
         CacheControl='no-cache',
