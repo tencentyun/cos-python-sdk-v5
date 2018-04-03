@@ -553,7 +553,7 @@ class CosS3Client(object):
         data = xml_to_dict(rt.text)
         return data
 
-    def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, **kwargs):
+    def upload_part(self, Bucket, Key, Body, PartNumber, UploadId, EnableMD5=False, **kwargs):
         """上传分块，单个大小不得超过5GB
 
         :param Bucket(string): 存储桶名称.
@@ -562,6 +562,7 @@ class CosS3Client(object):
         :param PartNumber(int): 上传分块的编号.
         :param UploadId(string): 分块上传创建的UploadId.
         :param kwargs(dict): 设置请求headers.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
         :return(dict): 上传成功返回的结果，包含单个分块ETag等信息.
 
         .. code-block:: python
@@ -585,6 +586,10 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         Body = deal_with_empty_file_stream(Body)
+        if EnableMD5:
+            md5_str = get_content_md5(Body)
+            if md5_str:
+                headers['Content-MD5'] = md5_str
         rt = self.send_request(
                 method='PUT',
                 url=url,
