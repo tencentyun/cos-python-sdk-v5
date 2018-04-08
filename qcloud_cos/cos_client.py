@@ -152,7 +152,7 @@ class CosS3Client(object):
             timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.4.1'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.4.0'
         try:
             for j in range(self._retry):
                 if method == 'POST':
@@ -826,6 +826,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers,
             params=params)
+        print rt.headers
         return None
 
     # s3 bucket interface begin
