@@ -826,6 +826,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers,
             params=params)
+        print rt.headers
         return None
 
     # s3 bucket interface begin
