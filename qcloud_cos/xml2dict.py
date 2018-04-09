@@ -4,6 +4,7 @@ import xml.etree.ElementTree
 
 class Xml2Dict(dict):
     def __init__(self, parent_node):
+        super(Xml2Dict,self).__init__()
         if parent_node.items():
             self.updateDict(dict(parent_node.items()))
         for element in parent_node:
@@ -43,4 +44,4 @@ if __name__ == "__main__":
     </result>"""
     root = xml.etree.ElementTree.fromstring(s)
     xmldict = Xml2Dict(root)
-    print xmldict
+    print(xmldict)

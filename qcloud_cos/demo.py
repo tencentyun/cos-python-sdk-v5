@@ -4,7 +4,6 @@ from qcloud_cos import CosS3Client
 from qcloud_cos import CosServiceError
 from qcloud_cos import CosClientError
 
-import sys
 import logging
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7

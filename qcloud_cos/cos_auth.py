@@ -5,8 +5,8 @@ import time
 import urllib
 import hashlib
 import logging
-from urllib import quote
-from urlparse import urlparse
+from urllib.parse import quote
+from urllib.parse import urlparse
 from requests.auth import AuthBase
 logger = logging.getLogger(__name__)
 
@@ -25,12 +25,12 @@ def filter_headers(data):
 
 
 def to_string(data):
-    """转换unicode为string.
+    """转换str为bytes.
 
     :param data(unicode|string): 待转换的unicode|string.
     :return(string): 转换后的string.
     """
-    if isinstance(data, unicode):
+    if isinstance(data, str):
         return data.encode('utf8')
     return data
 
@@ -38,8 +38,11 @@ def to_string(data):
 class CosS3Auth(AuthBase):
 
     def __init__(self, secret_id, secret_key, key='', params={}, expire=10000):
-        self._secret_id = to_string(secret_id)
-        self._secret_key = to_string(secret_key)
+        # self._secret_id = to_string(secret_id)
+        self._secret_id = secret_id
+        # print('!!!!!!!!!!!!',type(self._secret_id))
+        # self._secret_key = to_string(secret_key)
+        self._secret_key = secret_key
         self._expire = expire
         self._params = params
         if key:
@@ -59,22 +62,31 @@ class CosS3Auth(AuthBase):
         format_str = "{method}\n{host}\n{params}\n{headers}\n".format(
             method=r.method.lower(),
             host=path,
-            params=urllib.urlencode(sorted(uri_params.items())),
-            headers='&'.join(map(lambda (x, y): "%s=%s" % (x, y), sorted(headers.items())))
+            params=urllib.parse.urlencode(sorted(uri_params.items())),
+            headers='&'.join(map(lambda x_y: "%s=%s" % (x_y[0] , x_y[1]), sorted(headers.items())))
         )
+
         logger.debug("format str: " + format_str)
+
 
         start_sign_time = int(time.time())
         sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time+self._expire)
         sha1 = hashlib.sha1()
-        sha1.update(format_str)
+        sha1.update(to_string(format_str))
 
         str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
-        sign_key = hmac.new(self._secret_key, sign_time, hashlib.sha1).hexdigest()
-        sign = hmac.new(sign_key, str_to_sign, hashlib.sha1).hexdigest()
+
+
+
+
+
+        sign_key = hmac.new(to_string(self._secret_key), to_string(sign_time), hashlib.sha1).hexdigest()
+
+        sign = hmac.new(to_string(sign_key), to_string(str_to_sign), hashlib.sha1).hexdigest()
         logger.debug('sign_key: ' + str(sign_key))
         logger.debug('sign: ' + str(sign))
+
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
 
         r.headers['Authorization'] = sign_tpl.format(
@@ -88,8 +100,10 @@ class CosS3Auth(AuthBase):
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
         logger.debug("request headers: " + str(r.headers))
+
         return r
 
 
 if __name__ == "__main__":
+
     pass

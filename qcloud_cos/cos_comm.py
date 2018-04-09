@@ -7,8 +7,8 @@ import io
 import sys
 import xml.dom.minidom
 import xml.etree.ElementTree
-from urllib import quote
-from urllib import unquote
+from urllib.parse import quote
+from urllib.parse import unquote
 from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
 from cos_exception import CosClientError
@@ -57,7 +57,7 @@ maplist = {
 
 
 def to_unicode(s):
-    if isinstance(s, unicode):
+    if isinstance(s, str):
         return s
     else:
         return s.decode('utf-8')
@@ -71,9 +71,10 @@ def get_md5(data):
 
 def get_content_md5(body):
     body_type = type(body)
-    if body_type == str:
+    # if body_type == str:
+    if isinstance(body , str):
         return get_md5(body)
-    elif body_type == file:
+    elif isinstance(body,io.IOBase):
         if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
             file_position = body.tell()  # 记录文件当前位置
             md5_str = get_md5(body.read())

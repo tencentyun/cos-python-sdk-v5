@@ -1,2 +1,4 @@
 requests
+xml2dict
 dicttoxml
+urllib

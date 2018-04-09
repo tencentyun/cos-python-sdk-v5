@@ -11,11 +11,11 @@ import copy
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
-from urllib import quote
-from hashlib import md5
+from urllib.parse import quote
+# from hashlib import md5
 from streambody import StreamBody
-from xml2dict import Xml2Dict
-from dicttoxml import dicttoxml
+# from xml2dict import Xml2Dict
+# from dicttoxml import dicttoxml
 from cos_auth import CosS3Auth
 from cos_comm import *
 from cos_threadpool import SimpleThreadPool
@@ -23,8 +23,7 @@ from cos_exception import CosClientError
 from cos_exception import CosServiceError
 
 logger = logging.getLogger(__name__)
-reload(sys)
-sys.setdefaultencoding('utf-8')
+
 
 
 class CosConfig(object):
@@ -229,6 +228,7 @@ class CosS3Client(object):
             md5_str = get_content_md5(Body)
             if md5_str:
                 headers['Content-MD5'] = md5_str
+        # print('############',type(self._conf._secret_id), type(self._conf._secret_key), type(Key))
         rt = self.send_request(
             method='PUT',
             url=url,
@@ -826,7 +826,6 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers,
             params=params)
-        print rt.headers
         return None
 
     # s3 bucket interface begin
