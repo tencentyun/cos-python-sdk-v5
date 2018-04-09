@@ -6,10 +6,10 @@ python:
 install:
 - pip install requests
 - pip install nose
-- pip install pep8
+# - pip install pep8
 - pip install dicttoxml
 script:
-- pep8 --max-line-length=180 qcloud_cos/.
+# - pep8 --max-line-length=180 qcloud_cos/.
 - nosetests -s -v ut/
 deploy:
   provider: pypi
