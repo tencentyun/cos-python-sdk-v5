@@ -2043,6 +2043,151 @@ class CosS3Client(object):
         response = rt.headers
         return response
 
+    def put_object_from_local_file(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
+        """本地文件上传接口，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param LocalFilePath(string): 上传文件的本地路径.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功返回的结果，包含ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            response = client.put_object(
+                Bucket='bucket',
+                LocalFilePath='local.txt',
+                Key='test.txt'
+            )
+            print response['ETag']
+        """
+        with open(LocalFilePath, 'rb') as fp:
+            return self.put_object(Bucket, fp, Key, EnableMD5, **kwargs)
+
+    def object_exists(self, Bucket, Key):
+        """判断一个文件是否存在
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :return(bool): 文件是否存在,返回True为存在,返回False为不存在
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            status = client.object_exists(
+                Bucket='bucket',
+                Key='test.txt'
+            )
+        """
+        try:
+            self.head_object(Bucket, Key)
+            return True
+        except CosServiceError as e:
+            if e.get_status_code() == 404:
+                return False
+            else:
+                raise e
+
+    def bucket_exists(self, Bucket):
+        """判断一个存储桶是否存在
+
+        :param Bucket(string): 存储桶名称.
+        :return(bool): 存储桶
+        是否存在,返回True为存在,返回False为不存在.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            status = client.bucket_exists(
+                Bucket='bucket'
+            )
+        """
+        try:
+            self.head_bucket(Bucket)
+            return True
+        except CosServiceError as e:
+            if e.get_status_code() == 404:
+                return False
+            else:
+                raise e
+
+    def change_object_storage_class(self, Bucket, Key, StorageClass):
+        """改变文件的存储类型
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param StorageClass(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功返回的结果，包含ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            response = client.change_object_storage_class(
+                Bucket='bucket',
+                Key='test.txt',
+                StorageClass='STANDARD'
+            )
+        """
+        copy_source = {
+            'Bucket': Bucket,
+            'Key': Key,
+            'Region': self._conf._region,
+            'Appid': self._conf._appid
+        }
+        response = self.copy_object(
+            Bucket=Bucket,
+            Key=Key,
+            CopySource=copy_source,
+            CopyStatus='Replaced',
+            StorageClass=StorageClass
+        )
+        return response
+
+    def update_object_meta(self, Bucket, Key, **kwargs):
+        """改变文件的存储类型
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :kwargs(dict): 设置文件的元属性.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            response = client.update_object_meta(
+                Bucket='bucket',
+                Key='test.txt',
+                ContentType='text/html'
+            )
+        """
+        copy_source = {
+            'Bucket': Bucket,
+            'Key': Key,
+            'Region': self._conf._region,
+            'Appid': self._conf._appid
+        }
+        response = self.copy_object(
+            Bucket=Bucket,
+            Key=Key,
+            CopySource=copy_source,
+            CopyStatus='Replaced',
+            **kwargs
+        )
+        return response
+
 
 if __name__ == "__main__":
     pass
