@@ -2148,7 +2148,7 @@ class CosS3Client(object):
             config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 上传本地文件到cos
-            response = client.put_object(
+            response = client.put_object_from_local_file(
                 Bucket='bucket',
                 LocalFilePath='local.txt',
                 Key='test.txt'
