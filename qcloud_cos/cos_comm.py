@@ -63,6 +63,12 @@ def to_unicode(s):
         return s.decode('utf-8')
 
 
+def get_raw_md5(data):
+    m2 = hashlib.md5(data)
+    etag = '"' + str(m2.hexdigest()) + '"'
+    return etag
+
+
 def get_md5(data):
     m2 = hashlib.md5(data)
     MD5 = base64.standard_b64encode(m2.digest())
