@@ -30,7 +30,7 @@ def get_raw_md5(data):
 
 def gen_file(path, size):
     _file = open(path, 'w')
-    _file.seek(1024*1024*size)
+    _file.seek(1024*1024*size-3)
     _file.write('cos')
     _file.close()
 
