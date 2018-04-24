@@ -8,6 +8,7 @@ import requests
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
+from qcloud_cos import get_date
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -429,7 +430,7 @@ def test_put_get_delete_lifecycle():
     lifecycle_config = {
         'Rule': [
             {
-                'Expiration': {'Days': 100},
+                'Expiration': {'Date': get_date(2030, 5, 1)},
                 'ID': '123',
                 'Filter': {'Prefix': ''},
                 'Status': 'Enabled',
