@@ -11,6 +11,7 @@ import copy
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
+from datetime import datetime
 from urllib import quote
 from hashlib import md5
 from streambody import StreamBody
@@ -152,7 +153,7 @@ class CosS3Client(object):
             timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.4.0'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.4.1'
         try:
             for j in range(self._retry):
                 if method == 'POST':
@@ -214,6 +215,7 @@ class CosS3Client(object):
                 )
                 print response['ETag']
         """
+        check_object_content_length(Body)
         headers = mapped(kwargs)
         if 'Metadata' in headers.keys():
             for i in headers['Metadata'].keys():
@@ -579,6 +581,7 @@ class CosS3Client(object):
                     Key='test.txt'
                 )
         """
+        check_object_content_length(Body)
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?partNumber={PartNumber}&uploadId={UploadId}".format(
             PartNumber=PartNumber,
@@ -1334,7 +1337,7 @@ class CosS3Client(object):
             lifecycle_config = {
                 'Rule': [
                     {
-                        'Expiration': {'Days': 100},
+                        'Expiration': {'Date': get_date(2018, 4, 24)},
                         'ID': '123',
                         'Filter': {'Prefix': ''},
                         'Status': 'Enabled',
