@@ -430,10 +430,27 @@ def test_put_get_delete_lifecycle():
     lifecycle_config = {
         'Rule': [
             {
-                'Expiration': {'Date': get_date(2030, 5, 1)},
-                'ID': '123',
-                'Filter': {'Prefix': ''},
                 'Status': 'Enabled',
+                'Filter': {
+                    # 作用于带标签键 datalevel 和值 backup 的标签的对象
+                    'Tag': [
+                        {
+                            'Key': 'datalevel',
+                            'Value': 'backup'
+                        }
+                    ]
+                },
+                'Transation': [
+                    {
+                        # 30天后转换为Standard_IA
+                        'Days': 30,
+                        'StorageClass': 'Standard_IA'
+                    }
+                ],
+                'Expiration': {
+                    # 3650天后过期删除
+                    'Days': 3650
+                }
             }
         ]
     }
