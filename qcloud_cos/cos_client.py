@@ -391,7 +391,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
-        data = format_dict(data, ['Deleted', 'Error'])
+        format_dict(data, ['Deleted', 'Error'])
         return data
 
     def head_object(self, Bucket, Key, **kwargs):
@@ -723,9 +723,9 @@ class CosS3Client(object):
                 headers=headers,
                 params=params)
         data = xml_to_dict(rt.text)
-        data = format_dict(data, ['Part'])
+        format_dict(data, ['Part'])
         if decodeflag:
-            data = decode_result(data, ['Key'], [])
+            decode_result(data, ['Key'], [])
         return data
 
     def put_object_acl(self, Bucket, Key, AccessControlPolicy={}, **kwargs):
@@ -938,9 +938,9 @@ class CosS3Client(object):
                 headers=headers,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
         data = xml_to_dict(rt.text)
-        data = format_dict(data, ['Contents', 'CommonPrefixes'])
+        format_dict(data, ['Contents', 'CommonPrefixes'])
         if decodeflag:
-            data = decode_result(
+            decode_result(
                 data,
                 [
                     'Prefix',
@@ -1006,9 +1006,9 @@ class CosS3Client(object):
                 headers=headers,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
         data = xml_to_dict(rt.text)
-        data = format_dict(data, ['Version', 'DeleteMarker', 'CommonPrefixes'])
+        format_dict(data, ['Version', 'DeleteMarker', 'CommonPrefixes'])
         if decodeflag:
-            data = decode_result(
+            decode_result(
                 data,
                 [
                     'Prefix',
@@ -1078,9 +1078,9 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key))
 
         data = xml_to_dict(rt.text)
-        data = format_dict(data, ['Upload', 'CommonPrefixes'])
+        format_dict(data, ['Upload', 'CommonPrefixes'])
         if decodeflag:
-            data = decode_result(
+            decode_result(
                 data,
                 [
                     'Prefix',
@@ -1349,7 +1349,17 @@ class CosS3Client(object):
                 LifecycleConfiguration=lifecycle_config
             )
         """
-        lst = ['<Rule>', '<Tag>', '</Tag>', '</Rule>']  # 类型为list的标签
+        # 类型为list的标签
+        lst = [
+            '<Rule>',
+            '<Tag>',
+            '<Transition>',
+            '<NoncurrentVersionTransition>',
+            '</NoncurrentVersionTransition>',
+            '</Transition>',
+            '</Tag>',
+            '</Rule>'
+        ]
         xml_config = format_xml(data=LifecycleConfiguration, root='LifecycleConfiguration', lst=lst)
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
@@ -1393,7 +1403,12 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
-        data = format_dict(data, ['Rule'])
+        format_dict(data, ['Rule'])
+        if 'Rule' in data.keys():
+            for rule in data['Rule']:
+                format_dict(rule, ['Transition', 'NoncurrentVersionTransition'])
+                if 'Filter' in rule.keys():
+                    format_dict(rule['Filter'], ['Tag'])
         return data
 
     def delete_bucket_lifecycle(self, Bucket, **kwargs):
@@ -1596,7 +1611,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         data = xml_to_dict(rt.text)
-        data = format_dict(data, ['Rule'])
+        format_dict(data, ['Rule'])
         return data
 
     def delete_bucket_replication(self, Bucket, **kwargs):
