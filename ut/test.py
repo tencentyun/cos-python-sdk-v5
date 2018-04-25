@@ -8,6 +8,7 @@ import requests
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
+from qcloud_cos import get_date
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -30,7 +31,7 @@ def get_raw_md5(data):
 
 def gen_file(path, size):
     _file = open(path, 'w')
-    _file.seek(1024*1024*size)
+    _file.seek(1024*1024*size-3)
     _file.write('cos')
     _file.close()
 
@@ -429,7 +430,7 @@ def test_put_get_delete_lifecycle():
     lifecycle_config = {
         'Rule': [
             {
-                'Expiration': {'Days': 100},
+                'Expiration': {'Date': get_date(2030, 5, 1)},
                 'ID': '123',
                 'Filter': {'Prefix': ''},
                 'Status': 'Enabled',
@@ -669,6 +670,69 @@ def test_put_object_enable_md5():
         assert etag == put_response['Etag']
     if os.path.exists(file_name):
         os.remove(file_name)
+
+
+def test_put_object_from_local_file():
+    """通过本地文件路径来上传文件"""
+    file_size = 1
+    file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
+    file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
+    gen_file(file_name, 10)
+    with open(file_name, 'rb') as f:
+        etag = get_raw_md5(f.read())
+    put_response = client.put_object_from_local_file(
+        Bucket=test_bucket,
+        LocalFilePath=file_name,
+        Key=file_name
+    )
+    assert put_response['ETag'] == etag
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+
+def test_object_exists():
+    """测试一个文件是否存在"""
+    status = client.object_exists(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert status is True
+
+
+def test_bucket_exists():
+    """测试一个bucket是否存在"""
+    status = client.bucket_exists(
+        Bucket=test_bucket
+    )
+    assert status is True
+
+
+def test_change_object_storage_class():
+    """改变文件的存储类型"""
+    response = client.change_object_storage_class(
+        Bucket=test_bucket,
+        Key=test_object,
+        StorageClass='NEARLINE'
+    )
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert response['x-cos-storage-class'] == 'NEARLINE'
+
+
+def test_update_object_meta():
+    """更新文件的属性"""
+    response = client.update_object_meta(
+        Bucket=test_bucket,
+        Key=test_object,
+        ContentType='text/html'
+    )
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert response['Content-Type'] == 'text/html; charset=utf-8'
 
 
 if __name__ == "__main__":

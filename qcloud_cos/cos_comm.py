@@ -7,6 +7,7 @@ import io
 import sys
 import xml.dom.minidom
 import xml.etree.ElementTree
+from datetime import datetime
 from urllib import quote
 from urllib import unquote
 from xml2dict import Xml2Dict
@@ -61,6 +62,12 @@ def to_unicode(s):
         return s
     else:
         return s.decode('utf-8')
+
+
+def get_raw_md5(data):
+    m2 = hashlib.md5(data)
+    etag = '"' + str(m2.hexdigest()) + '"'
+    return etag
 
 
 def get_md5(data):
@@ -262,6 +269,21 @@ def gen_copy_source_range(begin_range, end_range):
     return range
 
 
+def check_object_content_length(data):
+    """put_object接口和upload_part接口的文件大小不允许超过5G"""
+    content_len = 0
+    if type(data) is str:
+        content_len = len(data)
+    elif type(data) is file and hasattr(data, 'fileno') and hasattr(data, 'tell'):
+        fileno = data.fileno()
+        total_length = os.fstat(fileno).st_size
+        current_position = data.tell()
+        content_len = total_length - current_position
+    if content_len > SINGLE_UPLOAD_LENGTH:
+        raise CosClientError('The object size you upload can not be larger than 5GB in put_object or upload_part')
+    return None
+
+
 def deal_with_empty_file_stream(data):
     """对于文件流的剩余长度为0的情况下，返回空字节流"""
     if hasattr(data, 'fileno') and hasattr(data, 'tell'):
@@ -298,3 +320,10 @@ def decode_result(data, key_lst, multi_key_list):
                 if multi_key[1] in item.keys() and item[multi_key[1]]:
                     item[multi_key[1]] = unquote(item[multi_key[1]])
     return data
+
+
+def get_date(yy, mm, dd):
+    """获取lifecycle中Date字段"""
+    date_str = datetime(yy, mm, dd).isoformat()
+    final_date_str = date_str+'+08:00'
+    return final_date_str

@@ -11,6 +11,7 @@ import copy
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
+from datetime import datetime
 from urllib import quote
 from hashlib import md5
 from streambody import StreamBody
@@ -115,7 +116,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_auth(self, Method, Bucket, Key='', Expired=300, Headers={}, Params={}):
+    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
@@ -152,7 +153,7 @@ class CosS3Client(object):
             timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.4.0'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.4.1'
         try:
             for j in range(self._retry):
                 if method == 'POST':
@@ -214,6 +215,7 @@ class CosS3Client(object):
                 )
                 print response['ETag']
         """
+        check_object_content_length(Body)
         headers = mapped(kwargs)
         if 'Metadata' in headers.keys():
             for i in headers['Metadata'].keys():
@@ -579,6 +581,7 @@ class CosS3Client(object):
                     Key='test.txt'
                 )
         """
+        check_object_content_length(Body)
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?partNumber={PartNumber}&uploadId={UploadId}".format(
             PartNumber=PartNumber,
@@ -826,7 +829,6 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers,
             params=params)
-        print rt.headers
         return None
 
     # s3 bucket interface begin
@@ -1335,7 +1337,7 @@ class CosS3Client(object):
             lifecycle_config = {
                 'Rule': [
                     {
-                        'Expiration': {'Days': 100},
+                        'Expiration': {'Date': get_date(2018, 4, 24)},
                         'ID': '123',
                         'Filter': {'Prefix': ''},
                         'Status': 'Enabled',
@@ -1727,7 +1729,7 @@ class CosS3Client(object):
         return data
 
     # Advanced interface
-    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst):
+    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag, already_exist_parts):
         """从本地文件中读取分块, 上传单个分块,将结果记录在md5——list中
 
         :param bucket(string): 存储桶名称.
@@ -1738,22 +1740,107 @@ class CosS3Client(object):
         :param part_num(int): 上传分块的序号.
         :param uploadid(string): 分块上传的uploadid.
         :param md5_lst(list): 保存上传成功分块的MD5和序号.
+        :param resumable_flag(bool): 是否为断点续传.
+        :param already_exist_parts(dict): 断点续传情况下,保存已经上传的块的序号和Etag.
         :return: None.
         """
-        with open(local_path, 'rb') as fp:
-            fp.seek(offset, 0)
-            data = fp.read(size)
-        rt = self.upload_part(bucket, key, data, part_num, uploadid)
-        md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
+        # 如果是断点续传且该分块已经上传了则不用实际上传
+        if resumable_flag and part_num in already_exist_parts:
+            md5_lst.append({'PartNumber': part_num, 'ETag': already_exist_parts[part_num]})
+        else:
+            with open(local_path, 'rb') as fp:
+                fp.seek(offset, 0)
+                data = fp.read(size)
+            rt = self.upload_part(bucket, key, data, part_num, uploadid)
+            md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
         return None
 
-    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=10, MAXThread=5, **kwargs):
-        """小于等于100MB的文件简单上传，大于等于100MB的文件使用分块上传
+    def _get_resumable_uploadid(self, bucket, key):
+        """从服务端获取未完成的分块上传任务,获取断点续传的uploadid
+
+        :param bucket(string): 存储桶名称.
+        :param key(string): 分块上传路径名.
+        :return(string): 断点续传的uploadid,如果不存在则返回None.
+        """
+        multipart_response = self.list_multipart_uploads(
+            Bucket=bucket,
+            Prefix=key
+        )
+        if 'Upload' in multipart_response.keys():
+            if multipart_response['Upload'][0]['Key'] == key:
+                return multipart_response['Upload'][0]['UploadId']
+
+        return None
+
+    def _check_single_upload_part(self, local_path, offset, local_part_size, remote_part_size, remote_etag):
+        """从本地文件中读取分块, 校验本地分块和服务端的分块信息
+
+        :param local_path(string): 本地文件路径名.
+        :param offset(int): 读取本地文件的分块偏移量.
+        :param local_part_size(int): 读取本地文件的分块大小.
+        :param remote_part_size(int): 服务端的文件的分块大小.
+        :param remote_etag(string): 服务端的文件Etag.
+        :return(bool): 本地单个分块的信息是否和服务端的分块信息一致
+        """
+        if local_part_size != remote_part_size:
+            return False
+        with open(local_path, 'rb') as fp:
+            fp.seek(offset, 0)
+            local_etag = get_raw_md5(fp.read(local_part_size))
+            if local_etag == remote_etag:
+                return True
+        return False
+
+    def _check_all_upload_parts(self, bucket, key, uploadid, local_path, parts_num, part_size, last_size, already_exist_parts):
+        """获取所有已经上传的分块的信息,和本地的文件进行对比
+
+        :param bucket(string): 存储桶名称.
+        :param key(string): 分块上传路径名.
+        :param uploadid(string): 分块上传的uploadid
+        :param local_path(string): 本地文件的大小
+        :param parts_num(int): 本地文件的分块数
+        :param part_size(int): 本地文件的分块大小
+        :param last_size(int): 本地文件的最后一块分块大小
+        :param already_exist_parts(dict): 保存已经上传的分块的part_num和Etag
+        :return(bool): 本地文件是否通过校验,True为可以进行断点续传,False为不能进行断点续传
+        """
+        parts_info = []
+        part_number_marker = 0
+        list_over_status = False
+        while list_over_status is False:
+            response = self.list_parts(
+                Bucket=bucket,
+                Key=key,
+                UploadId=uploadid,
+                PartNumberMarker=part_number_marker
+            )
+            parts_info.extend(response['Part'])
+            if response['IsTruncated'] == 'false':
+                list_over_status = True
+            else:
+                part_number_marker = int(response['NextMarker'])
+        for part in parts_info:
+            part_num = int(part['PartNumber'])
+            # 如果分块数量大于本地计算出的最大数量,校验失败
+            if part_num > parts_num:
+                return False
+            offset = (part_num - 1) * part_size
+            local_part_size = part_size
+            if part_num == parts_num:
+                local_part_size = last_size
+            # 有任何一块没有通过校验，则校验失败
+            if not self._check_single_upload_part(local_path, offset, local_part_size, int(part['Size']), part['ETag']):
+                return False
+            already_exist_parts[part_num] = part['ETag']
+        return True
+
+    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, **kwargs):
+        """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
 
         :param Bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
         :param LocalFilePath(string): 本地文件路径名.
-        :param PartSize(int): 分块的大小设置.
+        :param PartSize(int): 分块的大小设置,单位为MB.
         :param MAXThread(int): 并发上传的最大线程数.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 成功上传文件的元信息.
@@ -1768,18 +1855,19 @@ class CosS3Client(object):
                 Bucket='bucket',
                 Key=file_name,
                 LocalFilePath=file_name,
+                PartSize=10,
                 MAXThread=10,
                 CacheControl='no-cache',
                 ContentDisposition='download.txt'
             )
         """
         file_size = os.path.getsize(LocalFilePath)
-        if file_size <= 1024*1024*100:
+        if file_size <= 1024*1024*20:
             with open(LocalFilePath, 'rb') as fp:
                 rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, **kwargs)
             return rt
         else:
-            part_size = 1024*1024*PartSize  # 默认按照10MB分块,最大支持100G的文件，超过100G的分块数固定为10000
+            part_size = 1024*1024*PartSize  # 默认按照1MB分块,最大支持10G的文件，超过10G的分块数固定为10000
             last_size = 0  # 最后一块可以小于1MB
             parts_num = file_size / part_size
             last_size = file_size % part_size
@@ -1793,8 +1881,17 @@ class CosS3Client(object):
                 last_size += part_size
 
             # 创建分块上传
-            rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
-            uploadid = rt['UploadId']
+            # 判断是否可以断点续传
+            resumable_flag = False
+            already_exist_parts = {}
+            uploadid = self._get_resumable_uploadid(Bucket, Key)
+            if uploadid is not None:
+                # 校验服务端返回的每个块的信息是否和本地的每个块的信息相同,只有校验通过的情况下才可以进行断点续传
+                resumable_flag = self._check_all_upload_parts(Bucket, Key, uploadid, LocalFilePath, parts_num, part_size, last_size, already_exist_parts)
+            # 如果不能断点续传,则创建一个新的分块上传
+            if not resumable_flag:
+                rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
+                uploadid = rt['UploadId']
 
             # 上传分块
             offset = 0  # 记录文件偏移量
@@ -1803,23 +1900,19 @@ class CosS3Client(object):
 
             for i in range(1, parts_num+1):
                 if i == parts_num:  # 最后一块
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst, resumable_flag, already_exist_parts)
                 else:
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst, resumable_flag, already_exist_parts)
                     offset += part_size
 
             pool.wait_completion()
             result = pool.get_result()
-            if not result['success_all']:
+            if not result['success_all'] or len(lst) != parts_num:
                 raise CosClientError('some upload_part fail after max_retry')
             lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
 
-            # 完成分片上传
-            try:
-                rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
-            except Exception as e:
-                abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
-                raise e
+            # 完成分块上传
+            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
             return rt
 
     def _inner_head_object(self, CopySource):
@@ -2041,6 +2134,150 @@ class CosS3Client(object):
             data=Body,
             headers=headers)
         response = rt.headers
+        return response
+
+    def put_object_from_local_file(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
+        """本地文件上传接口，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param LocalFilePath(string): 上传文件的本地路径.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功返回的结果，包含ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            response = client.put_object_from_local_file(
+                Bucket='bucket',
+                LocalFilePath='local.txt',
+                Key='test.txt'
+            )
+            print response['ETag']
+        """
+        with open(LocalFilePath, 'rb') as fp:
+            return self.put_object(Bucket, fp, Key, EnableMD5, **kwargs)
+
+    def object_exists(self, Bucket, Key):
+        """判断一个文件是否存在
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :return(bool): 文件是否存在,返回True为存在,返回False为不存在
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            status = client.object_exists(
+                Bucket='bucket',
+                Key='test.txt'
+            )
+        """
+        try:
+            self.head_object(Bucket, Key)
+            return True
+        except CosServiceError as e:
+            if e.get_status_code() == 404:
+                return False
+            else:
+                raise e
+
+    def bucket_exists(self, Bucket):
+        """判断一个存储桶是否存在
+
+        :param Bucket(string): 存储桶名称.
+        :return(bool): 存储桶是否存在,返回True为存在,返回False为不存在.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            status = client.bucket_exists(
+                Bucket='bucket'
+            )
+        """
+        try:
+            self.head_bucket(Bucket)
+            return True
+        except CosServiceError as e:
+            if e.get_status_code() == 404:
+                return False
+            else:
+                raise e
+
+    def change_object_storage_class(self, Bucket, Key, StorageClass):
+        """改变文件的存储类型
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param StorageClass(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功返回的结果，包含ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            response = client.change_object_storage_class(
+                Bucket='bucket',
+                Key='test.txt',
+                StorageClass='STANDARD'
+            )
+        """
+        copy_source = {
+            'Bucket': Bucket,
+            'Key': Key,
+            'Region': self._conf._region,
+            'Appid': self._conf._appid
+        }
+        response = self.copy_object(
+            Bucket=Bucket,
+            Key=Key,
+            CopySource=copy_source,
+            CopyStatus='Replaced',
+            StorageClass=StorageClass
+        )
+        return response
+
+    def update_object_meta(self, Bucket, Key, **kwargs):
+        """改变文件的存储类型
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :kwargs(dict): 设置文件的元属性.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            response = client.update_object_meta(
+                Bucket='bucket',
+                Key='test.txt',
+                ContentType='text/html'
+            )
+        """
+        copy_source = {
+            'Bucket': Bucket,
+            'Key': Key,
+            'Region': self._conf._region,
+            'Appid': self._conf._appid
+        }
+        response = self.copy_object(
+            Bucket=Bucket,
+            Key=Key,
+            CopySource=copy_source,
+            CopyStatus='Replaced',
+            **kwargs
+        )
         return response
 
 
