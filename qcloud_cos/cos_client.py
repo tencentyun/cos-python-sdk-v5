@@ -116,7 +116,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_auth(self, Method, Bucket, Key='', Expired=300, Headers={}, Params={}):
+    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
