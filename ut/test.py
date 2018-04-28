@@ -37,22 +37,23 @@ def gen_file(path, size):
 
 
 def print_error_msg(e):
-    print e.get_origin_msg()
-    print e.get_digest_msg()
-    print e.get_status_code()
-    print e.get_error_code()
-    print e.get_error_msg()
-    print e.get_resource_location()
-    print e.get_trace_id()
-    print e.get_request_id()
+    print (e.get_origin_msg())
+    print (e.get_digest_msg())
+    print (e.get_status_code())
+    print (e.get_error_code())
+    print (e.get_error_msg())
+    print (e.get_resource_location())
+    print (e.get_trace_id())
+    print (e.get_request_id())
 
 
 def setUp():
-    print "start test..."
+    print ("start test...")
+    print (sys.version_info)
 
 
 def tearDown():
-    print "function teardown"
+    print ("function teardown")
 
 
 def test_put_get_delete_object_10MB():
@@ -376,7 +377,7 @@ def test_get_presigned_url():
         Key='中文.txt'
     )
     assert url
-    print url
+    print (url)
 
 
 def test_get_bucket_location():
@@ -496,7 +497,7 @@ def test_put_get_delete_replication():
             {
                 'ID': '123',
                 'Status': 'Enabled',
-                'Prefix': 'replication',
+                'Prefix': '/中文',
                 'Destination': {
                     'Bucket': 'qcs:id/0:cos:cn-south:appid/1252448703:replicationsouth'
                 }
@@ -577,7 +578,7 @@ def test_upload_file_multithreading():
     ed = time.time()  # 记录结束时间
     if os.path.exists(file_name):
         os.remove(file_name)
-    print ed - st
+    print (ed - st)
 
 
 def test_copy_file_automatically():
@@ -663,7 +664,7 @@ def test_put_get_bucket_logging():
     response = logging_client.get_bucket_logging(
         Bucket=logging_bucket
     )
-    print response
+    print (response)
     assert response['LoggingEnabled']['TargetBucket'] == logging_bucket
     assert response['LoggingEnabled']['TargetPrefix'] == 'test'
 

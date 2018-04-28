@@ -1,5 +1,7 @@
 # -*- coding=utf-8
 
+from six import text_type, binary_type, string_types
+from six.moves.urllib.parse import quote, unquote
 import hashlib
 import base64
 import os
@@ -8,12 +10,10 @@ import sys
 import xml.dom.minidom
 import xml.etree.ElementTree
 from datetime import datetime
-from urllib import quote
-from urllib import unquote
-from xml2dict import Xml2Dict
 from dicttoxml import dicttoxml
-from cos_exception import CosClientError
-from cos_exception import CosServiceError
+from .xml2dict import Xml2Dict
+from .cos_exception import CosClientError
+from .cos_exception import CosServiceError
 
 SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5G
 LOGGING_UIN = 'id="qcs::cam::uin/100001001014:uin/100001001014"'
@@ -58,36 +58,53 @@ maplist = {
 
 
 def to_unicode(s):
-    if isinstance(s, unicode):
-        return s
-    else:
-        return s.decode('utf-8')
+    """将字符串转为unicode"""
+    if isinstance(s, binary_type):
+        try:
+            return s.decode('utf-8')
+        except UnicodeDecodeError as e:
+            raise CosClientError('your bytes strings can not be decoded in utf8, utf8 support only!')
+    return s
 
 
+def to_bytes(s):
+    """将字符串转为bytes"""
+    if isinstance(s, text_type):
+        try:
+            return s.encode('utf-8')
+        except UnicodeEncodeError as e:
+            raise CosClientError('your unicode strings can not encoded in utf8, utf8 support only!')
+    return s
+
+
+def format_bytes():
+    """将需要传输的内容转换为bytes, body以及header的values"""
 def get_raw_md5(data):
+    """计算md5 md5的输入必须为bytes"""
+    data = to_bytes(data)
     m2 = hashlib.md5(data)
     etag = '"' + str(m2.hexdigest()) + '"'
     return etag
 
 
 def get_md5(data):
+    """计算 base64 md5 md5的输入必须为bytes"""
+    data = to_bytes(data)
     m2 = hashlib.md5(data)
     MD5 = base64.standard_b64encode(m2.digest())
     return MD5
 
 
 def get_content_md5(body):
+    """计算任何输入流的md5值"""
     body_type = type(body)
-    if body_type == str:
+    if body_type == string_types:
         return get_md5(body)
-    elif body_type == file:
-        if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
-            file_position = body.tell()  # 记录文件当前位置
-            md5_str = get_md5(body.read())
-            body.seek(file_position)  # 恢复初始的文件位置
-            return md5_str
-        else:
-            raise CosClientError('can not get md5 digest for file without necessary attrs, including tell, seek and read')
+    elif hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+        file_position = body.tell()  # 记录文件当前位置
+        md5_str = get_md5(body.read())
+        body.seek(file_position)  # 恢复初始的文件位置
+        return md5_str
     return None
 
 
@@ -97,19 +114,19 @@ def dict_to_xml(data):
     root = doc.createElement('CompleteMultipartUpload')
     doc.appendChild(root)
 
-    if 'Part' not in data.keys():
+    if 'Part' not in data:
         raise CosClientError("Invalid Parameter, Part Is Required!")
 
     for i in data['Part']:
         nodePart = doc.createElement('Part')
 
-        if 'PartNumber' not in i.keys():
+        if 'PartNumber' not in i:
             raise CosClientError("Invalid Parameter, PartNumber Is Required!")
 
         nodeNumber = doc.createElement('PartNumber')
         nodeNumber.appendChild(doc.createTextNode(str(i['PartNumber'])))
 
-        if 'ETag' not in i.keys():
+        if 'ETag' not in i:
             raise CosClientError("Invalid Parameter, ETag Is Required!")
 
         nodeETag = doc.createElement('ETag')
@@ -148,101 +165,122 @@ def get_id_from_xml(data, name):
 def mapped(headers):
     """S3到COS参数的一个映射"""
     _headers = dict()
-    for i in headers.keys():
+    for i in headers:
         if i in maplist:
-            _headers[maplist[i]] = headers[i]
+            if i == 'Metadata':
+                for meta in headers[i]:
+                    _headers[meta] = headers[i][meta]
+            else:
+                _headers[maplist[i]] = headers[i]
         else:
-            raise CosClientError('No Parameter Named '+i+' Please Check It')
+            raise CosClientError('No Parameter Named ' + i + ' Please Check It')
     return _headers
 
 
 def format_xml(data, root, lst=list()):
-    """将dict转换为xml"""
+    """将dict转换为xml, xml_config是一个bytes"""
     xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
     for i in lst:
-        xml_config = xml_config.replace(i+i, i)
+        xml_config = xml_config.replace(to_bytes(i+i), to_bytes(i))
     return xml_config
+
+
+def format_values(data):
+    """格式化headers和params中的values为bytes"""
+    for i in data:
+        data[i] = to_bytes(data[i])
+    return data
 
 
 def format_region(region):
     """格式化地域"""
+    if not isinstance(region, string_types):
+        raise CosClientError("bucket is not string type")
     if not region:
         raise CosClientError("region is required not empty!")
-    if region.find('cos.') != -1:
+    region = to_unicode(region)
+    if region.find(u'cos.') != -1:
         return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
-    if region == 'cn-north' or region == 'cn-south' or region == 'cn-east' or region == 'cn-south-2' or region == 'cn-southwest' or region == 'sg':
+    if region == u'cn-north' or region == u'cn-south' or region == u'cn-east' or region == u'cn-south-2' or region == u'cn-southwest' or region == u'sg':
         return region  # 老域名不能加cos.
     #  支持v4域名映射到v5
-    if region == 'cossh':
-        return 'cos.ap-shanghai'
-    if region == 'cosgz':
-        return 'cos.ap-guangzhou'
+    if region == u'cossh':
+        return u'cos.ap-shanghai'
+    if region == u'cosgz':
+        return u'cos.ap-guangzhou'
     if region == 'cosbj':
-        return 'cos.ap-beijing'
+        return u'cos.ap-beijing'
     if region == 'costj':
-        return 'cos.ap-beijing-1'
-    if region == 'coscd':
-        return 'cos.ap-chengdu'
-    if region == 'cossgp':
-        return 'cos.ap-singapore'
-    if region == 'coshk':
-        return 'cos.ap-hongkong'
-    if region == 'cosca':
-        return 'cos.na-toronto'
-    if region == 'cosger':
-        return 'cos.eu-frankfurt'
+        return u'cos.ap-beijing-1'
+    if region == u'coscd':
+        return u'cos.ap-chengdu'
+    if region == u'cossgp':
+        return u'cos.ap-singapore'
+    if region == u'coshk':
+        return u'cos.ap-hongkong'
+    if region == u'cosca':
+        return u'cos.na-toronto'
+    if region == u'cosger':
+        return u'cos.eu-frankfurt'
 
-    return 'cos.' + region  # 新域名加上cos.
+    return u'cos.' + region  # 新域名加上cos.
 
 
 def format_bucket(bucket, appid):
     """兼容新老bucket长短命名,appid为空默认为长命名,appid不为空则认为是短命名"""
-    if not isinstance(bucket, str):
-        raise CosClientError("bucket is not str")
+    if not isinstance(bucket, string_types):
+        raise CosClientError("bucket is not string")
+    if not bucket:
+        raise CosClientError("bucket is required not empty")
     # appid为空直接返回bucket
     if not appid:
-        return bucket
+        return to_unicode(bucket)
+    if not isinstance(appid, string_types):
+        raise CosClientError("appid is not string")
+    bucket = to_unicode(bucket)
+    appid = to_unicode(appid)
     # appid不为空,检查是否以-appid结尾
-    if bucket.endswith("-"+appid):
+    if bucket.endswith(u"-"+appid):
         return bucket
-    return bucket + "-" + appid
+    return bucket + u"-" + appid
 
 
 def format_path(path):
     """检查path是否合法,格式化path"""
-    if not isinstance(path, str):
-        raise CosClientError("your Key is not str")
-    if path == "":
-        raise CosClientError("Key can't be empty string")
-    if path[0] == '/':
+    if not isinstance(path, string_types):
+        raise CosClientError("key is not string")
+    if not path:
+        raise CosClientError("Key is required not empty")
+    path = to_unicode(path)
+    if path[0] == u'/':
         path = path[1:]
     # 提前对path进行encode
-    path = quote(path, '/-_.~')
+    path = quote(to_bytes(path), b'/-_.~')
     return path
 
 
 def get_copy_source_info(CopySource):
     """获取拷贝源的所有信息"""
-    appid = ""
-    versionid = ""
-    if 'Appid' in CopySource.keys():
+    appid = u""
+    versionid = u""
+    if 'Appid' in CopySource:
         appid = CopySource['Appid']
-    if 'Bucket' in CopySource.keys():
+    if 'Bucket' in CopySource:
         bucket = CopySource['Bucket']
         bucket = format_bucket(bucket, appid)
     else:
         raise CosClientError('CopySource Need Parameter Bucket')
-    if 'Region' in CopySource.keys():
+    if 'Region' in CopySource:
         region = CopySource['Region']
         region = format_region(region)
     else:
         raise CosClientError('CopySource Need Parameter Region')
-    if 'Key' in CopySource.keys():
-        path = CopySource['Key']
+    if 'Key' in CopySource:
+        path = to_unicode(CopySource['Key'])
     else:
         raise CosClientError('CopySource Need Parameter Key')
-    if 'VersionId' in CopySource.keys():
-        versionid = CopySource['VersionId']
+    if 'VersionId' in CopySource:
+        versionid = to_unicode(CopySource['VersionId'])
     return bucket, path, region, versionid
 
 
@@ -250,9 +288,9 @@ def gen_copy_source_url(CopySource):
     """拼接拷贝源url"""
     bucket, path, region, versionid = get_copy_source_info(CopySource)
     path = format_path(path)
-    if versionid != '':
-        path = path + '?versionId=' + versionid
-    url = "{bucket}.{region}.myqcloud.com/{path}".format(
+    if versionid != u'':
+        path = path + u'?versionId=' + versionid
+    url = u"{bucket}.{region}.myqcloud.com/{path}".format(
             bucket=bucket,
             region=region,
             path=path
@@ -262,9 +300,9 @@ def gen_copy_source_url(CopySource):
 
 def gen_copy_source_range(begin_range, end_range):
     """拼接bytes=begin-end形式的字符串"""
-    range = "bytes={first}-{end}".format(
-            first=begin_range,
-            end=end_range
+    range = u"bytes={first}-{end}".format(
+            first=to_unicode(begin_range),
+            end=to_unicode(end_range)
             )
     return range
 
@@ -272,9 +310,9 @@ def gen_copy_source_range(begin_range, end_range):
 def check_object_content_length(data):
     """put_object接口和upload_part接口的文件大小不允许超过5G"""
     content_len = 0
-    if type(data) is str:
-        content_len = len(data)
-    elif type(data) is file and hasattr(data, 'fileno') and hasattr(data, 'tell'):
+    if type(data) is string_types:
+        content_len = len(to_bytes(data))
+    elif hasattr(data, 'fileno') and hasattr(data, 'tell'):
         fileno = data.fileno()
         total_length = os.fstat(fileno).st_size
         current_position = data.tell()
@@ -292,9 +330,9 @@ def deal_with_empty_file_stream(data):
             total_length = os.fstat(fileno).st_size
             current_position = data.tell()
             if total_length - current_position == 0:
-                return ""
+                return b""
         except io.UnsupportedOperation:
-            return ""
+            return b""
     return data
 
 
@@ -302,7 +340,7 @@ def format_dict(data, key_lst):
     """转换返回dict中的可重复字段为list"""
     for key in key_lst:
         # 将dict转为list，保持一致
-        if key in data.keys() and isinstance(data[key], dict):
+        if key in data and isinstance(data[key], dict):
             lst = []
             lst.append(data[key])
             data[key] = lst
@@ -312,12 +350,12 @@ def format_dict(data, key_lst):
 def decode_result(data, key_lst, multi_key_list):
     """decode结果中的字段"""
     for key in key_lst:
-        if key in data.keys() and data[key]:
+        if key in data and data[key]:
             data[key] = unquote(data[key])
     for multi_key in multi_key_list:
-        if multi_key[0] in data.keys():
+        if multi_key[0] in data:
             for item in data[multi_key[0]]:
-                if multi_key[1] in item.keys() and item[multi_key[1]]:
+                if multi_key[1] in item and item[multi_key[1]]:
                     item[multi_key[1]] = unquote(item[multi_key[1]])
     return data
 
