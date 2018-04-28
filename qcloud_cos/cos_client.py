@@ -24,6 +24,7 @@ from .cos_exception import CosServiceError
 
 logger = logging.getLogger(__name__)
 
+
 class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid=None, Region=None, Secret_id=None, Secret_key=None, Token=None, Scheme=None, Timeout=None, Access_id=None, Access_key=None):
@@ -60,7 +61,6 @@ class CosConfig(object):
             self._secret_key = to_unicode(Access_key)
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
-
 
     def uri(self, bucket, path=None, scheme=None, region=None):
         """拼接url
@@ -153,8 +153,8 @@ class CosS3Client(object):
         kwargs['headers'] = format_values(kwargs['headers'])
         if 'data' in kwargs:
             kwargs['data'] = to_bytes(kwargs['data'])
-        #try:
-        for j in range(self._retry):
+        try:
+            for j in range(self._retry):
                 if method == 'POST':
                     res = self._session.post(url, timeout=timeout, **kwargs)
                 elif method == 'GET':
@@ -167,9 +167,9 @@ class CosS3Client(object):
                     res = self._session.head(url, timeout=timeout, **kwargs)
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     return res
-        #except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
-            #logger.exception('url:%s, exception:%s' % (url, str(e)))
-            #raise CosClientError(str(e))
+        except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
+            logger.exception('url:%s, exception:%s' % (url, str(e)))
+            raise CosClientError(str(e))
 
         if res.status_code >= 400:  # 所有的4XX,5XX都认为是COSServiceError
             if method == 'HEAD' and res.status_code == 404:   # Head 需要处理
@@ -262,13 +262,11 @@ class CosS3Client(object):
                 params[key] = headers[key]
             else:
                 final_headers[key] = headers[key]
-            
         headers = final_headers
 
         if 'versionId' in headers:
             params['versionId'] = headers['versionId']
             del headers['versionId']
-        
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -717,7 +715,6 @@ class CosS3Client(object):
             decodeflag = False
         else:
             params['encoding-type'] = 'url'
-        
         params = format_values(params)
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("list multipart upload parts, url=:{url} ,headers=:{headers}".format(
@@ -2180,7 +2177,7 @@ class CosS3Client(object):
         :return(dict): 上传成功返回的结果，包含ETag等信息.
         """
         headers = mapped(kwargs)
-        params = {'append': '', 'position': Position} 
+        params = {'append': '', 'position': Position}
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("append object, url=:{url} ,headers=:{headers}".format(
             url=url,
