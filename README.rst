@@ -4,7 +4,7 @@ Qcloud COSv5 SDK
 介绍
 _______
 
-腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7。
+腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x。
 
 安装指南
 __________

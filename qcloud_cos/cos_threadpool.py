@@ -2,7 +2,7 @@
 
 from threading import Thread
 from logging import getLogger
-from Queue import Queue
+from six.moves import queue
 from threading import Lock
 import gc
 logger = getLogger(__name__)
@@ -94,12 +94,12 @@ if __name__ == '__main__':
         raise ValueError("Pa! Exception!")
     for i in range(1000):
         pool.add_task(task_sleep, 0.001)
-        print i
+        print (i)
     pool.add_task(task_sleep, 0)
     pool.add_task(task_sleep, 0)
     # pool.add_task(raise_exception)
     # pool.add_task(raise_exception)
 
     pool.wait_completion()
-    print pool.get_result()
+    print (pool.get_result())
     # [(1, 0, ['hello, sleep 5 seconds']), (2, 1, ['hello, sleep 2 seconds', 'hello, sleep 3 seconds', ValueError('Pa! Exception!',)])]

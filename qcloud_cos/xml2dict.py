@@ -19,7 +19,7 @@ class Xml2Dict(dict):
                 self.updateDict({element.tag: element.text})
 
     def updateDict(self, aDict):
-        for key in aDict.keys():
+        for key in aDict:
             if key in self:
                 value = self.pop(key)
                 if type(value) is not list:
@@ -43,4 +43,4 @@ if __name__ == "__main__":
     </result>"""
     root = xml.etree.ElementTree.fromstring(s)
     xmldict = Xml2Dict(root)
-    print xmldict
+    print (xmldict)

@@ -35,7 +35,7 @@ with open('test.txt', 'rb') as fp:
         CacheControl='no-cache',
         ContentDisposition='download.txt'
     )
-    print response['ETag']
+    print (response['ETag'])
 
 # 字节流 简单上传
 response = client.put_object(
@@ -45,7 +45,7 @@ response = client.put_object(
     CacheControl='no-cache',
     ContentDisposition='download.txt'
 )
-print response['ETag']
+print (response['ETag'])
 
 # 文件下载 获取文件到本地
 response = client.get_object(
@@ -60,7 +60,7 @@ response = client.get_object(
     Key=file_name,
 )
 fp = response['Body'].get_raw_stream()
-print fp.read(2)
+print (fp.read(2))
 
 # 文件下载 捕获异常
 try:
@@ -69,13 +69,13 @@ try:
         Key='not_exist.txt',
     )
     fp = response['Body'].get_raw_stream()
-    print fp.read(2)
+    print (fp.read(2))
 except CosServiceError as e:
-    print e.get_origin_msg()
-    print e.get_digest_msg()
-    print e.get_status_code()
-    print e.get_error_code()
-    print e.get_error_msg()
-    print e.get_resource_location()
-    print e.get_trace_id()
-    print e.get_request_id()
+    print (e.get_origin_msg())
+    print (e.get_digest_msg())
+    print (e.get_status_code())
+    print (e.get_error_code())
+    print (e.get_error_msg())
+    print (e.get_resource_location())
+    print (e.get_trace_id())
+    print (e.get_request_id())
