@@ -77,8 +77,6 @@ def to_bytes(s):
     return s
 
 
-def format_bytes():
-    """将需要传输的内容转换为bytes, body以及header的values"""
 def get_raw_md5(data):
     """计算md5 md5的输入必须为bytes"""
     data = to_bytes(data)
