@@ -7,6 +7,7 @@ import base64
 import os
 import sys
 import copy
+import time
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
@@ -270,9 +271,10 @@ class CosS3Client(object):
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("get object, url=:{url} ,headers=:{headers}".format(
+        logger.info("get object, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
-            headers=headers))
+            headers=headers,
+            params=params))
         rt = self.send_request(
                 method='GET',
                 url=url,
@@ -583,9 +585,10 @@ class CosS3Client(object):
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
         params = format_values(params)
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("upload part, url=:{url} ,headers=:{headers}".format(
+        logger.info("upload part, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
-            headers=headers))
+            headers=headers,
+            params=params))
         Body = deal_with_empty_file_stream(Body)
         if EnableMD5:
             md5_str = get_content_md5(Body)
@@ -1874,11 +1877,13 @@ class CosS3Client(object):
                 UploadId=uploadid,
                 PartNumberMarker=part_number_marker
             )
-            parts_info.extend(response['Part'])
+            # 已经存在的分块上传,有可能一个分块都没有上传,判断一下
+            if 'Part' in response:
+                parts_info.extend(response['Part'])
             if response['IsTruncated'] == 'false':
                 list_over_status = True
             else:
-                part_number_marker = int(response['NextMarker'])
+                part_number_marker = int(response['NextPartNumberMarker'])
         for part in parts_info:
             part_num = int(part['PartNumber'])
             # 如果分块数量大于本地计算出的最大数量,校验失败
@@ -1934,6 +1939,8 @@ class CosS3Client(object):
 
             if last_size != 0:
                 parts_num += 1
+            else:  # 如果刚好整除,最后一块的大小等于分块大小
+                last_size = part_size
             if parts_num > 10000:
                 parts_num = 10000
                 part_size = file_size // parts_num
@@ -1946,12 +1953,14 @@ class CosS3Client(object):
             already_exist_parts = {}
             uploadid = self._get_resumable_uploadid(Bucket, Key)
             if uploadid is not None:
+                logger.info("fetch an existed uploadid in remote cos, uploadid={uploadid}".format(uploadid=uploadid))
                 # 校验服务端返回的每个块的信息是否和本地的每个块的信息相同,只有校验通过的情况下才可以进行断点续传
                 resumable_flag = self._check_all_upload_parts(Bucket, Key, uploadid, LocalFilePath, parts_num, part_size, last_size, already_exist_parts)
             # 如果不能断点续传,则创建一个新的分块上传
             if not resumable_flag:
                 rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
                 uploadid = rt['UploadId']
+                logger.info("create a new uploadid in upload_file, uploadid={uploadid}".format(uploadid=uploadid))
 
             # 上传分块
             offset = 0  # 记录文件偏移量
@@ -1968,7 +1977,7 @@ class CosS3Client(object):
             pool.wait_completion()
             result = pool.get_result()
             if not result['success_all'] or len(lst) != parts_num:
-                raise CosClientError('some upload_part fail after max_retry')
+                raise CosClientError('some upload_part fail after max_retry, please upload_file again')
             lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
 
             # 完成分块上传

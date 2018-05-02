@@ -13,7 +13,7 @@ import logging
 
 # cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # 设置用户属性, 包括secret_id, secret_key, region
 # appid已在配置中移除,请在参数Bucket中带上appid。Bucket由bucketname-appid组成
