@@ -7,7 +7,7 @@ from qcloud_cos import CosClientError
 import sys
 import logging
 
-# 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7
+# 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
 # pip安装指南:pip install -U cos-python-sdk-v5
 
@@ -32,20 +32,56 @@ with open('test.txt', 'rb') as fp:
         Body=fp,
         Key=file_name,
         StorageClass='STANDARD',
-        CacheControl='no-cache',
-        ContentDisposition='download.txt'
+        ContentType='text/html; charset=utf-8'
     )
     print(response['ETag'])
 
 # 字节流 简单上传
 response = client.put_object(
     Bucket='test04-123456789',
-    Body='abcdefg',
-    Key=file_name,
-    CacheControl='no-cache',
-    ContentDisposition='download.txt'
+    Body=b'abcdefg',
+    Key=file_name
 )
 print(response['ETag'])
+
+# 本地路径 简单上传
+response = client.put_object_from_local_file(
+    Bucket='test04-123456789',
+    LocalFilePath='local.txt',
+    Key=file_name,
+)
+print(response['ETag'])
+
+# 设置HTTP头部 简单上传
+response = client.put_object(
+    Bucket='test04-123456789',
+    Body=b'test',
+    Key=file_name,
+    ContentType='text/html; charset=utf-8'
+)
+print(response['ETag'])
+
+# 设置自定义头部 简单上传
+response = client.put_object(
+    Bucket='test04-123456789',
+    Body=b'test',
+    Key=file_name,
+    Metadata={
+        'x-cos-meta-key1': 'value1',
+        'x-cos-meta-key2': 'value2'
+    }
+)
+print(response['ETag'])
+
+# 高级上传接口(推荐)
+response = client.upload_file(
+    Bucket='test04-123456789',
+    LocalFilePath='local.txt',
+    Key=file_name,
+    PartSize=10,
+    MAXThread=10
+)
+print response['ETag']
 
 # 文件下载 获取文件到本地
 response = client.get_object(
@@ -61,6 +97,25 @@ response = client.get_object(
 )
 fp = response['Body'].get_raw_stream()
 print(fp.read(2))
+
+# 文件下载 设置Response HTTP 头部
+response = client.get_object(
+    Bucket='test04-123456789',
+    Key=file_name,
+    ResponseContentType='text/html; charset=utf-8'
+)
+print response['Content-Type']
+fp = response['Body'].get_raw_stream()
+print(fp.read(2))
+
+# 文件下载 指定下载范围
+response = client.get_object(
+    Bucket='test04-123456789',
+    Key=file_name,
+    Range='bytes=0-10'
+)
+fp = response['Body'].get_raw_stream()
+print(fp.read())
 
 # 文件下载 捕获异常
 try:

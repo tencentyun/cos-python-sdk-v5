@@ -49,7 +49,7 @@ class CosS3Auth(AuthBase):
         format_str = u"{method}\n{host}\n{params}\n{headers}\n".format(
             method=r.method.lower(),
             host=path,
-            params=urlencode(sorted(uri_params.items())),
+            params=urlencode(sorted(uri_params.items())).replace('+', '%20'),
             headers='&'.join(map(lambda tupl: "%s=%s" % (tupl[0], tupl[1]), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
