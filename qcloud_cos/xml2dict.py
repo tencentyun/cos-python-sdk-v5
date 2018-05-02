@@ -34,6 +34,7 @@ class Xml2Dict(dict):
             else:
                 self.update({key: aDict[key]})
 
+
 if __name__ == "__main__":
     s = """<?xml version="1.0" encoding="utf-8" ?>
     <result xmlns= "wqa.bai.com">
