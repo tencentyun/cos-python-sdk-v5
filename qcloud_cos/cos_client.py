@@ -1830,9 +1830,12 @@ class CosS3Client(object):
             Prefix=key
         )
         if 'Upload' in multipart_response:
-            if multipart_response['Upload'][0]['Key'] == key:
-                return multipart_response['Upload'][0]['UploadId']
-
+            # 取最后一个(最新的)uploadid
+            index = len(multipart_response['Upload']) - 1
+            while index >= 0:
+                if multipart_response['Upload'][index]['Key'] == key:
+                    return multipart_response['Upload'][index]['UploadId']
+                index -= 1
         return None
 
     def _check_single_upload_part(self, local_path, offset, local_part_size, remote_part_size, remote_etag):
