@@ -12,7 +12,8 @@ from qcloud_cos import get_date
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
-test_bucket = "test01-1252448703"
+TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
+test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + '1252448703'
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
@@ -21,6 +22,19 @@ conf = CosConfig(
     Secret_key=SECRET_KEY
 )
 client = CosS3Client(conf)
+
+
+def _create_test_bucket(test_bucket):
+    try:
+        response = client.create_bucket(
+            Bucket=test_bucket,
+        )
+    except Exception as e:
+        if e.get_error_code() == 'BucketAlreadyOwnedByYou':
+            print('BucketAlreadyOwnedByYou')
+        else:
+            raise e
+    return None
 
 
 def get_raw_md5(data):
@@ -49,7 +63,8 @@ def print_error_msg(e):
 
 def setUp():
     print ("start test...")
-    print (sys.version_info)
+    print ("start create bucket " + test_bucket)
+    _create_test_bucket(test_bucket)
 
 
 def tearDown():
@@ -147,6 +162,11 @@ def test_put_object_non_exist_bucket():
 
 def test_put_object_acl():
     """设置object acl"""
+    response = client.put_object(
+        Bucket=test_bucket,
+        Key=test_object,
+        Body='test acl'
+    )
     response = client.put_object_acl(
         Bucket=test_bucket,
         Key=test_object,
@@ -161,6 +181,10 @@ def test_get_object_acl():
         Key=test_object
     )
     assert response
+    response = client.delete_object(
+        Bucket=test_bucket,
+        Key=test_object
+    )
 
 
 def test_copy_object_diff_bucket():
@@ -353,7 +377,7 @@ def test_get_bucket_acl_normal():
 def test_list_objects():
     """列出bucket下的objects"""
     response = client.list_objects(
-        Bucket=test_bucket,
+        Bucket='test01-1252448703',
         MaxKeys=100,
         Prefix='中文',
         Delimiter='/'
@@ -497,7 +521,7 @@ def test_put_get_delete_replication():
             {
                 'ID': '123',
                 'Status': 'Enabled',
-                'Prefix': '/中文',
+                'Prefix': '中文',
                 'Destination': {
                     'Bucket': 'qcs:id/0:cos:cn-south:appid/1252448703:replicationsouth'
                 }
@@ -517,7 +541,7 @@ def test_put_get_delete_replication():
         Bucket=test_bucket
     )
     assert response
-    # delete lifecycle
+    # delete replication
     response = client.delete_bucket_replication(
         Bucket=test_bucket
     )
@@ -565,7 +589,10 @@ def test_list_multipart_uploads():
 def test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
     file_name = "thread_1GB"
-    gen_file(file_name, 5)  # set 5MB beacuse travis too slow
+    file_size = 1024
+    if TRAVIS_FLAG == 'true':
+        file_size = 5  # set 5MB beacuse travis too slow
+    gen_file(file_name, file_size)
     st = time.time()  # 记录开始时间
     response = client.upload_file(
         Bucket=test_bucket,
@@ -626,7 +653,8 @@ def test_use_get_auth():
         Key='test.txt',
         Params={'acl': '', 'unsed': '123'}
     )
-    response = requests.get('http://test01-1252448703.cos.ap-beijing-1.myqcloud.com/test.txt?acl&unsed=123', headers={'Authorization': auth})
+    url = 'http://' + test_bucket + '.cos.ap-beijing-1.myqcloud.com/test.txt?acl&unsed=123'
+    response = requests.get(url, headers={'Authorization': auth})
     assert response.status_code == 200
 
 
@@ -671,9 +699,8 @@ def test_put_get_bucket_logging():
 
 def test_put_object_enable_md5():
     """上传文件,SDK计算content-md5头部"""
-    file_size = 10
     file_name = 'test_object_sdk_caculate_md5.file'
-    gen_file(file_name, 10)
+    gen_file(file_name, 1)
     with open(file_name, 'rb') as f:
         etag = get_raw_md5(f.read())
     with open(file_name, 'rb') as fp:
@@ -704,6 +731,10 @@ def test_put_object_from_local_file():
         Key=file_name
     )
     assert put_response['ETag'] == etag
+    response = client.delete_object(
+        Bucket=test_bucket,
+        Key=file_name
+    )
     if os.path.exists(file_name):
         os.remove(file_name)
 
