@@ -7,7 +7,6 @@ import base64
 import os
 import sys
 import copy
-import time
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
