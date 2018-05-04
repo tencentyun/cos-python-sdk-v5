@@ -1829,11 +1829,12 @@ class CosS3Client(object):
                 UploadId=uploadid,
                 PartNumberMarker=part_number_marker
             )
-            parts_info.extend(response['Part'])
+            if 'Part' in response:
+                parts_info.extend(response['Part'])
             if response['IsTruncated'] == 'false':
                 list_over_status = True
             else:
-                part_number_marker = int(response['NextMarker'])
+                part_number_marker = int(response['NextPartNumberMarker'])
         for part in parts_info:
             part_num = int(part['PartNumber'])
             # 如果分块数量大于本地计算出的最大数量,校验失败
