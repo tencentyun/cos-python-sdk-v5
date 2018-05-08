@@ -3,6 +3,7 @@ import xml.etree.ElementTree
 
 
 class Xml2Dict(dict):
+
     def __init__(self, parent_node):
         if parent_node.items():
             self.updateDict(dict(parent_node.items()))
@@ -19,7 +20,7 @@ class Xml2Dict(dict):
                 self.updateDict({element.tag: element.text})
 
     def updateDict(self, aDict):
-        for key in aDict.keys():
+        for key in aDict:
             if key in self:
                 value = self.pop(key)
                 if type(value) is not list:
@@ -33,6 +34,7 @@ class Xml2Dict(dict):
             else:
                 self.update({key: aDict[key]})
 
+
 if __name__ == "__main__":
     s = """<?xml version="1.0" encoding="utf-8" ?>
     <result xmlns= "wqa.bai.com">
@@ -43,4 +45,4 @@ if __name__ == "__main__":
     </result>"""
     root = xml.etree.ElementTree.fromstring(s)
     xmldict = Xml2Dict(root)
-    print xmldict
+    print(xmldict)
