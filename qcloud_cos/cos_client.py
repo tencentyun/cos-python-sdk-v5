@@ -827,7 +827,7 @@ class CosS3Client(object):
         if 'versionId' in headers:
             params['versionId'] = headers['versionId']
             headers.pop('versionId')
-        url = self._conf.uri(bucket=Bucket, path=quote(Key, '/-_.~')+"?restore")
+        url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("restore_object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
