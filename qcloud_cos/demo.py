@@ -7,13 +7,13 @@ from qcloud_cos import CosClientError
 import sys
 import logging
 
-# 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7
+# 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
 # pip安装指南:pip install -U cos-python-sdk-v5
 
 # cos最新可用地域,参照https://www.qcloud.com/document/product/436/6224
 
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # 设置用户属性, 包括secret_id, secret_key, region
 # appid已在配置中移除,请在参数Bucket中带上appid。Bucket由bucketname-appid组成
@@ -32,18 +32,54 @@ with open('test.txt', 'rb') as fp:
         Body=fp,
         Key=file_name,
         StorageClass='STANDARD',
-        CacheControl='no-cache',
-        ContentDisposition='download.txt'
+        ContentType='text/html; charset=utf-8'
     )
-    print response['ETag']
+    print(response['ETag'])
 
 # 字节流 简单上传
 response = client.put_object(
     Bucket='test04-123456789',
-    Body='abcdefg',
+    Body=b'abcdefg',
+    Key=file_name
+)
+print(response['ETag'])
+
+# 本地路径 简单上传
+response = client.put_object_from_local_file(
+    Bucket='test04-123456789',
+    LocalFilePath='local.txt',
     Key=file_name,
-    CacheControl='no-cache',
-    ContentDisposition='download.txt'
+)
+print(response['ETag'])
+
+# 设置HTTP头部 简单上传
+response = client.put_object(
+    Bucket='test04-123456789',
+    Body=b'test',
+    Key=file_name,
+    ContentType='text/html; charset=utf-8'
+)
+print(response['ETag'])
+
+# 设置自定义头部 简单上传
+response = client.put_object(
+    Bucket='test04-123456789',
+    Body=b'test',
+    Key=file_name,
+    Metadata={
+        'x-cos-meta-key1': 'value1',
+        'x-cos-meta-key2': 'value2'
+    }
+)
+print(response['ETag'])
+
+# 高级上传接口(推荐)
+response = client.upload_file(
+    Bucket='test04-123456789',
+    LocalFilePath='local.txt',
+    Key=file_name,
+    PartSize=10,
+    MAXThread=10
 )
 print response['ETag']
 
@@ -60,7 +96,26 @@ response = client.get_object(
     Key=file_name,
 )
 fp = response['Body'].get_raw_stream()
-print fp.read(2)
+print(fp.read(2))
+
+# 文件下载 设置Response HTTP 头部
+response = client.get_object(
+    Bucket='test04-123456789',
+    Key=file_name,
+    ResponseContentType='text/html; charset=utf-8'
+)
+print response['Content-Type']
+fp = response['Body'].get_raw_stream()
+print(fp.read(2))
+
+# 文件下载 指定下载范围
+response = client.get_object(
+    Bucket='test04-123456789',
+    Key=file_name,
+    Range='bytes=0-10'
+)
+fp = response['Body'].get_raw_stream()
+print(fp.read())
 
 # 文件下载 捕获异常
 try:
@@ -69,13 +124,13 @@ try:
         Key='not_exist.txt',
     )
     fp = response['Body'].get_raw_stream()
-    print fp.read(2)
+    print(fp.read(2))
 except CosServiceError as e:
-    print e.get_origin_msg()
-    print e.get_digest_msg()
-    print e.get_status_code()
-    print e.get_error_code()
-    print e.get_error_msg()
-    print e.get_resource_location()
-    print e.get_trace_id()
-    print e.get_request_id()
+    print(e.get_origin_msg())
+    print(e.get_digest_msg())
+    print(e.get_status_code())
+    print(e.get_error_code())
+    print(e.get_error_msg())
+    print(e.get_resource_location())
+    print(e.get_trace_id())
+    print(e.get_request_id())
