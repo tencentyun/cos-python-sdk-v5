@@ -46,7 +46,7 @@ class CosConfig(object):
         self._timeout = Timeout
 
         if Scheme is None:
-            Scheme = u'http'
+            Scheme = u'https'
         Scheme = to_unicode(Scheme)
         if(Scheme != u'http' and Scheme != u'https'):
             raise CosClientError('Scheme can be only set to http/https')
