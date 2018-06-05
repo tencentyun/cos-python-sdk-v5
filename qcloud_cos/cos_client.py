@@ -306,7 +306,7 @@ class CosS3Client(object):
             )
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
-        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=300)
+        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=Expired)
         url = url + '?sign=' + quote(sign)
         return url
 
