@@ -46,7 +46,7 @@ class CosConfig(object):
         self._timeout = Timeout
 
         if Scheme is None:
-            Scheme = u'http'
+            Scheme = u'https'
         Scheme = to_unicode(Scheme)
         if(Scheme != u'http' and Scheme != u'https'):
             raise CosClientError('Scheme can be only set to http/https')
@@ -306,7 +306,7 @@ class CosS3Client(object):
             )
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
-        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=300)
+        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=Expired)
         url = url + '?sign=' + quote(sign)
         return url
 
