@@ -6,6 +6,7 @@ import hashlib
 import base64
 import os
 import io
+import re
 import sys
 import xml.dom.minidom
 import xml.etree.ElementTree
@@ -193,10 +194,12 @@ def format_values(data):
 def format_region(region):
     """格式化地域"""
     if not isinstance(region, string_types):
-        raise CosClientError("bucket is not string type")
+        raise CosClientError("region is not string type")
     if not region:
         raise CosClientError("region is required not empty!")
     region = to_unicode(region)
+    if not re.match('^[A-Za-z0-9][A-Za-z0-9.\-]*[A-Za-z0-9]$', region):
+        raise CosClientError("region format is illegal, only digit, letter and - is allowed!")
     if region.find(u'cos.') != -1:
         return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
     if region == u'cn-north' or region == u'cn-south' or region == u'cn-east' or region == u'cn-south-2' or region == u'cn-southwest' or region == u'sg':
@@ -230,6 +233,8 @@ def format_bucket(bucket, appid):
         raise CosClientError("bucket is not string")
     if not bucket:
         raise CosClientError("bucket is required not empty")
+    if not (re.match('^[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9]$', bucket) or re.match('^[A-Za-z0-9]$', bucket)):
+        raise CosClientError("bucket format is illegal, only digit, letter and - is allowed!")
     # appid为空直接返回bucket
     if not appid:
         return to_unicode(bucket)
