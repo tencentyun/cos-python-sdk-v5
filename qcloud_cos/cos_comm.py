@@ -199,7 +199,7 @@ def format_region(region):
         raise CosClientError("region is required not empty!")
     region = to_unicode(region)
     if not re.match('^[A-Za-z0-9][A-Za-z0-9\-]+[A-Za-z0-9]$', region):
-        raise  CosClientError("region format is illegal, only digit, letter and - is allowed!")
+        raise CosClientError("region:%s format is illegal, only digit, letter and - is allowed!" % region)
     if region.find(u'cos.') != -1:
         return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
     if region == u'cn-north' or region == u'cn-south' or region == u'cn-east' or region == u'cn-south-2' or region == u'cn-southwest' or region == u'sg':
@@ -234,7 +234,7 @@ def format_bucket(bucket, appid):
     if not bucket:
         raise CosClientError("bucket is required not empty")
     if not re.match('^[A-Za-z0-9][A-Za-z0-9\-]+[A-Za-z0-9]$', bucket):
-        raise  CosClientError("bucket format is illegal, only digit, letter and - is allowed!")
+        raise  CosClientError("bucket:%s format is illegal, only digit, letter and - is allowed!" % bucket)
     # appid为空直接返回bucket
     if not appid:
         return to_unicode(bucket)
