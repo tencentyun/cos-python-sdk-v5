@@ -81,7 +81,7 @@ response = client.upload_file(
     PartSize=10,
     MAXThread=10
 )
-print response['ETag']
+print(response['ETag'])
 
 # 文件下载 获取文件到本地
 response = client.get_object(
@@ -104,7 +104,7 @@ response = client.get_object(
     Key=file_name,
     ResponseContentType='text/html; charset=utf-8'
 )
-print response['Content-Type']
+print(response['Content-Type'])
 fp = response['Body'].get_raw_stream()
 print(fp.read(2))
 
