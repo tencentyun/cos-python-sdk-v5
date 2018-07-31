@@ -27,23 +27,28 @@ logger = logging.getLogger(__name__)
 
 class CosConfig(object):
     """config类，保存用户相关信息"""
-    def __init__(self, Appid=None, Region=None, Secret_id=None, Secret_key=None, Token=None, Scheme=None, Timeout=None, Access_id=None, Access_key=None):
+    def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
+                 Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
         :param Region(string): 地域信息.
-        :param Secret_id(string): 秘钥SecretId.
-        :param Secret_key(string): 秘钥SecretKey.
+        :param SecretId(string): 秘钥SecretId.
+        :param SecretKey(string): 秘钥SecretKey.
         :param Token(string): 临时秘钥使用的token.
-        :param Schema(string): http/https
+        :param Schema(string): http/https.
         :param Timeout(int): http超时时间.
         :param Access_id(string): 秘钥AccessId(兼容).
         :param Access_key(string): 秘钥AccessKey(兼容).
+        :param Secret_id(string): 秘钥SecretId(兼容).
+        :param Secret_key(string): 秘钥SecretKey(兼容).
+        :param Endpoint(string): endpoint.
         """
         self._appid = to_unicode(Appid)
-        self._region = format_region(Region)
         self._token = to_unicode(Token)
         self._timeout = Timeout
+        self._region = Region
+        self._endpoint = format_endpoint(Endpoint, Region)
 
         if Scheme is None:
             Scheme = u'https'
@@ -53,7 +58,10 @@ class CosConfig(object):
         self._scheme = Scheme
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
-        if(Secret_id and Secret_key):
+        if(SecretId and SecretKey):
+            self._secret_id = to_unicode(SecretId)
+            self._secret_key = to_unicode(SecretKey)
+        elif(Secret_id and Secret_key):
             self._secret_id = to_unicode(Secret_id)
             self._secret_key = to_unicode(Secret_key)
         elif(Access_id and Access_key):
@@ -62,7 +70,7 @@ class CosConfig(object):
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
-    def uri(self, bucket, path=None, scheme=None, region=None):
+    def uri(self, bucket, path=None, endpoint=None):
         """拼接url
 
         :param bucket(string): 存储桶名称.
@@ -70,10 +78,10 @@ class CosConfig(object):
         :return(string): 请求COS的URL地址.
         """
         bucket = format_bucket(bucket, self._appid)
-        if scheme is None:
-            scheme = self._scheme
-        if region is None:
-            region = self._region
+        scheme = self._scheme
+        if endpoint is None:
+            endpoint = self._endpoint
+
         if path is not None:
             if not path:
                 raise CosClientError("Key is required not empty")
@@ -81,17 +89,17 @@ class CosConfig(object):
             if path[0] == u'/':
                 path = path[1:]
             path = quote(to_bytes(path), '/-_.~')
-            url = u"{scheme}://{bucket}.{region}.myqcloud.com/{path}".format(
+            url = u"{scheme}://{bucket}.{endpoint}/{path}".format(
                 scheme=to_unicode(scheme),
                 bucket=to_unicode(bucket),
-                region=to_unicode(region),
+                endpoint=to_unicode(endpoint),
                 path=to_unicode(path)
             )
         else:
-            url = u"{scheme}://{bucket}.{region}.myqcloud.com/".format(
-                scheme=self._scheme,
+            url = u"{scheme}://{bucket}.{endpoint}/".format(
+                scheme=to_unicode(scheme),
                 bucket=to_unicode(bucket),
-                region=self._region
+                endpoint=to_unicode(endpoint)
             )
         return url
 
@@ -1988,11 +1996,11 @@ class CosS3Client(object):
 
     def _inner_head_object(self, CopySource):
         """查询源文件的长度"""
-        bucket, path, region, versionid = get_copy_source_info(CopySource)
+        bucket, path, endpoint, versionid = get_copy_source_info(CopySource)
         params = {}
         if versionid != '':
             params['versionId'] = versionid
-        url = self._conf.uri(bucket=bucket, path=path, scheme=self._conf._scheme, region=region)
+        url = self._conf.uri(bucket=bucket, path=path, endpoint=endpoint)
         rt = self.send_request(
             method='HEAD',
             url=url,
@@ -2017,13 +2025,9 @@ class CosS3Client(object):
         md5_lst.append({'PartNumber': part_number, 'ETag': rt['ETag']})
         return None
 
-    def _check_same_region(self, dst_region, CopySource):
-        if 'Region' in CopySource:
-            src_region = CopySource['Region']
-            src_region = format_region(src_region)
-        else:
-            raise CosClientError('CopySource Need Parameter Region')
-        if src_region == dst_region:
+    def _check_same_region(self, dst_endpoint, CopySource):
+        src_endpoint = get_copy_source_info(CopySource)[2]
+        if src_endpoint == dst_endpoint:
             return True
         return False
 
@@ -2053,7 +2057,7 @@ class CosS3Client(object):
             )
         """
         # 同园区直接走copy_object
-        if self._check_same_region(self._conf._region, CopySource):
+        if self._check_same_region(self._conf._endpoint, CopySource):
             response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
             return response
 
@@ -2302,7 +2306,7 @@ class CosS3Client(object):
         copy_source = {
             'Bucket': Bucket,
             'Key': Key,
-            'Region': self._conf._region,
+            'Endpoint': self._conf._endpoint,
             'Appid': self._conf._appid
         }
         response = self.copy_object(
@@ -2336,7 +2340,7 @@ class CosS3Client(object):
         copy_source = {
             'Bucket': Bucket,
             'Key': Key,
-            'Region': self._conf._region,
+            'Endpoint': self._conf._endpoint,
             'Appid': self._conf._appid
         }
         response = self.copy_object(
