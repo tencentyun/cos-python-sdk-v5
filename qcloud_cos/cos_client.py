@@ -36,7 +36,7 @@ class CosConfig(object):
         :param SecretId(string): 秘钥SecretId.
         :param SecretKey(string): 秘钥SecretKey.
         :param Token(string): 临时秘钥使用的token.
-        :param Schema(string): http/https.
+        :param Scheme(string): http/https
         :param Timeout(int): http超时时间.
         :param Access_id(string): 秘钥AccessId(兼容).
         :param Access_key(string): 秘钥AccessKey(兼容).
@@ -157,7 +157,7 @@ class CosS3Client(object):
             timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.2'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.3'
         kwargs['headers'] = format_values(kwargs['headers'])
         if 'data' in kwargs:
             kwargs['data'] = to_bytes(kwargs['data'])
