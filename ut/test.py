@@ -18,8 +18,9 @@ test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
     Region="ap-beijing-1",
-    Secret_id=SECRET_ID,
-    Secret_key=SECRET_KEY
+    SecretId=SECRET_ID,
+    SecretKey=SECRET_KEY,
+    Endpoint="cos.ap-beijing-1.myqcloud.com"  # support endpoint
 )
 client = CosS3Client(conf)
 

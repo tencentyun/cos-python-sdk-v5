@@ -192,6 +192,17 @@ def format_values(data):
     return data
 
 
+def format_endpoint(endpoint, region):
+    """格式化终端域名"""
+    if not endpoint and not region:
+        raise CosClientError("Region or Endpoint is required not empty!")
+    if not endpoint:
+        region = format_region(region)
+        return u"{region}.myqcloud.com".format(region=region)
+    else:
+        return to_unicode(endpoint)
+
+
 def format_region(region):
     """格式化地域"""
     if not isinstance(region, string_types):
@@ -267,6 +278,8 @@ def get_copy_source_info(CopySource):
     """获取拷贝源的所有信息"""
     appid = u""
     versionid = u""
+    region = u""
+    endpoint = u""
     if 'Appid' in CopySource:
         appid = CopySource['Appid']
     if 'Bucket' in CopySource:
@@ -276,27 +289,27 @@ def get_copy_source_info(CopySource):
         raise CosClientError('CopySource Need Parameter Bucket')
     if 'Region' in CopySource:
         region = CopySource['Region']
-        region = format_region(region)
-    else:
-        raise CosClientError('CopySource Need Parameter Region')
+    if 'Endpoint' in CopySource:
+        endpoint = CopySource['Endpoint']
+    endpoint = format_endpoint(endpoint, region)
     if 'Key' in CopySource:
         path = to_unicode(CopySource['Key'])
     else:
         raise CosClientError('CopySource Need Parameter Key')
     if 'VersionId' in CopySource:
         versionid = to_unicode(CopySource['VersionId'])
-    return bucket, path, region, versionid
+    return bucket, path, endpoint, versionid
 
 
 def gen_copy_source_url(CopySource):
     """拼接拷贝源url"""
-    bucket, path, region, versionid = get_copy_source_info(CopySource)
+    bucket, path, endpoint, versionid = get_copy_source_info(CopySource)
     path = format_path(path)
     if versionid != u'':
         path = path + u'?versionId=' + versionid
-    url = u"{bucket}.{region}.myqcloud.com/{path}".format(
+    url = u"{bucket}.{endpoint}/{path}".format(
             bucket=bucket,
-            region=region,
+            endpoint=endpoint,
             path=path
             )
     return url
