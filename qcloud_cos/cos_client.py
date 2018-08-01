@@ -1767,7 +1767,7 @@ class CosS3Client(object):
 
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
-            # 获取bucket跨区域复制配置
+            # 获取bucket静态网站配置
             response = client.get_bucket_website(
                 Bucket='bucket'
             )
