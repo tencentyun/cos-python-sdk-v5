@@ -590,8 +590,8 @@ def test_put_get_delete_website():
     response = client.get_bucket_website(
         Bucket=test_bucket
     )
-    assert cmp(website_config, response) == 0
-    # delete replication
+    assert website_config == response
+    # delete website
     response = client.delete_bucket_website(
         Bucket=test_bucket
     )
