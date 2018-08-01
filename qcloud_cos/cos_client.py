@@ -36,7 +36,7 @@ class CosConfig(object):
         :param SecretId(string): 秘钥SecretId.
         :param SecretKey(string): 秘钥SecretKey.
         :param Token(string): 临时秘钥使用的token.
-        :param Schema(string): http/https.
+        :param Scheme(string): http/https
         :param Timeout(int): http超时时间.
         :param Access_id(string): 秘钥AccessId(兼容).
         :param Access_key(string): 秘钥AccessKey(兼容).
