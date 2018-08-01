@@ -177,9 +177,12 @@ def mapped(headers):
     return _headers
 
 
-def format_xml(data, root, lst=list()):
+def format_xml(data, root, lst=list(), parent_child=False):
     """将dict转换为xml, xml_config是一个bytes"""
-    xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
+    if parent_child:
+        xml_config = dicttoxml(data, item_func=lambda x: x[:-1], custom_root=root, attr_type=False)
+    else:
+        xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
     for i in lst:
         xml_config = xml_config.replace(to_bytes(i+i), to_bytes(i))
     return xml_config
