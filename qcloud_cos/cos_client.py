@@ -133,7 +133,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取上传请求的签名
             auth_string = client.get_auth(
@@ -157,7 +157,7 @@ class CosS3Client(object):
             timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.4'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.5'
         kwargs['headers'] = format_values(kwargs['headers'])
         if 'data' in kwargs:
             kwargs['data'] = to_bytes(kwargs['data'])
@@ -211,7 +211,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 上传本地文件到cos
             with open('test.txt', 'rb') as fp:
@@ -253,7 +253,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 下载cos上的文件到本地
             response = client.get_object(
@@ -305,7 +305,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取预签名文件下载链接
             response = client.get_presigned_download_url(
@@ -328,7 +328,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 删除一个文件
             response = client.delete_object(
@@ -364,7 +364,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 批量删除文件
             objects = {
@@ -415,7 +415,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 查询文件属性
             response = client.head_object(
@@ -452,7 +452,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 文件拷贝
             copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
@@ -495,7 +495,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 分块上传拷贝分块
             copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
@@ -537,7 +537,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 创建分块上传
             response = client.create_multipart_upload(
@@ -576,7 +576,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 分块上传
             with open('test.txt', 'rb') as fp:
@@ -624,7 +624,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 分块上传
             response = client.complete_multipart_upload(
@@ -665,7 +665,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 分块上传
             response = client.abort_multipart_upload(
@@ -703,7 +703,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 列出分块
             response = client.list_parts(
@@ -753,7 +753,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置 object ACL
             response = client.put_object_acl(
@@ -794,7 +794,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取object ACL
             response = client.get_object_acl(
@@ -859,7 +859,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 创建bucket
             response = client.create_bucket(
@@ -887,7 +887,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 删除bucket
             response = client.delete_bucket(
@@ -920,7 +920,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 列出bucket
             response = client.list_objects(
@@ -988,7 +988,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 列出bucket带版本
             response = client.list_objects_versions(
@@ -1061,7 +1061,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 列出所有分块上传
             response = client.list_multipart_uploads(
@@ -1128,7 +1128,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 确认bucket是否存在
             response = client.head_bucket(
@@ -1157,7 +1157,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置 object ACL
             response = client.put_bucket_acl(
@@ -1196,7 +1196,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置 object ACL
             response = client.get_bucket_acl(
@@ -1232,7 +1232,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置bucket跨域配置
             cors_config = {
@@ -1290,7 +1290,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取bucket跨域配置
             response = client.get_bucket_cors(
@@ -1333,7 +1333,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 删除bucket跨域配置
             response = client.delete_bucket_cors(
@@ -1364,7 +1364,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置bucket生命周期配置
             lifecycle_config = {
@@ -1420,7 +1420,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取bucket生命周期配置
             response = client.get_bucket_lifecycle(
@@ -1457,7 +1457,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 删除bucket生命周期配置
             response = client.delete_bucket_lifecycle(
@@ -1488,7 +1488,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 打开多版本配置
             response = client.put_bucket_versioning(
@@ -1525,7 +1525,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取多版本配置
             response = client.get_bucket_versioning(
@@ -1556,7 +1556,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取bucket所在地域信息
             response = client.get_bucket_location(
@@ -1591,7 +1591,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置bucket跨区域复制配置
             replication_config = {
@@ -1640,7 +1640,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取bucket跨区域复制配置
             response = client.get_bucket_replication(
@@ -1672,7 +1672,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 删除bucket跨区域复制配置
             response = client.delete_bucket_replication(
@@ -1693,6 +1693,136 @@ class CosS3Client(object):
             params=params)
         return None
 
+    def put_bucket_website(self, Bucket, WebsiteConfiguration={}, **kwargs):
+        """设置bucket静态网站配置
+
+        :param Bucket(string): 存储桶名称.
+        :param ReplicationConfiguration(dict): 设置Bucket的静态网站规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket跨区域复制配置
+            website_config = {
+                'IndexDocument': {
+                    'Suffix': 'string'
+                },
+                'ErrorDocument': {
+                    'Key': 'string'
+                },
+                'RedirectAllRequestsTo': {
+                    'HostName': 'string',
+                    'Protocol': 'http'|'https'
+                },
+                'RoutingRules': [
+                    {
+                        'Condition': {
+                            'HttpErrorCodeReturnedEquals': 'string',
+                            'KeyPrefixEquals': 'string'
+                        },
+                        'Redirect': {
+                            'HostName': 'string',
+                            'HttpRedirectCode': 'string',
+                            'Protocol': 'http'|'https',
+                            'ReplaceKeyPrefixWith': 'string',
+                            'ReplaceKeyWith': 'string'
+                        }
+                    }
+                ]
+            }
+            response = client.put_bucket_website(
+                Bucket='bucket',
+                WebsiteConfiguration=website_config
+            )
+        """
+        xml_config = format_xml(data=WebsiteConfiguration, root='WebsiteConfiguration', parent_child=True)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'website': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket website, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            data=xml_config,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_website(self, Bucket, **kwargs):
+        """获取bucket 静态网站配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的静态网站配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket跨区域复制配置
+            response = client.get_bucket_website(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'website': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket website, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        if 'RoutingRules' in data and not isinstance(data['RoutingRules']['RoutingRule'], list):
+            lst = []
+            lst.append(data['RoutingRules']['RoutingRule'])
+            data['RoutingRules']['RoutingRule'] = lst
+        if 'RoutingRules' in data:
+            data['RoutingRules'] = data['RoutingRules']['RoutingRule']
+        return data
+
+    def delete_bucket_website(self, Bucket, **kwargs):
+        """删除bucket 静态网站配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket静态网站配置
+            response = client.delete_bucket_website(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'website': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("delete bucket website, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     def put_bucket_logging(self, Bucket, BucketLoggingStatus={}, **kwargs):
         """设置bucket logging
 
@@ -1703,7 +1833,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置bucket logging服务
             logging_bucket = 'logging-beijing-1252448703'
@@ -1746,7 +1876,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取bucket logging服务配置
             response = logging_client.get_bucket_logging(
@@ -1776,7 +1906,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取账户下所有存储桶信息
             response = logging_client.list_buckets(
@@ -1922,7 +2052,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 根据文件大小自动选择分块大小,多线程并发上传提高上传速度
             file_name = 'thread_1GB_test'
@@ -2045,7 +2175,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 根据拷贝源文件的大小自动选择拷贝策略
             copy_source = {'Bucket': 'testcopt-1252468703', 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
@@ -2220,7 +2350,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 上传本地文件到cos
             response = client.put_object_from_local_file(
@@ -2242,7 +2372,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 上传本地文件到cos
             status = client.object_exists(
@@ -2267,7 +2397,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 上传本地文件到cos
             status = client.bucket_exists(
@@ -2294,7 +2424,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 上传本地文件到cos
             response = client.change_object_storage_class(
@@ -2328,7 +2458,7 @@ class CosS3Client(object):
 
         .. code-block:: python
 
-            config = CosConfig(Region=region, Secret_id=secret_id, Secret_key=secret_key, Token=token)  # 获取配置对象
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 上传本地文件到cos
             response = client.update_object_meta(
