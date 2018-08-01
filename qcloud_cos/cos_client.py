@@ -157,7 +157,7 @@ class CosS3Client(object):
             timeout = self._conf._timeout
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.2'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.4'
         kwargs['headers'] = format_values(kwargs['headers'])
         if 'data' in kwargs:
             kwargs['data'] = to_bytes(kwargs['data'])
