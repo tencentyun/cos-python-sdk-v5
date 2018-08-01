@@ -13,14 +13,14 @@ from qcloud_cos import get_date
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
-test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + '1252448703'
+REGION = os.environ["REGION"]
+test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + '1252448703'
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
-    Region="ap-beijing-1",
+    Region=REGION,
     SecretId=SECRET_ID,
     SecretKey=SECRET_KEY,
-    Endpoint="cos.ap-beijing-1.myqcloud.com"  # support endpoint
 )
 client = CosS3Client(conf)
 
@@ -74,10 +74,10 @@ def tearDown():
 
 def test_put_get_delete_object_10MB():
     """简单上传下载删除10MB小文件"""
-    file_size = 5
+    file_size = 10
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
-    gen_file(file_name, 10)
+    gen_file(file_name, 1)
     with open(file_name, 'rb') as f:
         etag = get_raw_md5(f.read())
     try:
@@ -122,7 +122,7 @@ def test_put_object_speacil_names():
     """特殊字符文件上传"""
     response = client.put_object(
         Bucket=test_bucket,
-        Body='S'*1024*1024,
+        Body='S'*1024,
         Key=special_file_name,
         CacheControl='no-cache',
         ContentDisposition='download.txt'
@@ -152,7 +152,7 @@ def test_put_object_non_exist_bucket():
     try:
         response = client.put_object(
             Bucket='test0xx-1252448703',
-            Body='T'*1024*1024,
+            Body='T'*10,
             Key=test_object,
             CacheControl='no-cache',
             ContentDisposition='download.txt'
@@ -378,7 +378,7 @@ def test_get_bucket_acl_normal():
 def test_list_objects():
     """列出bucket下的objects"""
     response = client.list_objects(
-        Bucket='test01-1252448703',
+        Bucket=test_bucket,
         MaxKeys=100,
         Prefix='中文',
         Delimiter='/'
@@ -410,7 +410,7 @@ def test_get_bucket_location():
     response = client.get_bucket_location(
         Bucket=test_bucket
     )
-    assert response['LocationConstraint'] == "ap-beijing-1"
+    assert response['LocationConstraint'] == REGION
 
 
 def test_get_service():
@@ -480,22 +480,26 @@ def test_put_get_delete_lifecycle():
             }
         ]
     }
-    # put lifecycle
-    response = client.put_bucket_lifecycle(
-        Bucket=test_bucket,
-        LifecycleConfiguration=lifecycle_config
-    )
-    # wait for sync
-    # get lifecycle
-    time.sleep(4)
-    response = client.get_bucket_lifecycle(
-        Bucket=test_bucket
-    )
-    assert response
-    # delete lifecycle
-    response = client.delete_bucket_lifecycle(
-        Bucket=test_bucket
-    )
+    try:
+        # put lifecycle
+        response = client.put_bucket_lifecycle(
+            Bucket=test_bucket,
+            LifecycleConfiguration=lifecycle_config
+        )
+        # wait for sync
+        # get lifecycle
+        time.sleep(4)
+        response = client.get_bucket_lifecycle(
+            Bucket=test_bucket
+        )
+        assert response
+        # delete lifecycle
+        response = client.delete_bucket_lifecycle(
+            Bucket=test_bucket
+        )
+    except CosServiceError as e:
+        if e.get_status_code() < 500:
+            raise e
 
 
 def test_put_get_versioning():
@@ -638,7 +642,9 @@ def test_upload_empty_file():
 def test_copy_10G_file_in_same_region():
     """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
     copy_source = {'Bucket': 'test01-1252448703', 'Key': '10G.txt', 'Region': 'ap-beijing-1'}
-    response = client.copy(
+    copy_config = CosConfig(Region='ap-beijing-1', SecretId=SECRET_ID, SecretKey=SECRET_KEY)
+    copy_client = CosS3Client(copy_config)
+    response = copy_client.copy(
         Bucket='test04-1252448703',
         Key='10G.txt',
         CopySource=copy_source,
@@ -654,7 +660,7 @@ def test_use_get_auth():
         Key='test.txt',
         Params={'acl': '', 'unsed': '123'}
     )
-    url = 'http://' + test_bucket + '.cos.ap-beijing-1.myqcloud.com/test.txt?acl&unsed=123'
+    url = 'http://' + test_bucket + '.cos.' + REGION + '.myqcloud.com/test.txt?acl&unsed=123'
     response = requests.get(url, headers={'Authorization': auth})
     assert response.status_code == 200
 
@@ -723,7 +729,7 @@ def test_put_object_from_local_file():
     file_size = 1
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
-    gen_file(file_name, 10)
+    gen_file(file_name, file_size)
     with open(file_name, 'rb') as f:
         etag = get_raw_md5(f.read())
     put_response = client.put_object_from_local_file(
