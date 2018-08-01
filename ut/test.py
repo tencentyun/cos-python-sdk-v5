@@ -552,6 +552,51 @@ def test_put_get_delete_replication():
     )
 
 
+def test_put_get_delete_website():
+    """设置、获取、删除静态网站配置"""
+    website_config = {
+        'IndexDocument': {
+            'Suffix': 'index.html'
+        },
+        'ErrorDocument': {
+            'Key': 'error.html'
+        },
+        'RoutingRules': [
+            {
+                'Condition': {
+                    'HttpErrorCodeReturnedEquals': '404',
+                },
+                'Redirect': {
+                    'ReplaceKeyWith': '404.html',
+                }
+            },
+            {
+                'Condition': {
+                    'KeyPrefixEquals': 'aaa/'
+                },
+                'Redirect': {
+                    'ReplaceKeyPrefixWith': 'ccc/'
+                }
+             }
+        ]
+    }
+    response = client.put_bucket_website(
+        Bucket=test_bucket,
+        WebsiteConfiguration=website_config
+    )
+    # wait for sync
+    # get website
+    time.sleep(4)
+    response = client.get_bucket_website(
+        Bucket=test_bucket
+    )
+    assert cmp(website_config, response) == 0
+    # delete replication
+    response = client.delete_bucket_website(
+        Bucket=test_bucket
+    )
+
+
 def test_list_multipart_uploads():
     """获取所有正在进行的分块上传"""
     response = client.list_multipart_uploads(
@@ -806,4 +851,5 @@ if __name__ == "__main__":
     test_list_objects()
     test_use_get_auth()
     test_put_get_bucket_logging()
+    test_put_get_delete_website()
     tearDown()
