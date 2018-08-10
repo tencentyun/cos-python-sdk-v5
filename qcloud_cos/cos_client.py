@@ -224,6 +224,8 @@ class CosS3Client(object):
         """
         check_object_content_length(Body)
         headers = mapped(kwargs)
+        if path is None:
+            raise CosClientError("Key is required not empty")
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
