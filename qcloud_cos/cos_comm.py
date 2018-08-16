@@ -146,6 +146,7 @@ def xml_to_dict(data, origin_str="", replace_str=""):
     xmlstr = xmlstr.replace("{http://www.qcloud.com/document/product/436/7751}", "")
     xmlstr = xmlstr.replace("{https://cloud.tencent.com/document/product/436}", "")
     xmlstr = xmlstr.replace("{http://doc.s3.amazonaws.com/2006-03-01}", "")
+    xmlstr = xmlstr.replace("{http://s3.amazonaws.com/doc/2006-03-01/}", "")
     xmlstr = xmlstr.replace("{http://www.w3.org/2001/XMLSchema-instance}", "")
     if origin_str:
         xmlstr = xmlstr.replace(origin_str, replace_str)

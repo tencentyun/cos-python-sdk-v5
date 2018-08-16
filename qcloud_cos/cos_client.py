@@ -185,8 +185,10 @@ class CosS3Client(object):
                 info['code'] = 'NoSuchResource'
                 info['message'] = 'The Resource You Head Not Exist'
                 info['resource'] = url
-                info['requestid'] = res.headers['x-cos-request-id']
-                info['traceid'] = res.headers['x-cos-trace-id']
+                if 'x-cos-request-id' in res.headers:
+                    info['requestid'] = res.headers['x-cos-request-id']
+                if 'x-cos-trace-id' in res.headers:
+                    info['traceid'] = res.headers['x-cos-trace-id']
                 logger.error(info)
                 raise CosServiceError(method, info, res.status_code)
             else:
