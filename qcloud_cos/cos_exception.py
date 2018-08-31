@@ -27,7 +27,10 @@ def digest_xml(data):
         msg['requestid'] = result[0].childNodes[0].nodeValue
 
         result = root.getElementsByTagName('TraceId')
-        msg['traceid'] = result[0].childNodes[0].nodeValue
+        if result:
+            msg['traceid'] = result[0].childNodes[0].nodeValue
+        else:
+            msg['traceid'] = 'Unknown'
         return msg
     except Exception as e:
         return "Response Error Msg Is INVALID"

@@ -18,7 +18,8 @@ deploy:
   provider: pypi
   distributions: sdist bdist_wheel
   user: dt3310321
-  password: *********
+  password:
+    secure: LoSq2wZPbXJ4DkYCQk6Oi0mI6iwhAiE6Xgyvl+Rv1geYqPTuI8ht7dps2ENHM2gj8JqhsZ7C5p/g9P6YuIBk0OTYKewHgHBnUAQwePzu0N1ofzJtJVoSbhW0aPeNfF6DxkTPscBGCHuMyHb/r/buHa3hLoJKxF0l50jEUugTJnP6Ms7a3oa7GaLIJ4QAKMZtLTN31iIcW40r2vVwH+J3JyCr/xeUhwT5/MlaN9c5lLjh7eUig2DA8/6DpqPOm+wV+cn6dh2w2I294cSRsUPJJla63g0YTYbPT9RKeC2D5GiyfqCYAEYzvKdlBJ5hCURh5rxrjOCGlde4Inq0uX6AMETOnvJhkvDMQ5cZ2sUKUy4BC021xvVBdQ44MFI5oGAGUIHbhsAs6wKwWo2ZvmJ5A2Oh0Ny6cx+PzGkZVN9afDUeiGQQcXvHFPw/oZrtQo/H8y8YsIQedBbHOY4RUnt/ID2xOOaZ50REIaGPZJq4hXGgggRh14bKcFcAH/DkiMiBi0bMRhxUOUI57T+4F5Jl5AdrZg/j3FjVn4Jv3Xcr/+N6Xp2QIttRkpa3XpE7N3378V7PKMlGQs0YFWGqDKR9hffMgDQ6qC+E7/OylmxIrOHv4545QCfVUuOhkq9v6IINc1XkKZ4r0GpNk33yr08lZ+jlsMKZvycBF5W2Yp8LWkM=
   on:
     tags: true
     branch: master
