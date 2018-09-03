@@ -1,15 +1,11 @@
 # coding=utf-8
 
-import logging
-import sys
-import random
-import string
-
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosServiceError
+import sys
+import random
+import string
 
 
 class CosV5PythonSDKTest(object):
@@ -394,7 +390,7 @@ if __name__ == "__main__":
 
     try:
 
-        # ----------------------------------------- 存储桶相关操作 -----------------------------------------
+        # ---------------------- 存储桶相关操作 ----------------------
 
         # 创建存储桶
         main.create_bucket(bucket_name="mainbkt")
@@ -457,7 +453,7 @@ if __name__ == "__main__":
         # 删除存储桶跨域资源配置
         main.delete_bucket_cors(bucket_name="mainbkt")
 
-        # ----------------------------------------- 对象操作 -----------------------------------------
+        # ---------------------- 对象相关操作 ----------------------
 
         # 字节（字串）对象上传 1MB
         main.put_object_str(
