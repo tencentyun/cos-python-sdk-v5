@@ -340,9 +340,9 @@ if __name__ == "__main__":
 
         main = CosV5PythonSDKTest(
                 region="wh",
-                appid="1255000008",
-                secret_id="AKIDvZuvbujbcHccHauEY19wQYQzC5dpwBK7",
-                secret_key="brlMcX73evqQhhNhvoMZRzC6hxsShcEV",
+                appid="",
+                secret_id="",
+                secret_key="",
                 end_point="cos.%s.yun.ccb.com",
                 scheme="http"
         )
