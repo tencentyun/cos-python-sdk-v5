@@ -7,6 +7,7 @@ import base64
 import os
 import sys
 import copy
+import json
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
-                 Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None):
+                 Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -43,12 +44,16 @@ class CosConfig(object):
         :param Secret_id(string): 秘钥SecretId(兼容).
         :param Secret_key(string): 秘钥SecretKey(兼容).
         :param Endpoint(string): endpoint.
+        :param IP(string): 访问COS的ip
+        :param Port(int):  访问COS的port
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
         self._timeout = Timeout
         self._region = Region
         self._endpoint = format_endpoint(Endpoint, Region)
+        self._ip = to_unicode(IP)
+        self._port = Port
 
         if Scheme is None:
             Scheme = u'https'
@@ -82,6 +87,14 @@ class CosConfig(object):
         if endpoint is None:
             endpoint = self._endpoint
 
+        # 拼接请求的url,默认使用bucket和endpoint拼接请求域名
+        # 指定ip和port时,则使用ip:port方式访问
+        url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
+        if self._ip is not None:
+            url = self._ip
+            if self._port is not None:
+                url = u"{ip}:{port}".format(ip=self._ip, port=self._port)
+
         if path is not None:
             if not path:
                 raise CosClientError("Key is required not empty")
@@ -89,19 +102,33 @@ class CosConfig(object):
             if path[0] == u'/':
                 path = path[1:]
             path = quote(to_bytes(path), '/-_.~')
-            url = u"{scheme}://{bucket}.{endpoint}/{path}".format(
+            request_url = u"{scheme}://{url}/{path}".format(
                 scheme=to_unicode(scheme),
-                bucket=to_unicode(bucket),
-                endpoint=to_unicode(endpoint),
+                url=to_unicode(url),
                 path=to_unicode(path)
             )
         else:
-            url = u"{scheme}://{bucket}.{endpoint}/".format(
+            request_url = u"{scheme}://{url}/".format(
                 scheme=to_unicode(scheme),
-                bucket=to_unicode(bucket),
-                endpoint=to_unicode(endpoint)
+                url=to_unicode(url)
             )
-        return url
+        return request_url
+
+    def get_host(self, Bucket):
+        """传入bucket名称,根据endpoint获取Host名称
+        :param Bucket(string): bucket名称
+        :return (string): Host名称
+        """
+        return u"{bucket}.{endpoint}".format(bucket=format_bucket(Bucket, self._appid), endpoint=self._endpoint)
+
+    def set_ip_port(self, IP, Port=None):
+        """设置直接访问的ip:port,可以不指定Port,http默认为80,https默认为443
+        :param IP(string): 访问COS的ip
+        :param Port(int):  访问COS的port
+        :return None
+        """
+        self._ip = to_unicode(IP)
+        self._port = Port
 
 
 class CosS3Client(object):
@@ -151,13 +178,16 @@ class CosS3Client(object):
         auth = CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, Params, Expired)
         return auth(r).headers['Authorization']
 
-    def send_request(self, method, url, timeout=30, **kwargs):
+    def send_request(self, method, url, bucket, timeout=30, **kwargs):
         """封装request库发起http请求"""
         if self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
+
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.6'
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.6'
+        if bucket is not None:
+            kwargs['headers']['Host'] = self._conf.get_host(bucket)
         kwargs['headers'] = format_values(kwargs['headers'])
         if 'data' in kwargs:
             kwargs['data'] = to_bytes(kwargs['data'])
@@ -238,6 +268,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             data=Body,
             headers=headers)
@@ -287,6 +318,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
+                bucket=Bucket,
                 stream=True,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
                 params=params,
@@ -350,6 +382,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='DELETE',
                 url=url,
+                bucket=Bucket,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 headers=headers,
                 params=params)
@@ -399,6 +432,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='POST',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -437,6 +471,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='HEAD',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
             headers=headers,
             params=params)
@@ -476,6 +511,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers)
         body = xml_to_dict(rt.content)
@@ -521,6 +557,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='PUT',
                 url=url,
+                bucket=Bucket,
                 headers=headers,
                 params=params,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params))
@@ -557,6 +594,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='POST',
                 url=url,
+                bucket=Bucket,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
                 headers=headers,
                 params=params)
@@ -606,6 +644,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='PUT',
                 url=url,
+                bucket=Bucket,
                 headers=headers,
                 params=params,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
@@ -646,6 +685,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='POST',
                 url=url,
+                bucket=Bucket,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
                 data=dict_to_xml(MultipartUpload),
                 timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
@@ -686,6 +726,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='DELETE',
                 url=url,
+                bucket=Bucket,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
                 headers=headers,
                 params=params)
@@ -735,6 +776,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
+                bucket=Bucket,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
                 headers=headers,
                 params=params)
@@ -780,6 +822,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
             headers=headers,
@@ -813,6 +856,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
             headers=headers,
             params=params)
@@ -845,6 +889,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='POST',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
             headers=headers,
@@ -876,6 +921,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='PUT',
                 url=url,
+                bucket=Bucket,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
                 headers=headers)
         return None
@@ -904,6 +950,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='DELETE',
                 url=url,
+                bucket=Bucket,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
                 headers=headers)
         return None
@@ -955,6 +1002,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
+                bucket=Bucket,
                 params=params,
                 headers=headers,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params))
@@ -1025,6 +1073,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
+                bucket=Bucket,
                 params=params,
                 headers=headers,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params))
@@ -1098,6 +1147,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
+                bucket=Bucket,
                 params=params,
                 headers=headers,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params))
@@ -1145,6 +1195,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='HEAD',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
             headers=headers)
         return None
@@ -1183,6 +1234,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -1214,6 +1266,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1277,6 +1330,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -1308,6 +1362,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1351,6 +1406,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='DELETE',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1407,6 +1463,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -1438,6 +1495,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1475,6 +1533,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='DELETE',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1512,6 +1571,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -1543,6 +1603,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1575,6 +1636,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1627,6 +1689,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -1658,6 +1721,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1690,6 +1754,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='DELETE',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1752,6 +1817,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -1783,6 +1849,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1820,6 +1887,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='DELETE',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
@@ -1862,6 +1930,7 @@ class CosS3Client(object):
         logging_rt = self.send_request(
             method='PUT',
             url=url,
+            bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
@@ -1894,10 +1963,87 @@ class CosS3Client(object):
         rt = self.send_request(
             method='GET',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
             headers=headers,
             params=params)
         data = xml_to_dict(rt.content)
+        return data
+
+    def put_bucket_policy(self, Bucket, Policy, **kwargs):
+        """设置bucket policy
+
+        :param Bucket(string): 存储桶名称.
+        :param Policy(dict): 设置Bucket的Policy配置.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket policy服务
+            bucket = 'test-1252448703'
+            response = client.put_bucket_policy(
+                Bucket=bucket,
+                Policy=policy
+            )
+        """
+        # Policy必须是一个json字符串(str)或者json对象(dict)
+        body = Policy
+        policy_type = type(body)
+        if policy_type != str and policy_type != dict:
+            raise CosClientError("Policy must be a json foramt string or json format dict")
+        if policy_type == dict:
+            body = json.dumps(body)
+
+        headers = mapped(kwargs)
+        headers['Content-Type'] = 'application/json'
+        params = {'policy': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket policy, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=body,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_policy(self, Bucket, **kwargs):
+        """获取bucket policy
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的policy配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket policy服务配置
+            response = client.get_bucket_policy(
+                Bucket=bucket
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'policy': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket policy, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
+            headers=headers,
+            params=params)
+        data = {'Policy': json.dumps(rt.json())}
         return data
 
     # service interface begin
@@ -1920,6 +2066,7 @@ class CosS3Client(object):
         rt = self.send_request(
                 method='GET',
                 url=url,
+                bucket=None,
                 headers=headers,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
                 )
@@ -1931,7 +2078,7 @@ class CosS3Client(object):
         return data
 
     # Advanced interface
-    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag, already_exist_parts):
+    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag, already_exist_parts, enable_md5):
         """从本地文件中读取分块, 上传单个分块,将结果记录在md5——list中
 
         :param bucket(string): 存储桶名称.
@@ -1944,6 +2091,7 @@ class CosS3Client(object):
         :param md5_lst(list): 保存上传成功分块的MD5和序号.
         :param resumable_flag(bool): 是否为断点续传.
         :param already_exist_parts(dict): 断点续传情况下,保存已经上传的块的序号和Etag.
+        :param enable_md5(bool): 是否开启md5校验.
         :return: None.
         """
         # 如果是断点续传且该分块已经上传了则不用实际上传
@@ -1953,7 +2101,7 @@ class CosS3Client(object):
             with open(local_path, 'rb') as fp:
                 fp.seek(offset, 0)
                 data = fp.read(size)
-            rt = self.upload_part(bucket, key, data, part_num, uploadid)
+            rt = self.upload_part(bucket, key, data, part_num, uploadid, enable_md5)
             md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
         return None
 
@@ -2041,7 +2189,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, **kwargs):
+    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, **kwargs):
         """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
 
         :param Bucket(string): 存储桶名称.
@@ -2049,6 +2197,7 @@ class CosS3Client(object):
         :param LocalFilePath(string): 本地文件路径名.
         :param PartSize(int): 分块的大小设置,单位为MB.
         :param MAXThread(int): 并发上传的最大线程数.
+        :param EnableMD5(bool): 是否打开MD5校验.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 成功上传文件的元信息.
 
@@ -2071,7 +2220,7 @@ class CosS3Client(object):
         file_size = os.path.getsize(LocalFilePath)
         if file_size <= 1024*1024*20:
             with open(LocalFilePath, 'rb') as fp:
-                rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, **kwargs)
+                rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, EnableMD5=EnableMD5, **kwargs)
             return rt
         else:
             part_size = 1024*1024*PartSize  # 默认按照1MB分块,最大支持10G的文件，超过10G的分块数固定为10000
@@ -2111,9 +2260,9 @@ class CosS3Client(object):
 
             for i in range(1, parts_num+1):
                 if i == parts_num:  # 最后一块
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst, resumable_flag, already_exist_parts)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5)
                 else:
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst, resumable_flag, already_exist_parts)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5)
                     offset += part_size
 
             pool.wait_completion()
@@ -2136,6 +2285,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='HEAD',
             url=url,
+            bucket=bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, path, params=params),
             headers={},
             params=params)
@@ -2333,6 +2483,7 @@ class CosS3Client(object):
         rt = self.send_request(
             method='POST',
             url=url,
+            bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
             data=Body,
             headers=headers,
