@@ -7,6 +7,7 @@ import base64
 import os
 import sys
 import copy
+import json
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
@@ -1967,6 +1968,82 @@ class CosS3Client(object):
             headers=headers,
             params=params)
         data = xml_to_dict(rt.content)
+        return data
+
+    def put_bucket_policy(self, Bucket, Policy, **kwargs):
+        """设置bucket policy
+
+        :param Bucket(string): 存储桶名称.
+        :param Policy(dict): 设置Bucket的Policy配置.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket policy服务
+            bucket = 'test-1252448703'
+            response = client.put_bucket_policy(
+                Bucket=bucket,
+                Policy=policy
+            )
+        """
+        # Policy必须是一个json字符串(str)或者json对象(dict)
+        body = Policy
+        policy_type = type(body)
+        if policy_type != str and policy_type != dict:
+            raise CosClientError("Policy must be a json foramt string or json format dict")
+        if policy_type == dict:
+            body = json.dumps(body)
+
+        headers = mapped(kwargs)
+        headers['Content-Type'] = 'application/json'
+        params = {'policy': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket policy, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=body,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_policy(self, Bucket, **kwargs):
+        """获取bucket policy
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的policy配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket policy服务配置
+            response = client.get_bucket_policy(
+                Bucket=bucket
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'policy': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket policy, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, params=params),
+            headers=headers,
+            params=params)
+        data = {'Policy': json.dumps(rt.json())}
         return data
 
     # service interface begin

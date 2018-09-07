@@ -5,6 +5,7 @@ import time
 import hashlib
 import os
 import requests
+import json
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
@@ -14,7 +15,8 @@ SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ["REGION"]
-test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + '1252448703'
+APPID = '1252448703'
+test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + APPID
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
@@ -836,6 +838,37 @@ def test_update_object_meta():
     assert response['Content-Type'] == 'text/html; charset=utf-8'
 
 
+def test_put_get_bucket_policy():
+    """设置获取bucket的policy配置"""
+    resource = "qcs::cos:" + REGION + ":uid/" + APPID + ":" + test_bucket + "/*"
+    resource_list = [resource]
+    policy = {
+        "Statement": [
+            {
+                "Principal": {
+                    "qcs": [
+                        "qcs::cam::anyone:anyone"
+                    ]
+                },
+                "Action": [
+                    "name/cos:GetObject",
+                    "name/cos:HeadObject"
+                ],
+                "Effect": "allow",
+                "Resource": resource_list
+            }
+        ],
+        "Version": "2.0"
+    }
+    response = client.put_bucket_policy(
+        Bucket=test_bucket,
+        Policy=policy
+    )
+    response = client.get_bucket_policy(
+        Bucket=test_bucket,
+    )
+
+
 if __name__ == "__main__":
     setUp()
     test_put_object_enable_md5()
@@ -852,4 +885,5 @@ if __name__ == "__main__":
     test_use_get_auth()
     test_put_get_bucket_logging()
     test_put_get_delete_website()
+    test_put_get_bucket_policy()
     tearDown()
