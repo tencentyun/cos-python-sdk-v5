@@ -334,8 +334,14 @@ def check_object_content_length(data):
     if type(data) is string_types:
         content_len = len(to_bytes(data))
     elif hasattr(data, 'fileno') and hasattr(data, 'tell'):
-        fileno = data.fileno()
-        total_length = os.fstat(fileno).st_size
+        try:
+            fileno = data.fileno()
+            total_length = os.fstat(fileno).st_size
+        except IOError:
+            if hasattr(data, 'size'):
+                total_length = data.size
+            else:
+                raise
         current_position = data.tell()
         content_len = total_length - current_position
     if content_len > SINGLE_UPLOAD_LENGTH:
@@ -349,10 +355,13 @@ def deal_with_empty_file_stream(data):
         try:
             fileno = data.fileno()
             total_length = os.fstat(fileno).st_size
-            current_position = data.tell()
-            if total_length - current_position == 0:
-                return b""
         except io.UnsupportedOperation:
+            if hasattr(data, 'size'):
+                total_length = data.size
+            else:
+                return b""
+        current_position = data.tell()
+        if total_length - current_position == 0:
             return b""
     return data
 
