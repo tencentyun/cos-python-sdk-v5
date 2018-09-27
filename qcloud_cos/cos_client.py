@@ -515,6 +515,9 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
             headers=headers)
         body = xml_to_dict(rt.content)
+        if 'ETag' not in body:
+            logger.error(rt.content)
+            raise CosServiceError('PUT', rt.content, 200)
         data = rt.headers
         data.update(body)
         return data
@@ -692,6 +695,10 @@ class CosS3Client(object):
                 headers=headers,
                 params=params)
         body = xml_to_dict(rt.content)
+        # 分块上传文件返回200OK并不能代表文件上传成功,返回的body里面如果没有ETag则认为上传失败
+        if 'ETag' not in body:
+            logger.error(rt.content)
+            raise CosServiceError('POST', rt.content, 200)
         data = rt.headers
         data.update(body)
         return data
