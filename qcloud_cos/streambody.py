@@ -26,5 +26,5 @@ class StreamBody():
                 if chunk:
                     file_len += len(chunk)
                     fp.write(chunk)
-        if !use_chunked and file_len != content_len:
+        if not use_chunked and file_len != content_len:
             raise IOError("download failed with incomplete file")
