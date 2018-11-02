@@ -94,7 +94,7 @@ def test_put_get_delete_object_10MB():
             )
         assert etag == put_response['ETag']
         # head object
-        head_response = client.get_object(
+        head_response = client.head_object(
             Bucket=test_bucket,
             Key=file_name
         )
@@ -869,6 +869,31 @@ def test_put_get_bucket_policy():
     )
 
 
+def test_put_file_like_object():
+    """利用BytesIo来模拟文件上传"""
+    import io
+    input = io.BytesIO(b"123456")
+    rt = client.put_object(
+        Bucket=test_bucket,
+        Key='test_file_like_object',
+        Body=input,
+        EnableMD5=True    
+    )
+    assert rt
+
+
+def test_put_chunked_object():
+    """利用BytesIo来模拟文件上传"""
+    import requests
+    input = requests.get(client.get_presigned_download_url(test_bucket, test_object))
+    rt = client.put_object(
+        Bucket=test_bucket,
+        Key='test_chunked_object',
+        Body=input
+    )
+    assert rt
+
+
 if __name__ == "__main__":
     setUp()
     test_put_object_enable_md5()
@@ -886,4 +911,6 @@ if __name__ == "__main__":
     test_put_get_bucket_logging()
     test_put_get_delete_website()
     test_put_get_bucket_policy()
+    test_put_file_like_object()
+    test_put_chunked_object()
     tearDown()

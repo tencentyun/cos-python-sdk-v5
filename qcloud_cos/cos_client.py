@@ -12,7 +12,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session
 from datetime import datetime
-from six.moves.urllib.parse import quote, unquote
+from six.moves.urllib.parse import quote, unquote, urlencode
 from hashlib import md5
 from dicttoxml import dicttoxml
 from .streambody import StreamBody
@@ -130,6 +130,16 @@ class CosConfig(object):
         self._ip = to_unicode(IP)
         self._port = Port
 
+    def set_credential(self, SecretId, SecretKey, Token=None):
+        """设置访问的身份,包括secret_id,secret_key,临时秘钥token默认为空
+        :param SecretId(string): 秘钥SecretId.
+        :param SecretKey(string): 秘钥SecretKey.
+        :param Token(string): 临时秘钥使用的token.
+        """
+        self._secret_id = to_unicode(SecretId)
+        self._secret_key = to_unicode(SecretKey)
+        self._token = to_unicode(Token)
+
 
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
@@ -164,7 +174,7 @@ class CosS3Client(object):
             client = CosS3Client(config)
             # 获取上传请求的签名
             auth_string = client.get_auth(
-                    Method='PUT'
+                    Method='PUT,'
                     Bucket='bucket',
                     Key='test.txt',
                     Expired=600,
@@ -289,7 +299,7 @@ class CosS3Client(object):
             client = CosS3Client(config)
             # 下载cos上的文件到本地
             response = client.get_object(
-                Bucket='bucket'
+                Bucket='bucket',
                 Key='test.txt'
             )
             response['Body'].get_stream_to_file('local_file.txt')
@@ -328,12 +338,43 @@ class CosS3Client(object):
 
         return response
 
-    def get_presigned_download_url(self, Bucket, Key, Expired=300):
+    def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}):
+        """生成预签名的url
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Method(string): HTTP请求的方法, 'PUT'|'POST'|'GET'|'DELETE'|'HEAD'
+        :param Expired(int): 签名过期时间.
+        :param Params(dict): 签入签名的参数
+        :param Headers(dict): 签入签名的头部
+        :return(string): 预先签名的URL.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取预签名链接
+            response = client.get_presigned_download_url(
+                Bucket='bucket',
+                Key='test.txt',
+                Method='PUT'
+            )
+        """
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params)
+        url = url + '?sign=' + quote(sign)
+        if Params:
+            url = url + '&' + urlencode(Params)
+        return url
+
+    def get_presigned_download_url(self, Bucket, Key, Expired=300, Params={}, Headers={}):
         """生成预签名的下载url
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Expired(int): 签名过期时间.
+        :param Params(dict): 签入签名的参数
+        :param Headers(dict): 签入签名的头部
         :return(string): 预先签名的下载URL.
 
         .. code-block:: python
@@ -342,14 +383,11 @@ class CosS3Client(object):
             client = CosS3Client(config)
             # 获取预签名文件下载链接
             response = client.get_presigned_download_url(
-                Bucket='bucket'
+                Bucket='bucket',
                 Key='test.txt'
             )
         """
-        url = self._conf.uri(bucket=Bucket, path=Key)
-        sign = self.get_auth(Method='GET', Bucket=Bucket, Key=Key, Expired=Expired)
-        url = url + '?sign=' + quote(sign)
-        return url
+        return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers)
 
     def delete_object(self, Bucket, Key, **kwargs):
         """单文件删除接口
@@ -365,7 +403,7 @@ class CosS3Client(object):
             client = CosS3Client(config)
             # 删除一个文件
             response = client.delete_object(
-                Bucket='bucket'
+                Bucket='bucket',
                 Key='test.txt'
             )
         """
@@ -413,7 +451,7 @@ class CosS3Client(object):
                 ]
             }
             response = client.delete_objects(
-                Bucket='bucket'
+                Bucket='bucket',
                 Delete=objects
             )
         """
@@ -454,7 +492,7 @@ class CosS3Client(object):
             client = CosS3Client(config)
             # 查询文件属性
             response = client.head_object(
-                Bucket='bucket'
+                Bucket='bucket',
                 Key='test.txt'
             )
         """
