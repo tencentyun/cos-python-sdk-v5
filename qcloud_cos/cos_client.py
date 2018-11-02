@@ -260,7 +260,6 @@ class CosS3Client(object):
         logger.info("put object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        Body = deal_with_empty_file_stream(Body)
         if EnableMD5:
             md5_str = get_content_md5(Body)
             if md5_str:
@@ -639,7 +638,6 @@ class CosS3Client(object):
             url=url,
             headers=headers,
             params=params))
-        Body = deal_with_empty_file_stream(Body)
         if EnableMD5:
             md5_str = get_content_md5(Body)
             if md5_str:
@@ -2480,19 +2478,19 @@ class CosS3Client(object):
         :kwargs(dict): 设置上传的headers.
         :return(dict): 上传成功返回的结果，包含ETag等信息.
         """
+        check_object_content_length(Data)
         headers = mapped(kwargs)
         params = {'append': '', 'position': Position}
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("append object, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
-        Body = deal_with_empty_file_stream(Data)
         rt = self.send_request(
             method='POST',
             url=url,
             bucket=Bucket,
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
-            data=Body,
+            data=Data,
             headers=headers,
             params=params)
         response = rt.headers

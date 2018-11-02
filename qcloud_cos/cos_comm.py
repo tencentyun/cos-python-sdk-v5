@@ -16,7 +16,8 @@ from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
 
-SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5G
+SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5GB
+DEFAULT_CHUNK_SIZE = 1024*1024           # 计算MD5值时,文件单次读取的块大小为1MB
 LOGGING_UIN = 'id="qcs::cam::uin/100001001014:uin/100001001014"'
 # kwargs中params到http headers的映射
 maplist = {
@@ -102,9 +103,20 @@ def get_content_md5(body):
         return get_md5(body)
     elif hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
         file_position = body.tell()  # 记录文件当前位置
-        md5_str = get_md5(body.read())
-        body.seek(file_position)  # 恢复初始的文件位置
+        # avoid OOM
+        md5 = hashlib.md5('')
+        chunk = body.read(DEFAULT_CHUNK_SIZE)
+        while chunk:
+            md5.update(chunk)
+            chunk = body.read(DEFAULT_CHUNK_SIZE)
+        md5_str = base64.standard_b64encode(md5.digest())
+        try:
+            body.seek(file_position)  # 恢复初始的文件位置
+        except Exception as e:
+            raise CosClientError('seek unsupported to calculate md5!')
         return md5_str
+    else:
+        raise CosClientError('unsupported body type to calculate md5!')
     return None
 
 
@@ -328,33 +340,33 @@ def gen_copy_source_range(begin_range, end_range):
     return range
 
 
+def get_file_like_object_length(data):
+    try:
+        total_length = os.fstat(data.fileno()).st_size
+    except IOError:
+        if hasattr(data, '__len__'):
+            total_length = len(data)
+        else:
+            # support BytesIO file-like object
+            total_length = len(data.getvalue())
+    current_position = data.tell()
+    content_len = total_length - current_position
+    return content_len
+
+
 def check_object_content_length(data):
     """put_object接口和upload_part接口的文件大小不允许超过5G"""
     content_len = 0
     if type(data) is string_types:
         content_len = len(to_bytes(data))
     elif hasattr(data, 'fileno') and hasattr(data, 'tell'):
-        fileno = data.fileno()
-        total_length = os.fstat(fileno).st_size
-        current_position = data.tell()
-        content_len = total_length - current_position
+        content_len = get_file_like_object_length(data)
+    else:
+        # can not get the content-length, use chunked to upload the file
+        pass
     if content_len > SINGLE_UPLOAD_LENGTH:
         raise CosClientError('The object size you upload can not be larger than 5GB in put_object or upload_part')
     return None
-
-
-def deal_with_empty_file_stream(data):
-    """对于文件流的剩余长度为0的情况下，返回空字节流"""
-    if hasattr(data, 'fileno') and hasattr(data, 'tell'):
-        try:
-            fileno = data.fileno()
-            total_length = os.fstat(fileno).st_size
-            current_position = data.tell()
-            if total_length - current_position == 0:
-                return b""
-        except io.UnsupportedOperation:
-            return b""
-    return data
 
 
 def format_dict(data, key_lst):
