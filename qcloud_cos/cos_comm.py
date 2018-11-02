@@ -104,7 +104,7 @@ def get_content_md5(body):
     elif hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
         file_position = body.tell()  # 记录文件当前位置
         # avoid OOM
-        md5 = hashlib.md5('')
+        md5 = hashlib.md5()
         chunk = body.read(DEFAULT_CHUNK_SIZE)
         while chunk:
             md5.update(chunk)
