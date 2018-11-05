@@ -3,6 +3,7 @@
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosServiceError
+from qcloud_cos import CosClientError
 import sys
 import random
 import string
@@ -235,7 +236,7 @@ class CosV5PythonSDKTest(object):
             Bucket=bucket_name + '-' + self.appid, Delete=delete)
         return resp
 
-    def delete_objects_with_quite(self, bucket_name, obj_list, quiet):
+    def delete_objects_with_quiet(self, bucket_name, obj_list, quiet):
         # 批量删除对象
         _obj = []
         for obj in obj_list:
@@ -506,7 +507,7 @@ if __name__ == "__main__":
             bucket_name="mainbkt", obj_list=["obj", "obja", "objb"])
 
         # 删除多个对象，传入对象名list和quiet参数
-        resp = main.delete_objects_with_quite(
+        resp = main.delete_objects_with_quiet(
             bucket_name="mainbkt",
             obj_list=["obj", "obja", "objb"],
             quiet="true")
@@ -605,5 +606,6 @@ if __name__ == "__main__":
         print("Succeeded")
 
     except Exception as e:
-		
-		print("Failed")
+
+        # 可细化CosServiceError/CosClientError
+        print("Failed")
