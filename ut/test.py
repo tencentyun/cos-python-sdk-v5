@@ -883,7 +883,7 @@ def test_put_file_like_object():
 
 
 def test_put_chunked_object():
-    """利用BytesIo来模拟文件上传"""
+    """支持网络流来支持chunk上传"""
     import requests
     input = requests.get(client.get_presigned_download_url(test_bucket, test_object))
     rt = client.put_object(
@@ -892,6 +892,21 @@ def test_put_chunked_object():
         Body=input
     )
     assert rt
+
+
+def test_put_get_gzip_file():
+    """上传文件时,带上ContentEncoding,下载时默认不解压"""
+    rt = client.put_object(
+        Bucket=test_bucket,
+        Key='test_gzip_file',
+        Body='123456',
+        ContentEncoding='gzip',
+    )
+    rt = client.get_object(
+        Bucket=test_bucket,
+        Key='test_gzip_file'
+    )
+    rt['Body'].get_stream_to_file('test_gzip_file.local')
 
 
 if __name__ == "__main__":

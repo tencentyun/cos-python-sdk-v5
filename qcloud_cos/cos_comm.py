@@ -107,7 +107,7 @@ def get_content_md5(body):
         md5 = hashlib.md5()
         chunk = body.read(DEFAULT_CHUNK_SIZE)
         while chunk:
-            md5.update(chunk)
+            md5.update(to_bytes(chunk))
             chunk = body.read(DEFAULT_CHUNK_SIZE)
         md5_str = base64.standard_b64encode(md5.digest())
         try:

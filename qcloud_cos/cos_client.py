@@ -174,7 +174,7 @@ class CosS3Client(object):
             client = CosS3Client(config)
             # 获取上传请求的签名
             auth_string = client.get_auth(
-                    Method='PUT,'
+                    Method='PUT',
                     Bucket='bucket',
                     Key='test.txt',
                     Expired=600,
@@ -354,7 +354,7 @@ class CosS3Client(object):
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取预签名链接
-            response = client.get_presigned_download_url(
+            response = client.get_presigned_url(
                 Bucket='bucket',
                 Key='test.txt',
                 Method='PUT'
