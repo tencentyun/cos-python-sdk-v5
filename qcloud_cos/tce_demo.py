@@ -110,13 +110,13 @@ class CosV5PythonSDKTest(object):
             Bucket=bucket_name + '-' + self.appid, ACL=acl)
         return 0
 
-    def put_bucket_acl_with_GrantFullControl(self, bucket_bane, owner_uin,
+    def put_bucket_acl_with_GrantFullControl(self, bucket_name, owner_uin,
                                              sub_uin):
         # 设置存储桶访问控制权限 GrantFullControl
         grant_full_control = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin,
                                                                sub_uin)
         self.client.put_bucket_acl(
-            Bucket=bucket_bane + '-' + self.appid,
+            Bucket=bucket_name + '-' + self.appid,
             GrantFullControl=grant_full_control)
 
     def put_bucket_acl_with_GrantRead(self, bucket_name, owner_uin, sub_uin):
@@ -235,12 +235,12 @@ class CosV5PythonSDKTest(object):
             Bucket=bucket_name + '-' + self.appid, Delete=delete)
         return resp
 
-    def delete_objects_with_quite(self, bucket_name, obj_list, quite):
+    def delete_objects_with_quite(self, bucket_name, obj_list, quiet):
         # 批量删除对象
         _obj = []
         for obj in obj_list:
             _obj.append({"Key": obj})
-        delete = {"Object": _obj, "Quiet": quite}
+        delete = {"Object": _obj, "Quiet": quiet}
         resp = self.client.delete_objects(
             Bucket=bucket_name + '-' + self.appid, Delete=delete)
         return resp
@@ -311,7 +311,7 @@ class CosV5PythonSDKTest(object):
         self.client.put_object_acl(
             Bucket=bucket_name + '-' + self.appid,
             Key=obj_name,
-            GrantRead=grant_write)
+            GrantWrite=grant_write)
 
     def get_object_acl(self, bucket_name, obj_name):
         # 获取对象访问控制权限
@@ -381,11 +381,11 @@ class CosV5PythonSDKTest(object):
 if __name__ == "__main__":
 
     main = CosV5PythonSDKTest(
-        region="wh",
+        region="",
         appid="",
         secret_id="",
         secret_key="",
-        end_point="cos.%s.yun.ccb.com",
+        end_point="",
         scheme="http")
 
     try:
@@ -416,7 +416,7 @@ if __name__ == "__main__":
 
         # head存储桶（查询存储桶是否存在）
         main.head_bucket(bucket_name="mainbkt")
-        main.head_bucket(bucket_name="not_exist")
+        main.head_bucket(bucket_name="notexist")
 
         # 获取bucket地域信息
         resp = main.get_bucket_location(bucket_name="mainbkt")
@@ -492,7 +492,7 @@ if __name__ == "__main__":
         # 下载不存在对象
         main.get_object(
             bucket_name="mainbkt",
-            obj_name="not_exist.txt",
+            obj_name="notexist.txt",
             file_name="f:\\x.txt")
 
         # 删除对象
@@ -602,11 +602,8 @@ if __name__ == "__main__":
             obj_name="upload1g.txt",
             file_path="f:\\test1g.txt")
 
-        print "Success"
+        print("Succeeded")
 
-    except CosServiceError as e:
-        print(e.get_origin_msg())
-        print(e.get_digest_msg())
-        print(e.get_status_code())
-        print(e.get_error_code())
-        print(e.get_error_msg())
+    except Exception as e:
+		
+		print("Failed")
