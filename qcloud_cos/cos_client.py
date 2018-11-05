@@ -193,7 +193,7 @@ class CosS3Client(object):
         if self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
 
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.5.7'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.6.1'
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
         if bucket is not None:
