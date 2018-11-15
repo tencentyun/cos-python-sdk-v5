@@ -98,8 +98,7 @@ def get_md5(data):
 
 def get_content_md5(body):
     """计算任何输入流的md5值"""
-    body_type = type(body)
-    if body_type == string_types:
+    if isinstance(body, string_types):
         return get_md5(body)
     elif hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
         file_position = body.tell()  # 记录文件当前位置
