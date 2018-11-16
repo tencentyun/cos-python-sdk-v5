@@ -22,6 +22,7 @@ from .cos_comm import *
 from .cos_threadpool import SimpleThreadPool
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
+from . import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +193,7 @@ class CosS3Client(object):
         """封装request库发起http请求"""
         if self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v5.1.6.1'
+        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v' + __version__
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
         if bucket is not None:
@@ -281,7 +282,7 @@ class CosS3Client(object):
             data=Body,
             headers=headers)
 
-        response = rt.headers
+        response = dict(**rt.headers)
         return response
 
     def get_object(self, Bucket, Key, **kwargs):
@@ -332,7 +333,7 @@ class CosS3Client(object):
                 params=params,
                 headers=headers)
 
-        response = rt.headers
+        response = dict(**rt.headers)
         response['Body'] = StreamBody(rt)
 
         return response
@@ -422,7 +423,7 @@ class CosS3Client(object):
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key),
                 headers=headers,
                 params=params)
-        data = rt.headers
+        data = dict(**rt.headers)
         return data
 
     def delete_objects(self, Bucket, Delete={}, **kwargs):
@@ -511,7 +512,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params),
             headers=headers,
             params=params)
-        return rt.headers
+        return dict(**rt.headers)
 
     def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
         """文件拷贝，文件信息修改
@@ -554,7 +555,7 @@ class CosS3Client(object):
         if 'ETag' not in body:
             logger.error(rt.content)
             raise CosServiceError('PUT', rt.content, 200)
-        data = rt.headers
+        data = dict(**rt.headers)
         data.update(body)
         return data
 
@@ -601,7 +602,7 @@ class CosS3Client(object):
                 params=params,
                 auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key, Key, params=params))
         body = xml_to_dict(rt.content)
-        data = rt.headers
+        data = dict(**rt.headers)
         data.update(body)
         return data
 
@@ -734,7 +735,7 @@ class CosS3Client(object):
         if 'ETag' not in body:
             logger.error(rt.content)
             raise CosServiceError('POST', rt.content, 200)
-        data = rt.headers
+        data = dict(**rt.headers)
         data.update(body)
         return data
 
@@ -2530,7 +2531,7 @@ class CosS3Client(object):
             data=Data,
             headers=headers,
             params=params)
-        response = rt.headers
+        response = dict(**rt.headers)
         return response
 
     def put_object_from_local_file(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
