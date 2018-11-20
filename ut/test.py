@@ -758,6 +758,7 @@ def test_put_object_enable_md5():
     with open(file_name, 'rb') as f:
         etag = get_raw_md5(f.read())
     with open(file_name, 'rb') as fp:
+        # fp验证
         put_response = client.put_object(
             Bucket=test_bucket,
             Body=fp,
@@ -766,7 +767,16 @@ def test_put_object_enable_md5():
             CacheControl='no-cache',
             ContentDisposition='download.txt'
         )
-        assert etag == put_response['Etag']
+        assert etag == put_response['ETag']
+        put_response = client.put_object(
+            Bucket=test_bucket,
+            Body='TestMD5',
+            Key=file_name,
+            EnableMD5=True,
+            CacheControl='no-cache',
+            ContentDisposition='download.txt'
+        )
+        assert put_response
     if os.path.exists(file_name):
         os.remove(file_name)
 
@@ -877,7 +887,7 @@ def test_put_file_like_object():
         Bucket=test_bucket,
         Key='test_file_like_object',
         Body=input,
-        EnableMD5=True    
+        EnableMD5=True
     )
     assert rt
 
