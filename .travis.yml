@@ -9,10 +9,10 @@ install:
 - pip install requests
 - pip install six
 - pip install nose
-- pip install pep8
+- pip install pycodestyle
 - pip install dicttoxml
 script:
-- pep8 --max-line-length=180 qcloud_cos/.
+- pycodestyle --max-line-length=180 qcloud_cos/.
 - nosetests -s -v ut/
 deploy:
   provider: pypi
