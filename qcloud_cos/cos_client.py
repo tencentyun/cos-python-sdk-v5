@@ -22,7 +22,7 @@ from .cos_comm import *
 from .cos_threadpool import SimpleThreadPool
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
-from . import __version__
+from .version import __version__
 
 logger = logging.getLogger(__name__)
 

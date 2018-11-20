@@ -10,9 +10,8 @@ import logging
 try:
     from logging import NullHandler
 except ImportError:
-    class NullHandler(logging.Handler):
+    sssss NullHandler(logging.Handler):
         def emit(self, record):
             pass
 
-__version__ = '5.1.6.2'
 logging.getLogger(__name__).addHandler(NullHandler())
