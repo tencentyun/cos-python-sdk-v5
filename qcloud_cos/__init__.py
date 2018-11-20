@@ -10,7 +10,7 @@ import logging
 try:
     from logging import NullHandler
 except ImportError:
-    sssss NullHandler(logging.Handler):
+    class NullHandler(logging.Handler):
         def emit(self, record):
             pass
 
