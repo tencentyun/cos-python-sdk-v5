@@ -25,9 +25,10 @@ def filter_headers(data):
 
 class CosS3Auth(AuthBase):
 
-    def __init__(self, secret_id, secret_key, key=None, params={}, expire=10000):
-        self._secret_id = secret_id
-        self._secret_key = secret_key
+    def __init__(self, conf, key=None, params={}, expire=10000):
+        self._secret_id = conf._secret_id
+        self._secret_key = conf._secret_key
+        self._anonymous = conf._anonymous
         self._expire = expire
         self._params = params
         if key:
@@ -76,6 +77,8 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
+        if self._anonymous:
+            r.headers['Authorization'] = ""
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
         logger.debug("request headers: " + str(r.headers))
