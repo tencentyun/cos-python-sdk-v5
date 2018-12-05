@@ -34,8 +34,6 @@ class WorkerThread(Thread):
                 self._ret.append(e)
             finally:
                 self._task_queue.task_done()
-            if self._task_queue.empty():
-                break
 
     def get_result(self):
             return self._succ_task_num, self._fail_task_num, self._ret
