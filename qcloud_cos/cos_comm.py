@@ -348,7 +348,10 @@ def get_file_like_object_length(data):
         else:
             # support BytesIO file-like object
             total_length = len(data.getvalue())
-    current_position = data.tell()
+    try:
+        current_position = data.tell()
+    except IOError:
+        current_position = 0
     content_len = total_length - current_position
     return content_len
 

@@ -968,7 +968,7 @@ class CosS3Client(object):
                 method='PUT',
                 url=url,
                 bucket=Bucket,
-                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+                auth=CosS3Auth(self._conf),
                 headers=headers)
         return None
 
@@ -997,7 +997,7 @@ class CosS3Client(object):
                 method='DELETE',
                 url=url,
                 bucket=Bucket,
-                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+                auth=CosS3Auth(self._conf),
                 headers=headers)
         return None
 
@@ -1242,7 +1242,7 @@ class CosS3Client(object):
             method='HEAD',
             url=url,
             bucket=Bucket,
-            auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+            auth=CosS3Auth(self._conf),
             headers=headers)
         return None
 
@@ -2114,7 +2114,7 @@ class CosS3Client(object):
                 url=url,
                 bucket=None,
                 headers=headers,
-                auth=CosS3Auth(self._conf._secret_id, self._conf._secret_key),
+                auth=CosS3Auth(self._conf),
                 )
         data = xml_to_dict(rt.content)
         if data['Buckets'] is not None and not isinstance(data['Buckets']['Bucket'], list):
