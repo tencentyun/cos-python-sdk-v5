@@ -721,7 +721,7 @@ class CosS3Client(object):
         params = {'uploadId': UploadId}
         params = format_values(params)
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("create multipart upload, url=:{url} ,headers=:{headers}".format(
+        logger.info("complete multipart upload, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
