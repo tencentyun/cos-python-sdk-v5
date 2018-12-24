@@ -1,6 +1,6 @@
 Qcloud COSv5 SDK
 #######################
-    
+.. image:: /pypi/v/cos-python-sdk-v5.svg
 介绍
 _______
 
