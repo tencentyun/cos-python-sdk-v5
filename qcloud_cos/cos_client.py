@@ -31,7 +31,7 @@ class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None,
-                 Endpoint=None, IP=None, Port=None, Anonymous=None):
+                 Endpoint=None, IP=None, Port=None, Anonymous=None, UA=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -49,6 +49,7 @@ class CosConfig(object):
         :param IP(string): 访问COS的ip
         :param Port(int):  访问COS的port
         :param Anonymous(bool):  是否使用匿名访问COS
+        :param UA(string):  使用自定义的UA来访问COS
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -58,6 +59,7 @@ class CosConfig(object):
         self._ip = to_unicode(IP)
         self._port = Port
         self._anonymous = Anonymous
+        self._ua = UA
 
         if Scheme is None:
             Scheme = u'https'
@@ -196,7 +198,10 @@ class CosS3Client(object):
         """封装request库发起http请求"""
         if self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
-        kwargs['headers']['User-Agent'] = 'cos-python-sdk-v' + __version__
+        if self._conf._ua is not None:
+            kwargs['headers']['User-Agent'] = self._conf._ua
+        else:
+            kwargs['headers']['User-Agent'] = 'cos-python-sdk-v' + __version__
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
         if bucket is not None:
