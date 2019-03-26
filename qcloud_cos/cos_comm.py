@@ -373,6 +373,8 @@ def check_object_content_length(data):
 
 def format_dict(data, key_lst):
     """转换返回dict中的可重复字段为list"""
+    if not (isinstance(data, dict) and isinstance(key_lst, list)):
+        return data
     for key in key_lst:
         # 将dict转为list，保持一致
         if key in data and isinstance(data[key], dict):
