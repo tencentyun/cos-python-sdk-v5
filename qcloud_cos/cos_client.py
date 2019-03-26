@@ -2163,6 +2163,8 @@ class CosS3Client(object):
         :param key(string): 分块上传路径名.
         :return(string): 断点续传的uploadid,如果不存在则返回None.
         """
+        if key and key[0] == '/':
+            key = key[1:]
         multipart_response = self.list_multipart_uploads(
             Bucket=bucket,
             Prefix=key
