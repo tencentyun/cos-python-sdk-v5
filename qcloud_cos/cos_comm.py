@@ -98,7 +98,7 @@ def get_md5(data):
 
 def get_content_md5(body):
     """计算任何输入流的md5值"""
-    if isinstance(body, string_types):
+    if isinstance(body, text_type) or isinstance(body, binary_type):
         return get_md5(body)
     elif hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
         file_position = body.tell()  # 记录文件当前位置
@@ -359,7 +359,7 @@ def get_file_like_object_length(data):
 def check_object_content_length(data):
     """put_object接口和upload_part接口的文件大小不允许超过5G"""
     content_len = 0
-    if type(data) is string_types:
+    if isinstance(data, text_type) or isinstance(data, binary_type):
         content_len = len(to_bytes(data))
     elif hasattr(data, 'fileno') and hasattr(data, 'tell'):
         content_len = get_file_like_object_length(data)
