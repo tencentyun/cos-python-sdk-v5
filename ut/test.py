@@ -651,8 +651,7 @@ def test_upload_file_multithreading():
         Key=file_name,
         LocalFilePath=file_name,
         MAXThread=10,
-        CacheControl='no-cache',
-        ContentDisposition='download.txt'
+        EnableMD5=True
     )
     ed = time.time()  # 记录结束时间
     if os.path.exists(file_name):

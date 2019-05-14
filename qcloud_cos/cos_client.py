@@ -2266,8 +2266,6 @@ class CosS3Client(object):
                 LocalFilePath=file_name,
                 PartSize=10,
                 MAXThread=10,
-                CacheControl='no-cache',
-                ContentDisposition='download.txt'
             )
         """
         file_size = os.path.getsize(LocalFilePath)
