@@ -2492,6 +2492,8 @@ class CosS3Client(object):
 
         lst = list()  # 记录分块信息
         MAXQueue = MaxBufferSize//PartSize
+        if MAXQueue == 0:
+            MAXQueue = 1
         pool = SimpleThreadPool(MAXThread, MAXQueue)
         while True:
             if data == "":
