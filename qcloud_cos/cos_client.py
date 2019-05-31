@@ -2496,7 +2496,7 @@ class CosS3Client(object):
             MAXQueue = 1
         pool = SimpleThreadPool(MAXThread, MAXQueue)
         while True:
-            if data == "":
+            if not data:
                 break
             pool.add_task(self._upload_part_from_buffer, Bucket, Key, data, part_num, uploadid, lst)
             part_num += 1
