@@ -2492,9 +2492,11 @@ class CosS3Client(object):
 
         lst = list()  # 记录分块信息
         MAXQueue = MaxBufferSize//PartSize
+        if MAXQueue == 0:
+            MAXQueue = 1
         pool = SimpleThreadPool(MAXThread, MAXQueue)
         while True:
-            if data == "":
+            if not data:
                 break
             pool.add_task(self._upload_part_from_buffer, Bucket, Key, data, part_num, uploadid, lst)
             part_num += 1
