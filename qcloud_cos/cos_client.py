@@ -2340,7 +2340,10 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, path, params=params),
             headers={},
             params=params)
-        return int(rt.headers['Content-Length'])
+        storage_class = 'standard'
+        if 'x-cos-storage-class' in rt.headers:
+            storage_class = rt.headers['x-cos-storage-class'].lower()
+        return int(rt.headers['Content-Length']), storage_class
 
     def _upload_part_copy(self, bucket, key, part_number, upload_id, copy_source, copy_source_range, md5_lst):
         """拷贝指定文件至分块上传,记录结果到lst中去
@@ -2389,13 +2392,18 @@ class CosS3Client(object):
                 MAXThread=10
             )
         """
-        # 同园区直接走copy_object
-        if self._check_same_region(self._conf._endpoint, CopySource) and 'StorageClass' not in kwargs:
+        # 先查询下拷贝源object的content-length
+        file_size, src_storage_class = self._inner_head_object(CopySource)
+
+        dst_storage_class = 'standard'
+        if 'StorageClass' in kwargs:
+            dst_storage_class = kwargs['StorageClass'].lower()
+
+        # 同园区且不改存储类型的情况下直接走copy_object
+        if self._check_same_region(self._conf._endpoint, CopySource) and src_storage_class == dst_storage_class:
             response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
             return response
 
-        # 不同园区查询拷贝源object的content-length
-        file_size = self._inner_head_object(CopySource)
         # 如果源文件大小小于5G，则直接调用copy_object接口
         if file_size < SINGLE_UPLOAD_LENGTH:
             response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
