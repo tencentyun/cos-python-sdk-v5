@@ -2390,7 +2390,7 @@ class CosS3Client(object):
             )
         """
         # 同园区直接走copy_object
-        if self._check_same_region(self._conf._endpoint, CopySource):
+        if self._check_same_region(self._conf._endpoint, CopySource) and 'StorageClass' not in kwargs:
             response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
             return response
 
