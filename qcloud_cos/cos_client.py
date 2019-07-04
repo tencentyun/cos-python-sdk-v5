@@ -2626,8 +2626,6 @@ class CosS3Client(object):
         if 'StorageClass' in kwargs:
             dst_storage_class = kwargs['StorageClass'].lower()
 
-        print src_storage_class
-        print dst_storage_class
         # 同园区且不改存储类型的情况下直接走copy_object
         if self._check_same_region(self._conf._endpoint, CopySource) and src_storage_class == dst_storage_class:
             response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
