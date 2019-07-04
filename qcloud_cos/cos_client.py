@@ -2097,6 +2097,233 @@ class CosS3Client(object):
         data = {'Policy': json.dumps(rt.json())}
         return data
 
+    def put_bucket_domain(self, Bucket, DomainConfiguration={}, **kwargs):
+        """设置bucket的自定义域名
+
+        :param Bucket(string): 存储桶名称.
+        :param ReplicationConfiguration(dict): 设置Bucket的自定义域名规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket自定义域名配置
+            domain_config = {
+                'DomainRule': [
+                    {
+                        'Name': 'www.abc.com',
+                        'Type': 'REST',
+                        'Status': 'ENABLED',
+                        'ForcedReplacement': 'CNAME'
+                    },
+                ]
+            }
+            response = client.put_bucket_domain(
+                Bucket='bucket',
+                DomainConfiguration=domain_config
+            )
+        """
+        lst = ['<DomainRule>', '</DomainRule>']  # 类型为list的标签
+        xml_config = format_xml(data=DomainConfiguration, root='DomainConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'domain': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket domain, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_domain(self, Bucket, **kwargs):
+        """获取bucket 自定义域名配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的自定义域名配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket自定义域名配置
+            response = client.get_bucket_domain(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'domain': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket domain, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['DomainRule'])
+        if 'x-cos-domain-txt-verification' in rt.headers:
+            data['x-cos-domain-txt-verification'] = rt.headers['x-cos-domain-txt-verification']
+        return data
+
+    def delete_bucket_domain(self, Bucket, **kwargs):
+        """删除bucket 自定义域名配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket自定义域名配置
+            response = client.delete_bucket_domain(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'domain': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket domain, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def put_bucket_origin(self, Bucket, OriginConfiguration={}, **kwargs):
+        """设置bucket的回源
+
+        :param Bucket(string): 存储桶名称.
+        :param ReplicationConfiguration(dict): 设置Bucket的回源规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket自定义域名配置
+            origin_config = {
+                'OriginRule': [
+                    {
+                        'OriginType': 'Redirect',
+                        'OriginInfo': {
+                            'HostName': 'www.abc.com',
+                            'Protocol': 'HTTP'
+                        }
+                    },
+                ]
+            }
+            response = client.put_bucket_origin(
+                Bucket='bucket',
+                OriginConfiguration=origin_config
+            )
+        """
+        lst = ['<OriginRule>', '</OriginRule>']  # 类型为list的标签
+        xml_config = format_xml(data=OriginConfiguration, root='OriginConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'origin': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket origin, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_origin(self, Bucket, **kwargs):
+        """获取bucket 回源配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的自定义域名配置.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket自定义域名配置
+            response = client.get_bucket_origin(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'origin': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket origin, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['OriginRule'])
+        return data
+
+    def delete_bucket_origin(self, Bucket, **kwargs):
+        """删除bucket 回源配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket自定义域名配置
+            response = client.delete_bucket_origin(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'origin': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket origin, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket
@@ -2399,6 +2626,8 @@ class CosS3Client(object):
         if 'StorageClass' in kwargs:
             dst_storage_class = kwargs['StorageClass'].lower()
 
+        print src_storage_class
+        print dst_storage_class
         # 同园区且不改存储类型的情况下直接走copy_object
         if self._check_same_region(self._conf._endpoint, CopySource) and src_storage_class == dst_storage_class:
             response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
