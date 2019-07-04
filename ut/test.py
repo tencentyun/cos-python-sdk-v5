@@ -833,20 +833,6 @@ def test_change_object_storage_class():
     assert response['x-cos-storage-class'] == 'NEARLINE'
 
 
-def test_update_object_meta():
-    """更新文件的属性"""
-    response = client.update_object_meta(
-        Bucket=test_bucket,
-        Key=test_object,
-        ContentType='text/html'
-    )
-    response = client.head_object(
-        Bucket=test_bucket,
-        Key=test_object
-    )
-    assert response['Content-Type'] == 'text/html'
-
-
 def test_put_get_bucket_policy():
     """设置获取bucket的policy配置"""
     resource = "qcs::cos:" + REGION + ":uid/" + APPID + ":" + test_bucket + "/*"
