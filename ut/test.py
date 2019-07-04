@@ -15,7 +15,7 @@ SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ["REGION"]
-APPID = '1252448703'
+APPID = '1251668577'
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + APPID
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
@@ -153,7 +153,7 @@ def test_put_object_non_exist_bucket():
     """文件上传至不存在bucket"""
     try:
         response = client.put_object(
-            Bucket='test0xx-1252448703',
+            Bucket='test0xx-' + APPID,
             Body='T'*10,
             Key=test_object,
             CacheControl='no-cache',
@@ -173,7 +173,7 @@ def test_put_object_acl():
     response = client.put_object_acl(
         Bucket=test_bucket,
         Key=test_object,
-        ACL='public-read-write'
+        ACL='public-read'
     )
 
 
@@ -192,7 +192,7 @@ def test_get_object_acl():
 
 def test_copy_object_diff_bucket():
     """从另外的bucket拷贝object"""
-    copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test04-' + APPID, 'Key': '/test.txt', 'Region': 'ap-guangzhou'}
     response = client.copy_object(
         Bucket=test_bucket,
         Key='test.txt',
@@ -284,7 +284,7 @@ def test_upload_part_copy():
     )
 
     # upload part copy
-    copy_source = {'Bucket': 'test04-1252448703', 'Key': '/test.txt', 'Region': 'ap-beijing-1'}
+    copy_source = {'Bucket': 'test04-' + APPID, 'Key': '/test.txt', 'Region': 'ap-guangzhou'}
     response = client.upload_part_copy(
         Bucket=test_bucket,
         Key='multipartfile.txt',
@@ -345,7 +345,7 @@ def test_delete_multiple_objects():
 def test_create_head_delete_bucket():
     """创建一个bucket,head它是否存在,最后删除一个空bucket"""
     bucket_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
-    bucket_name = 'buckettest' + bucket_id + '-1252448703'
+    bucket_name = 'buckettest' + bucket_id + '-' + APPID
     response = client.create_bucket(
         Bucket=bucket_name,
         ACL='public-read'
@@ -523,14 +523,14 @@ def test_put_get_versioning():
 def test_put_get_delete_replication():
     """设置、获取、删除跨园区复制配置"""
     replication_config = {
-        'Role': 'qcs::cam::uin/735905558:uin/735905558',
+        'Role': 'qcs::cam::uin/2779643970:uin/2779643970',
         'Rule': [
             {
                 'ID': '123',
                 'Status': 'Enabled',
                 'Prefix': '中文',
                 'Destination': {
-                    'Bucket': 'qcs:id/0:cos:cn-south:appid/1252448703:replicationsouth'
+                    'Bucket': 'qcs:id/0:cos:ap-shanghai:appid/1251668577:replicationsh'
                 }
             }
         ]
@@ -661,7 +661,7 @@ def test_upload_file_multithreading():
 
 def test_copy_file_automatically():
     """根据拷贝源文件的大小自动选择拷贝策略，不同园区,小于5G直接copy_object，大于5G分块拷贝"""
-    copy_source = {'Bucket': 'testtiedu-1252448703', 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
+    copy_source = {'Bucket': 'test01-' + APPID, 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
     response = client.copy(
         Bucket=test_bucket,
         Key='copy_10G.txt',
@@ -687,11 +687,11 @@ def test_upload_empty_file():
 
 def test_copy_10G_file_in_same_region():
     """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
-    copy_source = {'Bucket': 'test01-1252448703', 'Key': '10G.txt', 'Region': 'ap-beijing-1'}
-    copy_config = CosConfig(Region='ap-beijing-1', SecretId=SECRET_ID, SecretKey=SECRET_KEY)
+    copy_source = {'Bucket': 'test01-' + APPID, 'Key': '10G.txt', 'Region': 'ap-guangzhou'}
+    copy_config = CosConfig(Region='ap-guangzhou', SecretId=SECRET_ID, SecretKey=SECRET_KEY)
     copy_client = CosS3Client(copy_config)
     response = copy_client.copy(
-        Bucket='test04-1252448703',
+        Bucket='test04-' + APPID,
         Key='10G.txt',
         CopySource=copy_source,
         MAXThread=10
@@ -724,7 +724,7 @@ def test_upload_with_server_side_encryption():
 
 def test_put_get_bucket_logging():
     """测试bucket的logging服务"""
-    logging_bucket = 'logging-beijing-1252448703'
+    logging_bucket = 'logging-beijing-' + APPID
     logging_config = {
         'LoggingEnabled': {
             'TargetBucket': logging_bucket,
@@ -833,20 +833,6 @@ def test_change_object_storage_class():
     assert response['x-cos-storage-class'] == 'NEARLINE'
 
 
-def test_update_object_meta():
-    """更新文件的属性"""
-    response = client.update_object_meta(
-        Bucket=test_bucket,
-        Key=test_object,
-        ContentType='text/html'
-    )
-    response = client.head_object(
-        Bucket=test_bucket,
-        Key=test_object
-    )
-    assert response['Content-Type'] == 'text/html; charset=utf-8'
-
-
 def test_put_get_bucket_policy():
     """设置获取bucket的policy配置"""
     resource = "qcs::cos:" + REGION + ":uid/" + APPID + ":" + test_bucket + "/*"
@@ -916,6 +902,64 @@ def test_put_get_gzip_file():
         Key='test_gzip_file'
     )
     rt['Body'].get_stream_to_file('test_gzip_file.local')
+
+
+def test_put_get_delete_bucket_domain():
+    """测试设置获取删除bucket自定义域名"""
+    domain_config = {
+        'DomainRule': [
+            {
+                'Name': 'qq.com',
+                'Type': 'REST',
+                'Status': 'ENABLED',
+            },
+        ]
+    }
+    response = client.put_bucket_domain(
+        Bucket=test_bucket,
+        DomainConfiguration=domain_config
+    )
+    # wait for sync
+    # get domain
+    time.sleep(4)
+    response = client.get_bucket_domain(
+        Bucket=test_bucket
+    )
+    domain_config['x-cos-domain-txt-verification'] = response['x-cos-domain-txt-verification']
+    assert domain_config == response
+    # delete domain
+    response = client.delete_bucket_domain(
+        Bucket=test_bucket
+    )
+
+
+def test_put_get_delete_bucket_origin():
+    """测试设置获取删除bucket回源域名"""
+    origin_config = {
+        'OriginRule': [
+            {
+                'OriginType': 'Redirect',
+                'OriginInfo': {
+                    'HostName': 'www.abc.com',
+                    'Protocol': 'HTTP'
+                }
+            },
+        ]
+    }
+    response = client.put_bucket_origin(
+        Bucket=test_bucket,
+        OriginConfiguration=origin_config
+    )
+    # wait for sync
+    # get origin
+    time.sleep(4)
+    response = client.get_bucket_origin(
+        Bucket=test_bucket
+    )
+    # delete origin
+    response = client.delete_bucket_origin(
+        Bucket=test_bucket
+    )
 
 
 if __name__ == "__main__":
