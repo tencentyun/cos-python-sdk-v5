@@ -650,7 +650,7 @@ def test_upload_file_multithreading():
         Bucket=test_bucket,
         Key=file_name,
         LocalFilePath=file_name,
-        MAXThread=10,
+        MAXThread=5,
         EnableMD5=True
     )
     ed = time.time()  # 记录结束时间
