@@ -24,7 +24,7 @@ conf = CosConfig(
     SecretId=SECRET_ID,
     SecretKey=SECRET_KEY,
 )
-client = CosS3Client(conf)
+client = CosS3Client(conf, retry=3)
 
 
 def _create_test_bucket(test_bucket):
@@ -638,6 +638,18 @@ def test_list_multipart_uploads():
         )
 
 
+def test_upload_file_from_buffer():
+    import io
+    data = io.BytesIO(6*1024*1024*b'A')
+    response = client.upload_file_from_buffer(
+        Bucket=test_bucket,
+        Key='test_upload_from_buffer',
+        Body=data,
+        MaxBufferSize=5,
+        PartSize=1
+    )
+
+
 def test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
     file_name = "thread_1GB"
@@ -650,7 +662,7 @@ def test_upload_file_multithreading():
         Bucket=test_bucket,
         Key=file_name,
         LocalFilePath=file_name,
-        MAXThread=10,
+        MAXThread=5,
         EnableMD5=True
     )
     ed = time.time()  # 记录结束时间
