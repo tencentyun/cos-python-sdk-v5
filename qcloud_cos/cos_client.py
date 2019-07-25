@@ -209,8 +209,8 @@ class CosS3Client(object):
         kwargs['headers'] = format_values(kwargs['headers'])
         if 'data' in kwargs:
             kwargs['data'] = to_bytes(kwargs['data'])
-        try:
-            for j in range(self._retry):
+        for j in range(self._retry + 1):
+            try:
                 if method == 'POST':
                     res = self._session.post(url, timeout=timeout, **kwargs)
                 elif method == 'GET':
@@ -223,9 +223,11 @@ class CosS3Client(object):
                     res = self._session.head(url, timeout=timeout, **kwargs)
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     return res
-        except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
-            logger.exception('url:%s, exception:%s' % (url, str(e)))
-            raise CosClientError(str(e))
+            except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
+                logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
+                if j < self._retry:
+                    continue
+                raise CosClientError(str(e))
 
         if res.status_code >= 400:  # 所有的4XX,5XX都认为是COSServiceError
             if method == 'HEAD' and res.status_code == 404:   # Head 需要处理
