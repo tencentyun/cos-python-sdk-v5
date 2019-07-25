@@ -24,7 +24,7 @@ conf = CosConfig(
     SecretId=SECRET_ID,
     SecretKey=SECRET_KEY,
 )
-client = CosS3Client(conf)
+client = CosS3Client(conf, retry=3)
 
 
 def _create_test_bucket(test_bucket):
@@ -636,6 +636,18 @@ def test_list_multipart_uploads():
             Key=data['Key'],
             UploadId=data['UploadId']
         )
+
+
+def test_upload_file_from_buffer():
+    import io
+    data = io.BytesIO(6*1024*1024*'A')
+    response = client.upload_file_from_buffer(
+        Bucket=test_bucket,
+        Key='test_upload_from_buffer',
+        Body=data,
+        MaxBufferSize=5,
+        PartSize=1
+    )
 
 
 def test_upload_file_multithreading():
