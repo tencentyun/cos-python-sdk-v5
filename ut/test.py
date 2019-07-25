@@ -640,7 +640,7 @@ def test_list_multipart_uploads():
 
 def test_upload_file_from_buffer():
     import io
-    data = io.BytesIO(6*1024*1024*'A')
+    data = io.BytesIO(6*1024*1024*b'A')
     response = client.upload_file_from_buffer(
         Bucket=test_bucket,
         Key='test_upload_from_buffer',
