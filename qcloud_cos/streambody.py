@@ -40,5 +40,7 @@ class StreamBody():
                         file_len += len(chunk)
                         fp.write(chunk)
         if not use_chunked and not (use_encoding and auto_decompress) and file_len != content_len:
+            if os.path.exists(tmp_file_name):
+                os.remove(tmp_file_name)
             raise IOError("download failed with incomplete file")
         os.rename(tmp_file_name, file_name)
