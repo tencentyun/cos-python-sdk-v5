@@ -1,4 +1,6 @@
 # -*- coding=utf-8
+import os
+import uuid
 
 
 class StreamBody():
@@ -24,7 +26,8 @@ class StreamBody():
             use_encoding = True
 
         file_len = 0
-        with open(file_name, 'wb') as fp:
+        tmp_file_name = "{file_name}_{uuid}".format(file_name=file_name, uuid=uuid.uuid4().hex)
+        with open(tmp_file_name, 'wb') as fp:
             if use_encoding and not auto_decompress:
                 chunk = self._rt.raw.read(1024)
                 while chunk:
@@ -37,4 +40,7 @@ class StreamBody():
                         file_len += len(chunk)
                         fp.write(chunk)
         if not use_chunked and not (use_encoding and auto_decompress) and file_len != content_len:
+            if os.path.exists(tmp_file_name):
+                os.remove(tmp_file_name)
             raise IOError("download failed with incomplete file")
+        os.rename(tmp_file_name, file_name)
