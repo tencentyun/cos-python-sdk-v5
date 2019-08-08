@@ -10,6 +10,12 @@ install:
 - pip install nose
 - pip install pycodestyle
 - pip install dicttoxml
+notifications:
+  email:
+    recipients:
+      - wjielai@tencent.com
+      - fysntian@tencent.com
+      - burningzhan@tencent.com 
 script:
 - pycodestyle --max-line-length=180 qcloud_cos/.
 - nosetests -s -v ut/
