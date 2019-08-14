@@ -163,6 +163,10 @@ class CosS3Client(object):
         else:
             self._session = session
 
+    def get_conf():
+        """获取配置"""
+        return self._conf
+
     def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}):
         """获取签名
 
