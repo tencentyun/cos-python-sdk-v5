@@ -108,6 +108,7 @@ class CosConfig(object):
             if path[0] == u'/':
                 path = path[1:]
             path = quote(to_bytes(path), '/-_.~')
+            path = path.replace('./', '.%2F')
             request_url = u"{scheme}://{url}/{path}".format(
                 scheme=to_unicode(scheme),
                 url=to_unicode(url),
