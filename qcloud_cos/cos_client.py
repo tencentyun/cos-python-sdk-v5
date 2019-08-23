@@ -108,6 +108,7 @@ class CosConfig(object):
             if path[0] == u'/':
                 path = path[1:]
             path = quote(to_bytes(path), '/-_.~')
+            path = path.replace('./', '.%2F')
             request_url = u"{scheme}://{url}/{path}".format(
                 scheme=to_unicode(scheme),
                 url=to_unicode(url),
@@ -162,6 +163,10 @@ class CosS3Client(object):
             self._session = requests.session()
         else:
             self._session = session
+
+    def get_conf():
+        """获取配置"""
+        return self._conf
 
     def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}):
         """获取签名
