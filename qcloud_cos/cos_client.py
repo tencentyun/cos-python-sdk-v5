@@ -31,7 +31,7 @@ class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None,
-                 Endpoint=None, IP=None, Port=None, Anonymous=None, UA=None):
+                 Endpoint=None, IP=None, Port=None, Anonymous=None, UA=None, Proxies=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -50,6 +50,7 @@ class CosConfig(object):
         :param Port(int):  访问COS的port
         :param Anonymous(bool):  是否使用匿名访问COS
         :param UA(string):  使用自定义的UA来访问COS
+        :param Proxies(dict):  使用代理来访问COS
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -60,6 +61,7 @@ class CosConfig(object):
         self._port = Port
         self._anonymous = Anonymous
         self._ua = UA
+        self._proxies = Proxies
 
         if Scheme is None:
             Scheme = u'https'
@@ -217,15 +219,15 @@ class CosS3Client(object):
         for j in range(self._retry + 1):
             try:
                 if method == 'POST':
-                    res = self._session.post(url, timeout=timeout, **kwargs)
+                    res = self._session.post(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
                 elif method == 'GET':
-                    res = self._session.get(url, timeout=timeout, **kwargs)
+                    res = self._session.get(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
                 elif method == 'PUT':
-                    res = self._session.put(url, timeout=timeout, **kwargs)
+                    res = self._session.put(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
                 elif method == 'DELETE':
-                    res = self._session.delete(url, timeout=timeout, **kwargs)
+                    res = self._session.delete(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
                 elif method == 'HEAD':
-                    res = self._session.head(url, timeout=timeout, **kwargs)
+                    res = self._session.head(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     return res
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
