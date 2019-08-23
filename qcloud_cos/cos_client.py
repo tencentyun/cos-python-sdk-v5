@@ -219,15 +219,15 @@ class CosS3Client(object):
         for j in range(self._retry + 1):
             try:
                 if method == 'POST':
-                    res = self._session.post(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
+                    res = self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'GET':
-                    res = self._session.get(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
+                    res = self._session.get(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'PUT':
-                    res = self._session.put(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
+                    res = self._session.put(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'DELETE':
-                    res = self._session.delete(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
+                    res = self._session.delete(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'HEAD':
-                    res = self._session.head(url, timeout=timeout, proxies=self._conf.proxies, **kwargs)
+                    res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     return res
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
