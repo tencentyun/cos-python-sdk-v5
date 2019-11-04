@@ -43,4 +43,6 @@ class StreamBody():
             if os.path.exists(tmp_file_name):
                 os.remove(tmp_file_name)
             raise IOError("download failed with incomplete file")
+        if os.path.exists(file_name):
+            os.remove(file_name)
         os.rename(tmp_file_name, file_name)
