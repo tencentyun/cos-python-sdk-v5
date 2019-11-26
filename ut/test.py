@@ -831,20 +831,6 @@ def test_bucket_exists():
     assert status is True
 
 
-def test_change_object_storage_class():
-    """改变文件的存储类型"""
-    response = client.change_object_storage_class(
-        Bucket=test_bucket,
-        Key=test_object,
-        StorageClass='NEARLINE'
-    )
-    response = client.head_object(
-        Bucket=test_bucket,
-        Key=test_object
-    )
-    assert response['x-cos-storage-class'] == 'NEARLINE'
-
-
 def test_put_get_bucket_policy():
     """设置获取bucket的policy配置"""
     resource = "qcs::cos:" + REGION + ":uid/" + APPID + ":" + test_bucket + "/*"
@@ -945,19 +931,90 @@ def test_put_get_delete_bucket_domain():
     )
 
 
-def test_put_get_delete_bucket_origin():
-    """测试设置获取删除bucket回源域名"""
-    origin_config = {
-        'OriginRule': [
-            {
-                'OriginType': 'Redirect',
-                'OriginInfo': {
-                    'HostName': 'www.abc.com',
-                    'Protocol': 'HTTP'
+def test_put_get_delete_bucket_inventory():
+    """测试设置获取删除bucket清单"""
+    inventory_config = {
+        'Destination': {
+            'COSBucketDestination': {
+                'AccountId': '2779643970',
+                'Bucket': 'qcs::cos:' + REGION + '::' + test_bucket,
+                'Format': 'CSV',
+                'Prefix': 'list1',
+                'Encryption': {
+                    'SSECOS': {}
                 }
-            },
-        ]
+            }
+        },
+        'IsEnabled': 'True',
+        'Filter': {
+            'Prefix': 'filterPrefix'
+        },
+        'IncludedObjectVersions': 'All',
+        'OptionalFields': {
+            'Field': [
+                'Size',
+                'LastModifiedDate',
+                'ETag',
+                'StorageClass',
+                'IsMultipartUploaded',
+                'ReplicationStatus'
+            ]
+        },
+        'Schedule': {
+            'Frequency': 'Daily'
+        }
     }
+    response = client.put_bucket_inventory(
+        Bucket=test_bucket,
+        Id='test',
+        InventoryConfiguration=inventory_config
+    )
+    # wait for sync
+    # get inventory
+    time.sleep(4)
+    response = client.get_bucket_inventory(
+        Bucket=test_bucket,
+        Id='test'
+    )
+    # delete inventory
+    response = client.delete_bucket_inventory(
+        Bucket=test_bucket,
+        Id='test'
+    )
+
+
+def test_put_get_delete_bucket_tagging():
+    """测试设置获取删除bucket标签"""
+    tagging_config = {
+        'TagSet': {
+            'Tag': [
+                {
+                    'Key': 'key0',
+                    'Value': 'value0'
+                }
+            ]
+        }
+    }
+    response = client.put_bucket_tagging(
+        Bucket=test_bucket,
+        Tagging=tagging_config
+    )
+    # wait for sync
+    # get tagging
+    time.sleep(1)
+    response = client.get_bucket_tagging(
+        Bucket=test_bucket
+    )
+    assert tagging_config == response
+    # delete tagging
+    response = client.delete_bucket_tagging(
+        Bucket=test_bucket
+    )
+
+
+def _test_put_get_delete_bucket_origin():
+    """测试设置获取删除bucket回源域名"""
+    origin_config = {}
     response = client.put_bucket_origin(
         Bucket=test_bucket,
         OriginConfiguration=origin_config
@@ -976,6 +1033,7 @@ def test_put_get_delete_bucket_origin():
 
 if __name__ == "__main__":
     setUp()
+    """
     test_put_object_enable_md5()
     test_upload_with_server_side_encryption()
     test_upload_empty_file()
@@ -993,4 +1051,6 @@ if __name__ == "__main__":
     test_put_get_bucket_policy()
     test_put_file_like_object()
     test_put_chunked_object()
+    """
+    test_put_get_delete_bucket_inventory()
     tearDown()
