@@ -18,7 +18,6 @@ from .cos_exception import CosServiceError
 
 SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5GB
 DEFAULT_CHUNK_SIZE = 1024*1024           # 计算MD5值时,文件单次读取的块大小为1MB
-LOGGING_UIN = 'id="qcs::cam::uin/100001001014:uin/100001001014"'
 # kwargs中params到http headers的映射
 maplist = {
             'ContentLength': 'Content-Length',
@@ -377,7 +376,7 @@ def format_dict(data, key_lst):
         return data
     for key in key_lst:
         # 将dict转为list，保持一致
-        if key in data and isinstance(data[key], dict):
+        if key in data and (isinstance(data[key], dict) or isinstance(data[key], str)):
             lst = []
             lst.append(data[key])
             data[key] = lst
