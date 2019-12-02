@@ -707,8 +707,7 @@ class CosS3Client(object):
                 params=params,
                 auth=CosS3Auth(self._conf, Key, params=params),
                 data=Body)
-        response = dict()
-        response['ETag'] = rt.headers['ETag']
+        response = dict(**rt.headers)
         return response
 
     def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):
