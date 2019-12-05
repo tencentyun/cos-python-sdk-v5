@@ -55,7 +55,8 @@ maplist = {
             'SSECustomerKey': 'x-cos-server-side-encryption-customer-key',
             'SSECustomerKeyMD5': 'x-cos-server-side-encryption-customer-key-MD5',
             'SSEKMSKeyId': 'x-cos-server-side-encryption-cos-kms-key-id',
-            'Referer': 'Referer'
+            'Referer': 'Referer',
+            'PicOperations': 'Pic-Operations'
            }
 
 
