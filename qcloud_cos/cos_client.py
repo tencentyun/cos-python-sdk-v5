@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
-                 Access_id=None, Access_key=None, Secret_id=None, Secret_key=None,
-                 Endpoint=None, IP=None, Port=None, Anonymous=None, UA=None, Proxies=None):
+                 Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
+                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -51,18 +51,24 @@ class CosConfig(object):
         :param Anonymous(bool):  是否使用匿名访问COS
         :param UA(string):  使用自定义的UA来访问COS
         :param Proxies(dict):  使用代理来访问COS
+        :param Domain(string):  使用自定义的域名来访问COS
+        :param ServiceDomain(string):  使用自定义的域名来访问cos service
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
         self._timeout = Timeout
         self._region = Region
-        self._endpoint = format_endpoint(Endpoint, Region)
+        self._endpoint = Endpoint
         self._ip = to_unicode(IP)
         self._port = Port
         self._anonymous = Anonymous
         self._ua = UA
         self._proxies = Proxies
+        self._domain = Domain
+        self._service_domain = ServiceDomain
 
+        if self._domain is None:
+            self._endpoint = format_endpoint(Endpoint, Region)
         if Scheme is None:
             Scheme = u'https'
         Scheme = to_unicode(Scheme)
@@ -83,21 +89,27 @@ class CosConfig(object):
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
-    def uri(self, bucket, path=None, endpoint=None):
+    def uri(self, bucket, path=None, endpoint=None, domain=None):
         """拼接url
 
         :param bucket(string): 存储桶名称.
         :param path(string): 请求COS的路径.
         :return(string): 请求COS的URL地址.
         """
-        bucket = format_bucket(bucket, self._appid)
         scheme = self._scheme
-        if endpoint is None:
-            endpoint = self._endpoint
-
         # 拼接请求的url,默认使用bucket和endpoint拼接请求域名
-        # 指定ip和port时,则使用ip:port方式访问
-        url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
+        # 使用自定义域名时则使用自定义域名访问
+        # 指定ip和port时,则使用ip:port方式访问,优先级最高
+        if domain is None:
+            domain = self._domain
+        if domain is not None:
+            url = domain
+        else:
+            bucket = format_bucket(bucket, self._appid)
+            if endpoint is None:
+                endpoint = self._endpoint
+
+            url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
         if self._ip is not None:
             url = self._ip
             if self._port is not None:
@@ -211,8 +223,11 @@ class CosS3Client(object):
             kwargs['headers']['User-Agent'] = 'cos-python-sdk-v' + __version__
         if self._conf._token is not None:
             kwargs['headers']['x-cos-security-token'] = self._conf._token
-        if bucket is not None:
-            kwargs['headers']['Host'] = self._conf.get_host(bucket)
+        if self._conf._ip is not None:  # 使用IP访问时需要设置请求host
+            if self._conf._domain is not None:
+                kwargs['headers']['Host'] = self._conf._domain
+            elif bucket is not None:
+                kwargs['headers']['Host'] = self._conf.get_host(bucket)
         kwargs['headers'] = format_values(kwargs['headers'])
         if 'data' in kwargs:
             kwargs['data'] = to_bytes(kwargs['data'])
@@ -2054,7 +2069,7 @@ class CosS3Client(object):
         body = Policy
         policy_type = type(body)
         if policy_type != str and policy_type != dict:
-            raise CosClientError("Policy must be a json foramt string or json format dict")
+            raise CosClientError("Policy must be a json format string or json format dict")
         if policy_type == dict:
             body = json.dumps(body)
 
@@ -2574,6 +2589,89 @@ class CosS3Client(object):
             params=params)
         return None
 
+    def put_bucket_referer(self, Bucket, RefererConfiguration={}, **kwargs):
+        """设置bucket的防盗链规则
+
+        :param Bucket(string): 存储桶名称.
+        :param RefererConfiguration(dict): Bucket的防盗链规则
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket标签
+            referer_config = {
+                'Status': 'Enabled',
+                'RefererType': 'White-List',
+                'EmptyReferConfiguration': 'Allow',
+                'DomainList': {
+                    'Domain': [
+                        '*.qq.com',
+                        '*.qcloud.com'
+                    ]
+                }
+            }
+            response = client.put_bucket_referer(
+                Bucket='bucket',
+                RefererConfiguration=referer_config
+            )
+        """
+        lst = ['<Domain>', '</Domain>']  # 类型为list的标签
+        xml_config = format_xml(data=RefererConfiguration, root='RefererConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'referer': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket referer, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_referer(self, Bucket, **kwargs):
+        """获取bucket防盗链规则
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的防盗链规则.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket标签
+            response = client.get_bucket_referer(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'referer': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket referer, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        if 'DomainList' in data:
+            format_dict(data['DomainList'], ['Domain'])
+        return data
+
     # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket
@@ -2590,7 +2688,9 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        url = 'http://service.cos.myqcloud.com/'
+        url = 'https://service.cos.myqcloud.com/'
+        if self._conf._service_domain is not None:
+            url = 'https://{domain}/'.format(domain=self._conf._service_domain)
         rt = self.send_request(
                 method='GET',
                 url=url,
@@ -2809,7 +2909,7 @@ class CosS3Client(object):
         params = {}
         if versionid != '':
             params['versionId'] = versionid
-        url = self._conf.uri(bucket=bucket, path=path, endpoint=endpoint)
+        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket, endpoint=endpoint, path=path)
         rt = self.send_request(
             method='HEAD',
             url=url,
