@@ -309,6 +309,8 @@ def get_copy_source_info(CopySource):
     endpoint = format_endpoint(endpoint, region)
     if 'Key' in CopySource:
         path = to_unicode(CopySource['Key'])
+        if path and path[0] == '/':
+            path = path[1:]
     else:
         raise CosClientError('CopySource Need Parameter Key')
     if 'VersionId' in CopySource:

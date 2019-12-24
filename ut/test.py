@@ -1031,6 +1031,29 @@ def _test_put_get_delete_bucket_origin():
     )
 
 
+def test_put_get_bucket_referer():
+    """测试设置获取bucket防盗链规则"""
+    referer_config = {
+        'Status': 'Enabled',
+        'RefererType': 'White-List',
+        'EmptyReferConfiguration': 'Allow',
+        'DomainList': {
+            'Domain': [
+                '*.qq.com',
+                '*.qcloud.com'
+            ]
+        }
+    }
+    response = client.put_bucket_referer(
+        Bucket=test_bucket,
+        RefererConfiguration=referer_config
+    )
+    time.sleep(4)
+    response = client.get_bucket_referer(
+        Bucket=test_bucket,
+    )
+
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1051,6 +1074,7 @@ if __name__ == "__main__":
     test_put_get_bucket_policy()
     test_put_file_like_object()
     test_put_chunked_object()
-    """
     test_put_get_delete_bucket_inventory()
+    """
+    test_put_get_bucket_referer()
     tearDown()
