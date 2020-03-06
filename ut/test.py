@@ -17,6 +17,7 @@ TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ["REGION"]
 APPID = '1251668577'
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + APPID
+copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
@@ -27,16 +28,36 @@ conf = CosConfig(
 client = CosS3Client(conf, retry=3)
 
 
-def _create_test_bucket(test_bucket):
+def _create_test_bucket(test_bucket, create_region=None):
     try:
-        response = client.create_bucket(
-            Bucket=test_bucket,
-        )
+        if create_region is None:
+            response = client.create_bucket(
+                Bucket=test_bucket,
+            )
+        else:
+            bucket_conf = CosConfig(
+                Region=create_region,
+                Secret_id=SECRET_ID,
+                Secret_key=SECRET_KEY
+            )
+            bucket_client = CosS3Client(bucket_conf)
+            response = bucket_client.create_bucket(
+                Bucket=test_bucket,
+            )
     except Exception as e:
         if e.get_error_code() == 'BucketAlreadyOwnedByYou':
             print('BucketAlreadyOwnedByYou')
         else:
             raise e
+    return None
+
+
+def _upload_test_file(test_bucket, test_key):
+    response = client.put_object(
+        Bucket=test_bucket,
+        Key=test_key,
+        Body='test'
+    )
     return None
 
 
@@ -68,6 +89,8 @@ def setUp():
     print ("start test...")
     print ("start create bucket " + test_bucket)
     _create_test_bucket(test_bucket)
+    _create_test_bucket(copy_test_bucket)
+    _upload_test_file(copy_test_bucket, test_object)
 
 
 def tearDown():
@@ -192,7 +215,7 @@ def test_get_object_acl():
 
 def test_copy_object_diff_bucket():
     """从另外的bucket拷贝object"""
-    copy_source = {'Bucket': 'test04-' + APPID, 'Key': '/test.txt', 'Region': 'ap-guangzhou'}
+    copy_source = {'Bucket': copy_test_bucket, 'Key': 'test.txt', 'Region': REGION}
     response = client.copy_object(
         Bucket=test_bucket,
         Key='test.txt',
@@ -284,7 +307,7 @@ def test_upload_part_copy():
     )
 
     # upload part copy
-    copy_source = {'Bucket': 'test04-' + APPID, 'Key': '/test.txt', 'Region': 'ap-guangzhou'}
+    copy_source = {'Bucket': copy_test_bucket, 'Key': 'test.txt', 'Region': REGION}
     response = client.upload_part_copy(
         Bucket=test_bucket,
         Key='multipartfile.txt',
@@ -522,6 +545,18 @@ def test_put_get_versioning():
 
 def test_put_get_delete_replication():
     """设置、获取、删除跨园区复制配置"""
+    replic_dest_bucket = 'replicationsh-' + APPID
+    _create_test_bucket(replic_dest_bucket, 'ap-shanghai')
+    sh_conf = CosConfig(
+        Region='ap-shanghai',
+        Secret_id=SECRET_ID,
+        Secret_key=SECRET_KEY
+    )
+    sh_client = CosS3Client(sh_conf)
+    response = sh_client.put_bucket_versioning(
+        Bucket=replic_dest_bucket,
+        Status='Enabled'
+    )
     replication_config = {
         'Role': 'qcs::cam::uin/2779643970:uin/2779643970',
         'Rule': [
@@ -530,7 +565,7 @@ def test_put_get_delete_replication():
                 'Status': 'Enabled',
                 'Prefix': '中文',
                 'Destination': {
-                    'Bucket': 'qcs:id/0:cos:ap-shanghai:appid/1251668577:replicationsh'
+                    'Bucket': 'qcs::cos:ap-shanghai::' + replic_dest_bucket
                 }
             }
         ]
@@ -673,10 +708,10 @@ def test_upload_file_multithreading():
 
 def test_copy_file_automatically():
     """根据拷贝源文件的大小自动选择拷贝策略，不同园区,小于5G直接copy_object，大于5G分块拷贝"""
-    copy_source = {'Bucket': 'test01-' + APPID, 'Key': '/thread_1MB', 'Region': 'ap-guangzhou'}
+    copy_source = {'Bucket': copy_test_bucket, 'Key': 'test.txt', 'Region': REGION}
     response = client.copy(
         Bucket=test_bucket,
-        Key='copy_10G.txt',
+        Key='copy.txt',
         CopySource=copy_source,
         MAXThread=10
     )
@@ -695,19 +730,6 @@ def test_upload_empty_file():
             CacheControl='no-cache',
             ContentDisposition='download.txt'
         )
-
-
-def test_copy_10G_file_in_same_region():
-    """同园区的拷贝,应该直接用copy_object接口,可以直接秒传"""
-    copy_source = {'Bucket': 'test01-' + APPID, 'Key': '10G.txt', 'Region': 'ap-guangzhou'}
-    copy_config = CosConfig(Region='ap-guangzhou', SecretId=SECRET_ID, SecretKey=SECRET_KEY)
-    copy_client = CosS3Client(copy_config)
-    response = copy_client.copy(
-        Bucket='test04-' + APPID,
-        Key='10G.txt',
-        CopySource=copy_source,
-        MAXThread=10
-    )
 
 
 def test_use_get_auth():
@@ -737,6 +759,7 @@ def test_upload_with_server_side_encryption():
 def test_put_get_bucket_logging():
     """测试bucket的logging服务"""
     logging_bucket = 'logging-beijing-' + APPID
+    _create_test_bucket(logging_bucket, 'ap-beijing')
     logging_config = {
         'LoggingEnabled': {
             'TargetBucket': logging_bucket,
@@ -744,7 +767,7 @@ def test_put_get_bucket_logging():
         }
     }
     beijing_conf = CosConfig(
-        Region="ap-beijing",
+        Region='ap-beijing',
         Secret_id=SECRET_ID,
         Secret_key=SECRET_KEY
     )
@@ -907,7 +930,7 @@ def test_put_get_delete_bucket_domain():
     domain_config = {
         'DomainRule': [
             {
-                'Name': 'qq.com',
+                'Name': 'coshelper.com',
                 'Type': 'REST',
                 'Status': 'ENABLED',
             },
