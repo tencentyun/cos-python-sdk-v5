@@ -23,24 +23,24 @@ class EventStream():
         """获取下一个事件"""
         if self._finish:
             raise StopIteration
-        total_byte_length = struct.unpack('>I', self._raw.read(4))[0]  # message总长度
-        header_byte_length = struct.unpack('>I', self._raw.read(4))[0]  # header总长度
-        prelude_crc = struct.unpack('>I', self._raw.read(4))[0]
+        total_byte_length = struct.unpack('>I', bytes(self._raw.read(4)))[0]  # message总长度
+        header_byte_length = struct.unpack('>I', bytes(self._raw.read(4)))[0]  # header总长度
+        prelude_crc = struct.unpack('>I', bytes(self._raw.read(4)))[0]
         # 处理headers
         offset = 0
         msg_headers = {}
         while offset < header_byte_length:
-            header_name_length = struct.unpack('>B', self._raw.read(1))[0]
+            header_name_length = struct.unpack('>B', bytes(self._raw.read(1)))[0]
             header_name = self._raw.read(header_name_length)
-            header_value_type = struct.unpack('>B', self._raw.read(1))[0]
-            header_value_length = struct.unpack('>H', self._raw.read(2))[0]
+            header_value_type = struct.unpack('>B', bytes(self._raw.read(1)))[0]
+            header_value_length = struct.unpack('>H', bytes(self._raw.read(2)))[0]
             header_value = self._raw.read(header_value_length)
             msg_headers[header_name] = header_value
             offset += 4 + header_name_length + header_value_length
         # 处理payload
         payload_byte_length = total_byte_length - header_byte_length - 16  # payload总长度
         payload = self._raw.read(payload_byte_length)
-        message_crc = struct.unpack('>I', self._raw.read(4))[0]
+        message_crc = struct.unpack('>I', bytes(self._raw.read(4)))[0]
         if ':message-type' in msg_headers and msg_headers[':message-type'] == 'event':
             if ':event-type' in msg_headers and msg_headers[':event-type'] == "Records":
                 return {'Records': {'Payload': payload}}

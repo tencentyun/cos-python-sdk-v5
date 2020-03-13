@@ -945,13 +945,14 @@ def test_put_get_delete_bucket_domain():
     )
     # wait for sync
     # get domain
-    time.sleep(10)
+    time.sleep(4)
     response = client.get_bucket_domain(
         Bucket=test_bucket
     )
     domain_config['x-cos-domain-txt-verification'] = response['x-cos-domain-txt-verification']
     assert domain_config == response
     # test domain request
+    """
     domain_conf = CosConfig(
         SecretId=SECRET_ID,
         SecretKey=SECRET_KEY,
@@ -962,11 +963,11 @@ def test_put_get_delete_bucket_domain():
     response = domain_client.head_bucket(
         Bucket=test_bucket
     )
+    """
     # delete domain
-    if not TRAVIS_FLAG:
-        response = client.delete_bucket_domain(
-            Bucket=test_bucket
-        )
+    response = client.delete_bucket_domain(
+        Bucket=test_bucket
+    )
 
 
 def test_put_get_delete_bucket_inventory():
