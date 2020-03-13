@@ -3,6 +3,7 @@ import os
 import uuid
 import struct
 from .cos_comm import xml_to_dict
+from .cos_comm import to_unicode
 
 
 class EventStream():
@@ -31,13 +32,13 @@ class EventStream():
         msg_headers = {}
         while offset < header_byte_length:
             header_name_length = struct.unpack('>B', bytes(self._raw.read(1)))[0]
-            header_name = self._raw.read(header_name_length)
+            header_name = to_unicode(self._raw.read(header_name_length))
             header_value_type = struct.unpack('>B', bytes(self._raw.read(1)))[0]
             header_value_length = struct.unpack('>H', bytes(self._raw.read(2)))[0]
-            header_value = self._raw.read(header_value_length)
+            header_value = to_unicode(self._raw.read(header_value_length))
             msg_headers[header_name] = header_value
             offset += 4 + header_name_length + header_value_length
-        # 处理payload
+        # 处理payload(输出给用户的dict中也为bytes)
         payload_byte_length = total_byte_length - header_byte_length - 16  # payload总长度
         payload = self._raw.read(payload_byte_length)
         message_crc = struct.unpack('>I', bytes(self._raw.read(4)))[0]
