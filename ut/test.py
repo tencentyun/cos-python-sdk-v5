@@ -963,9 +963,10 @@ def test_put_get_delete_bucket_domain():
         Bucket=test_bucket
     )
     # delete domain
-    response = client.delete_bucket_domain(
-        Bucket=test_bucket
-    )
+    if not TRAVIS_FLAG:
+        response = client.delete_bucket_domain(
+            Bucket=test_bucket
+        )
 
 
 def test_put_get_delete_bucket_inventory():
