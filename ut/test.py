@@ -1110,12 +1110,20 @@ def test_put_get_traffic_limit():
 
 
 def test_select_object():
-    """测试SQL检索COS对象"""
+    """测试SQL检索COS对象(只支持国内)"""
     select_obj = "select_test.json"
     json_body = {
         'name': 'cos',
         'age': '999'
     }
+    conf = CosConfig(
+        Region='ap-guangzhou',
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+    )
+    test_bucket = 'test-select-' + APPID
+    _create_test_bucket(test_bucket, 'ap-guangzhou')
+    client = CosS3Client(conf)
     response = client.put_object(
         Bucket=test_bucket,
         Key=select_obj,

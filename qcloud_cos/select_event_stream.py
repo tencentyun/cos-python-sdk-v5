@@ -2,7 +2,7 @@
 import os
 import uuid
 import struct
-from cos_comm import xml_to_dict
+from .cos_comm import xml_to_dict
 
 
 class EventStream():
