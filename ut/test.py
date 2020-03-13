@@ -927,10 +927,13 @@ def test_put_get_gzip_file():
 
 def test_put_get_delete_bucket_domain():
     """测试设置获取删除bucket自定义域名"""
+    domain = 'tiedu-gz.coshelper.com'
+    if TRAVIS_FLAG == 'true':
+        domain = 'tiedu-ger.coshelper.com'
     domain_config = {
         'DomainRule': [
             {
-                'Name': 'coshelper.com',
+                'Name': domain,
                 'Type': 'REST',
                 'Status': 'ENABLED',
             },
@@ -942,12 +945,23 @@ def test_put_get_delete_bucket_domain():
     )
     # wait for sync
     # get domain
-    time.sleep(4)
+    time.sleep(10)
     response = client.get_bucket_domain(
         Bucket=test_bucket
     )
     domain_config['x-cos-domain-txt-verification'] = response['x-cos-domain-txt-verification']
     assert domain_config == response
+    # test domain request
+    domain_conf = CosConfig(
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        Domain=domain,
+        Scheme='http'
+    )
+    domain_client = CosS3Client(domain_conf)
+    response = domain_client.head_bucket(
+        Bucket=test_bucket
+    )
     # delete domain
     response = client.delete_bucket_domain(
         Bucket=test_bucket
@@ -1077,6 +1091,57 @@ def test_put_get_bucket_referer():
     )
 
 
+def test_put_get_traffic_limit():
+    """测试上传下载接口的单链接限速"""
+    traffic_test_key = 'traffic_test'
+    response = client.put_object(
+        Bucket=test_bucket,
+        Key=traffic_test_key,
+        Body='A'*1024*1024,
+        TrafficLimit='1048576'
+    )
+    # 限速的单位为bit/s 1048576bit/s代表1Mb/s
+    response = client.get_object(
+        Bucket=test_bucket,
+        Key=traffic_test_key,
+        TrafficLimit='1048576'
+    )
+
+
+def test_select_object():
+    """测试SQL检索COS对象"""
+    select_obj = "select_test.json"
+    json_body = {
+        'name': 'cos',
+        'age': '999'
+    }
+    response = client.put_object(
+        Bucket=test_bucket,
+        Key=select_obj,
+        Body=(json.dumps(json_body)+'\n')*100
+    )
+    response = client.select_object_content(
+        Bucket=test_bucket,
+        Key=select_obj,
+        Expression='Select * from COSObject',
+        ExpressionType='SQL',
+        InputSerialization={
+            'CompressionType': 'NONE',
+            'JSON': {
+                'Type': 'LINES'
+            }
+        },
+        OutputSerialization={
+            'CSV': {
+                'RecordDelimiter': '\n'
+            }
+        }
+    )
+    event_stream = response['Payload']
+    for event in event_stream:
+        print(event)
+
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1098,6 +1163,8 @@ if __name__ == "__main__":
     test_put_file_like_object()
     test_put_chunked_object()
     test_put_get_delete_bucket_inventory()
+    test_put_get_traffic_limit()
+    test_put_get_delete_bucket_domain()
     """
-    test_put_get_bucket_referer()
+    test_select_object()
     tearDown()
