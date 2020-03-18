@@ -237,7 +237,7 @@ class CosS3Client(object):
         for j in range(self._retry + 1):
             try:
                 if j != 0:
-                    time.sleep(1)
+                    time.sleep(j)
                 if method == 'POST':
                     res = self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'GET':

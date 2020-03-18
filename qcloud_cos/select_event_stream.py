@@ -2,8 +2,12 @@
 import os
 import uuid
 import struct
+import logging
 from .cos_comm import xml_to_dict
 from .cos_comm import to_unicode
+from .cos_exception import CosServiceError
+
+logger = logging.getLogger(__name__)
 
 
 class EventStream():
@@ -23,6 +27,8 @@ class EventStream():
     def next_event(self):
         """获取下一个事件"""
         if self._finish:
+            """要把剩下的内容读完丢弃或者自己关连接,否则不会自动关连接"""
+            self._raw.read()
             raise StopIteration
         total_byte_length = struct.unpack('>I', bytes(self._raw.read(4)))[0]  # message总长度
         header_byte_length = struct.unpack('>I', bytes(self._raw.read(4)))[0]  # header总长度
@@ -54,6 +60,21 @@ class EventStream():
             elif ':event-type' in msg_headers and msg_headers[':event-type'] == "End":
                 self._finish = True
                 return {'End': {}}
+        # 处理Error Message(抛出异常)
+        if ':message-type' in msg_headers and msg_headers[':message-type'] == 'error':
+            error_info = dict()
+            error_info['code'] = msg_headers[':error-code']
+            error_info['message'] = msg_headers[':error-message']
+            error_info['resource'] = self._rt.request.url
+            error_info['requestid'] = ''
+            error_info['traceid'] = ''
+            if 'x-cos-request-id' in self._rt.headers:
+                error_info['requestid'] = self._rt.headers['x-cos-request-id']
+            if 'x-cos-trace-id' in self._rt.headers:
+                error_info['traceid'] = self._rt.headers['x-cos-trace-id']
+            logger.error(error_info)
+            e = CosServiceError('POST', error_info, self._rt.status_code)
+            raise e
 
     def get_select_result(self):
         """获取查询结果"""
