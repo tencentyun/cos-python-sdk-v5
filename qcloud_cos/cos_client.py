@@ -32,7 +32,7 @@ class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
-                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None):
+                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10, PoolMaxSize=10):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -54,6 +54,8 @@ class CosConfig(object):
         :param Proxies(dict):  使用代理来访问COS
         :param Domain(string):  使用自定义的域名来访问COS
         :param ServiceDomain(string):  使用自定义的域名来访问cos service
+        :param PoolConnections(int):  连接池个数
+        :param PoolMaxSize(int):      连接池中最大连接数
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -67,6 +69,8 @@ class CosConfig(object):
         self._proxies = Proxies
         self._domain = Domain
         self._service_domain = ServiceDomain
+        self._pool_connections = PoolConnections
+        self._pool_maxsize = PoolMaxSize
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
@@ -176,6 +180,8 @@ class CosS3Client(object):
         self._retry = retry  # 重试的次数，分片上传时可适当增大
         if session is None:
             self._session = requests.session()
+            self._session.mount('http://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections, pool_maxsize=self._conf._pool_maxsize))
+            self._session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections, pool_maxsize=self._conf._pool_maxsize))
         else:
             self._session = session
 
