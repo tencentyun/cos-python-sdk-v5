@@ -6,6 +6,7 @@ import hashlib
 import base64
 import os
 import sys
+import time
 import copy
 import json
 import xml.dom.minidom
@@ -23,7 +24,7 @@ from .cos_threadpool import SimpleThreadPool
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
 from .version import __version__
-
+from .select_event_stream import EventStream
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +32,7 @@ class CosConfig(object):
     """config类，保存用户相关信息"""
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
-                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None):
+                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10, PoolMaxSize=10):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -53,6 +54,8 @@ class CosConfig(object):
         :param Proxies(dict):  使用代理来访问COS
         :param Domain(string):  使用自定义的域名来访问COS
         :param ServiceDomain(string):  使用自定义的域名来访问cos service
+        :param PoolConnections(int):  连接池个数
+        :param PoolMaxSize(int):      连接池中最大连接数
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -66,6 +69,8 @@ class CosConfig(object):
         self._proxies = Proxies
         self._domain = Domain
         self._service_domain = ServiceDomain
+        self._pool_connections = PoolConnections
+        self._pool_maxsize = PoolMaxSize
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
@@ -175,6 +180,8 @@ class CosS3Client(object):
         self._retry = retry  # 重试的次数，分片上传时可适当增大
         if session is None:
             self._session = requests.session()
+            self._session.mount('http://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections, pool_maxsize=self._conf._pool_maxsize))
+            self._session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections, pool_maxsize=self._conf._pool_maxsize))
         else:
             self._session = session
 
@@ -235,6 +242,8 @@ class CosS3Client(object):
             kwargs['verify'] = False
         for j in range(self._retry + 1):
             try:
+                if j != 0:
+                    time.sleep(j)
                 if method == 'POST':
                     res = self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'GET':
@@ -948,7 +957,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
-        :param RestoreRequest: 取回object的属性设置
+        :param RestoreRequest(dict): 取回object的属性设置
         :param kwargs(dict): 设置请求headers.
         :return: None.
         """
@@ -971,6 +980,46 @@ class CosS3Client(object):
             headers=headers,
             params=params)
         return None
+
+    def select_object_content(self, Bucket, Key, Expression, ExpressionType, InputSerialization, OutputSerialization, RequestProgress=None, **kwargs):
+        """从指定文对象中检索内容
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 检索的路径.
+        :param Expression(string): 查询语句
+        :param ExpressionType(string): 查询语句的类型
+        :param RequestProgress(dict): 查询进度设置
+        :param InputSerialization(dict): 输入格式设置
+        :param OutputSerialization(dict): 输出格式设置
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 检索内容.
+        """
+        params = {'select': '', 'select-type': 2}
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("select object content, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        SelectRequest = {
+            'Expression': Expression,
+            'ExpressionType': ExpressionType,
+            'InputSerialization': InputSerialization,
+            'OutputSerialization': OutputSerialization
+        }
+        if RequestProgress is not None:
+            SelectRequest['RequestProgress'] = RequestProgress
+        xml_config = format_xml(data=SelectRequest, root='SelectRequest')
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            stream=True,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
+        data = {'Payload': EventStream(rt)}
+        return data
 
     # s3 bucket interface begin
     def create_bucket(self, Bucket, **kwargs):
@@ -2687,9 +2736,9 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        url = 'https://service.cos.myqcloud.com/'
+        url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
         if self._conf._service_domain is not None:
-            url = 'https://{domain}/'.format(domain=self._conf._service_domain)
+            url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
         rt = self.send_request(
                 method='GET',
                 url=url,

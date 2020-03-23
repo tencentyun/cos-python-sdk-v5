@@ -5,7 +5,10 @@ import xml.dom.minidom
 
 class CosException(Exception):
     def __init__(self, message):
-        Exception.__init__(self, message)
+        self._message = message
+
+    def __str__(self):
+        return str(self._message)
 
 
 def digest_xml(data):
@@ -46,13 +49,16 @@ class CosServiceError(CosException):
     """COS Server端错误，可以获取特定的错误信息"""
     def __init__(self, method, message, status_code):
         CosException.__init__(self, message)
-        if method == 'HEAD':  # 对HEAD进行特殊处理
+        if isinstance(message, dict):
             self._origin_msg = ''
             self._digest_msg = message
         else:
             self._origin_msg = message
             self._digest_msg = digest_xml(message)
         self._status_code = status_code
+
+    def __str__(self):
+        return str(self._digest_msg)
 
     def get_origin_msg(self):
         """获取原始的XML格式错误信息"""

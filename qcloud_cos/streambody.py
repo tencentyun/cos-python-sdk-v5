@@ -7,13 +7,20 @@ class StreamBody():
     def __init__(self, rt):
         self._rt = rt
 
+    def __iter__(self):
+        """提供一个默认的迭代器"""
+        return self._rt.iter_content(1024)
+
     def get_raw_stream(self):
+        """提供原始流"""
         return self._rt.raw
 
     def get_stream(self, chunk_size=1024):
+        """提供一个chunk可变的迭代器"""
         return self._rt.iter_content(chunk_size=chunk_size)
 
     def get_stream_to_file(self, file_name, auto_decompress=False):
+        """保存流到本地文件"""
         use_chunked = False
         if 'Content-Length' in self._rt.headers:
             content_len = int(self._rt.headers['Content-Length'])
