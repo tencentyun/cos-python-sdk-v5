@@ -254,7 +254,7 @@ class CosS3Client(object):
                     res = self._session.delete(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'HEAD':
                     res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
-                if res.status_code < 400:  # 2xx和3xx都认为是成功的
+                if res.status_code < 500:  # 2xx和3xx都认为是成功的, 4xx不重试
                     return res
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
