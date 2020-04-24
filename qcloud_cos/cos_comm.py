@@ -15,6 +15,7 @@ from dicttoxml import dicttoxml
 from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
+from enum import Enum
 
 SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5GB
 DEFAULT_CHUNK_SIZE = 1024*1024           # 计算MD5值时,文件单次读取的块大小为1MB
@@ -405,3 +406,9 @@ def get_date(yy, mm, dd):
     date_str = datetime(yy, mm, dd).isoformat()
     final_date_str = date_str+'+08:00'
     return final_date_str
+
+class CiDetectType(Enum):
+    PORN = 1
+    TERRORIST = 2
+    POLITICS = 4
+    ADS = 8
