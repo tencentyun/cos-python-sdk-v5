@@ -10,6 +10,7 @@ from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
 from qcloud_cos import get_date
+from qcloud_cos.cos_comm import CiDetectType
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -19,6 +20,7 @@ APPID = '1251668577'
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
+test_image = "12.png"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
     Region=REGION,
@@ -1151,6 +1153,16 @@ def test_select_object():
     for event in event_stream:
         print(event)
 
+def test_get_object_sensitive_content_recognition():
+    """测试ci文件内容识别的接口"""
+    response = client.get_object_sensitive_content_recognition(
+        Bucket=test_bucket,
+        Key=test_image,
+        DetectType=CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS
+    )
+    print response
+    print response['PornInfo']
+    assert response
 
 if __name__ == "__main__":
     setUp()
@@ -1175,6 +1187,8 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_inventory()
     test_put_get_traffic_limit()
     test_put_get_delete_bucket_domain()
-    """
     test_select_object()
+    """
+
+    test_get_object_sensitive_content_recognition()
     tearDown()
