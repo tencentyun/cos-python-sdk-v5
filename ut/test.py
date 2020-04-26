@@ -1155,13 +1155,14 @@ def test_select_object():
 
 def test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
+    print(CiDetectType)
     response = client.get_object_sensitive_content_recognition(
         Bucket=test_bucket,
         Key=test_image,
-        DetectType=CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS
+        DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS)
     )
-    print response
-    print response['PornInfo']
+    print(response)
+    print(response['PornInfo'])
     assert response
 
 if __name__ == "__main__":
