@@ -20,7 +20,6 @@ APPID = '1251668577'
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
-test_image = "12.png"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 conf = CosConfig(
     Region=REGION,
@@ -1158,11 +1157,10 @@ def test_get_object_sensitive_content_recognition():
     print(CiDetectType)
     response = client.get_object_sensitive_content_recognition(
         Bucket=test_bucket,
-        Key=test_image,
+        Key=test_object,
         DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS)
     )
     print(response)
-    print(response['PornInfo'])
     assert response
 
 if __name__ == "__main__":
