@@ -1152,7 +1152,8 @@ def test_select_object():
     for event in event_stream:
         print(event)
 
-def test_get_object_sensitive_content_recognition():
+
+def _test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
     print(CiDetectType)
     response = client.get_object_sensitive_content_recognition(
@@ -1162,6 +1163,7 @@ def test_get_object_sensitive_content_recognition():
     )
     print(response)
     assert response
+
 
 if __name__ == "__main__":
     setUp()
@@ -1187,7 +1189,7 @@ if __name__ == "__main__":
     test_put_get_traffic_limit()
     test_put_get_delete_bucket_domain()
     test_select_object()
+    _test_get_object_sensitive_content_recognition()
     """
 
-    test_get_object_sensitive_content_recognition()
     tearDown()
