@@ -15,7 +15,6 @@ from dicttoxml import dicttoxml
 from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
-#from enum import IntFlag
 
 SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5GB
 DEFAULT_CHUNK_SIZE = 1024*1024           # 计算MD5值时,文件单次读取的块大小为1MB
