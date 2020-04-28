@@ -1152,7 +1152,7 @@ def test_select_object():
     for event in event_stream:
         print(event)
 
-def test_get_object_sensitive_content_recognition():
+def _test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
     print(CiDetectType)
     response = client.get_object_sensitive_content_recognition(

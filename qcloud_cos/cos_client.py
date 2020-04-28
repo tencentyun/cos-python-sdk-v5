@@ -385,7 +385,7 @@ class CosS3Client(object):
 
     def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
-        
+
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
@@ -419,21 +419,21 @@ class CosS3Client(object):
             del headers['versionId']
         params['ci-process'] = 'sensitive-content-recognition'
         detect_type = ''
-        if DetectType & CiDetectType.PORN > 0 :
+        if DetectType & CiDetectType.PORN > 0:
             detect_type += 'porn'
-        if DetectType & CiDetectType.TERRORIST > 0 :
+        if DetectType & CiDetectType.TERRORIST > 0:
             if len(detect_type) > 0:
                 detect_type += ','
             detect_type += 'terrorist'
-        if DetectType & CiDetectType.POLITICS > 0 :
+        if DetectType & CiDetectType.POLITICS > 0:
             if len(detect_type) > 0:
                 detect_type += ','
             detect_type += 'politics'
-        if DetectType & CiDetectType.ADS > 0 :
+        if DetectType & CiDetectType.ADS > 0:
             if len(detect_type) > 0:
                 detect_type += ','
             detect_type += 'ads'
-        
+
         params['detect-type'] = detect_type
         params = format_values(params)
 
