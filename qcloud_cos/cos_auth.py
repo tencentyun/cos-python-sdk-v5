@@ -44,14 +44,13 @@ class CosS3Auth(AuthBase):
         path = self._path
         uri_params = self._params
         headers = filter_headers(r.headers)
-        uri_params = dict([(k.lower(), v) for k, v in uri_params.items()])
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
-        headers = dict([(k.lower(), quote(to_bytes(v), '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
-        uri_params = dict([(k.lower(), v) for k, v in uri_params.items()])
+        headers = dict([(quote(to_bytes(str(k)), '-_.~').lower(), quote(to_bytes(str(v)), '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
+        uri_params = dict([(quote(to_bytes(str(k)), '-_.~').lower(), quote(to_bytes(str(v)), '-_.~')) for k, v in uri_params.items()])
         format_str = u"{method}\n{host}\n{params}\n{headers}\n".format(
             method=r.method.lower(),
             host=path,
-            params=urlencode(sorted(uri_params.items())).replace('+', '%20').replace('%7E', '~'),
+            params='&'.join(map(lambda tupl: "%s=%s" % (tupl[0], tupl[1]), sorted(uri_params.items()))),
             headers='&'.join(map(lambda tupl: "%s=%s" % (tupl[0], tupl[1]), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
@@ -73,7 +72,7 @@ class CosS3Auth(AuthBase):
             ak=self._secret_id,
             sign_time=sign_time,
             key_time=sign_time,
-            params=';'.join(sorted(map(lambda k: k.lower(), uri_params.keys()))),
+            params=';'.join(sorted(uri_params.keys())),
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
