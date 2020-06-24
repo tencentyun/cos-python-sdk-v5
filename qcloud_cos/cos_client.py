@@ -2784,7 +2784,6 @@ class CosS3Client(object):
 
     def _get_resumable_uploadid(self, bucket, key):
         """从服务端获取未完成的分块上传任务,获取断点续传的uploadid
-            params=urlencode(sorted(uri_params.items())).replace('+', '%20').replace('%7E', '~'),
 
         :param bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
