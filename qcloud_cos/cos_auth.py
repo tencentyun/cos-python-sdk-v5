@@ -6,7 +6,7 @@ import time
 import hashlib
 import logging
 from requests.auth import AuthBase
-from .cos_comm import to_unicode, to_bytes
+from .cos_comm import to_unicode, to_bytes, to_str
 logger = logging.getLogger(__name__)
 
 
@@ -45,8 +45,8 @@ class CosS3Auth(AuthBase):
         uri_params = self._params
         headers = filter_headers(r.headers)
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
-        headers = dict([(quote(to_bytes(str(k)), '-_.~').lower(), quote(to_bytes(str(v)), '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
-        uri_params = dict([(quote(to_bytes(str(k)), '-_.~').lower(), quote(to_bytes(str(v)), '-_.~')) for k, v in uri_params.items()])
+        headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
+        uri_params = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in uri_params.items()])
         format_str = u"{method}\n{host}\n{params}\n{headers}\n".format(
             method=r.method.lower(),
             host=path,
