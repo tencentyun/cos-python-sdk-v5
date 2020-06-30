@@ -479,6 +479,7 @@ class CosS3Client(object):
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
         sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params)
+        sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
         url = url + '?' + sign
         if Params:
             url = url + '&' + urlencode(Params)
@@ -2828,7 +2829,7 @@ class CosS3Client(object):
         return data
 
     # Advanced interface
-    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag, already_exist_parts, enable_md5):
+    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag, already_exist_parts, enable_md5, traffic_limit):
         """从本地文件中读取分块, 上传单个分块,将结果记录在md5——list中
 
         :param bucket(string): 存储桶名称.
@@ -2851,7 +2852,7 @@ class CosS3Client(object):
             with open(local_path, 'rb') as fp:
                 fp.seek(offset, 0)
                 data = fp.read(size)
-            rt = self.upload_part(bucket, key, data, part_num, uploadid, enable_md5)
+            rt = self.upload_part(bucket, key, data, part_num, uploadid, enable_md5, TrafficLimit=traffic_limit)
             md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
         return None
 
@@ -3004,15 +3005,19 @@ class CosS3Client(object):
                 logger.info("create a new uploadid in upload_file, uploadid={uploadid}".format(uploadid=uploadid))
 
             # 上传分块
+            # 增加限速功能
+            traffic_limit = None
+            if 'TrafficLimit' in kwargs:
+                traffic_limit = kwargs['TrafficLimit']
             offset = 0  # 记录文件偏移量
             lst = list()  # 记录分块信息
             pool = SimpleThreadPool(MAXThread)
 
             for i in range(1, parts_num+1):
                 if i == parts_num:  # 最后一块
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, traffic_limit)
                 else:
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, traffic_limit)
                     offset += part_size
 
             pool.wait_completion()

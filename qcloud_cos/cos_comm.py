@@ -61,6 +61,13 @@ maplist = {
            }
 
 
+def to_str(s):
+    """非字符串转换为字符串"""
+    if isinstance(s, text_type) or isinstance(s, binary_type):
+        return s
+    return str(s)
+
+
 def to_unicode(s):
     """将字符串转为unicode"""
     if isinstance(s, binary_type):
