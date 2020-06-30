@@ -10,6 +10,7 @@ from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
 from qcloud_cos import get_date
+from qcloud_cos.cos_comm import CiDetectType
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -1152,6 +1153,18 @@ def test_select_object():
         print(event)
 
 
+def _test_get_object_sensitive_content_recognition():
+    """测试ci文件内容识别的接口"""
+    print(CiDetectType)
+    response = client.get_object_sensitive_content_recognition(
+        Bucket=test_bucket,
+        Key=test_object,
+        DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS)
+    )
+    print(response)
+    assert response
+
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1175,6 +1188,8 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_inventory()
     test_put_get_traffic_limit()
     test_put_get_delete_bucket_domain()
-    """
     test_select_object()
+    _test_get_object_sensitive_content_recognition()
+    """
+
     tearDown()

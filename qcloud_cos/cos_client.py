@@ -256,6 +256,8 @@ class CosS3Client(object):
                     res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     return res
+                elif res.status_code < 500:  # 4xx 不重试
+                    break
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
                 if j < self._retry:
@@ -380,6 +382,78 @@ class CosS3Client(object):
         response['Body'] = StreamBody(rt)
 
         return response
+
+    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, **kwargs):
+        """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 下载成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 下载cos上的文件到本地
+            response = client.get_object_sensitive_content_recognition(
+                Bucket='bucket',
+                DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
+                Key='test.png'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params['ci-process'] = 'sensitive-content-recognition'
+        detect_type = ''
+        if DetectType & CiDetectType.PORN > 0:
+            detect_type += 'porn'
+        if DetectType & CiDetectType.TERRORIST > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'terrorist'
+        if DetectType & CiDetectType.POLITICS > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'politics'
+        if DetectType & CiDetectType.ADS > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'ads'
+
+        params['detect-type'] = detect_type
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get object sensitive content recognition, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+                method='GET',
+                url=url,
+                bucket=Bucket,
+                stream=True,
+                auth=CosS3Auth(self._conf, Key, params=params),
+                params=params,
+                headers=headers)
+
+        data = xml_to_dict(rt.content)
+
+        return data
 
     def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}):
         """生成预签名的url
@@ -732,8 +806,7 @@ class CosS3Client(object):
                 params=params,
                 auth=CosS3Auth(self._conf, Key, params=params),
                 data=Body)
-        response = dict()
-        response['ETag'] = rt.headers['ETag']
+        response = dict(**rt.headers)
         return response
 
     def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):

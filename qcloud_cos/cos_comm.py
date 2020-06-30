@@ -412,3 +412,11 @@ def get_date(yy, mm, dd):
     date_str = datetime(yy, mm, dd).isoformat()
     final_date_str = date_str+'+08:00'
     return final_date_str
+
+
+class CiDetectType():
+    """ci内容设备的类型设置,可与操作设多个"""
+    PORN = 1
+    TERRORIST = 2
+    POLITICS = 4
+    ADS = 8
