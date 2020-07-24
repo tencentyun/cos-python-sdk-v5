@@ -220,7 +220,7 @@ class CosS3Client(object):
         auth = CosS3Auth(self._conf, Key, Params, Expired)
         return auth(r).headers['Authorization']
 
-    def send_request(self, method, url, bucket, timeout=30, **kwargs):
+    def send_request(self, method, url, bucket, timeout=30, cos_request=True, **kwargs):
         """封装request库发起http请求"""
         if self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
@@ -264,6 +264,8 @@ class CosS3Client(object):
                     continue
                 raise CosClientError(str(e))
 
+        if not cos_request:
+            return res
         if res.status_code >= 400:  # 所有的4XX,5XX都认为是COSServiceError
             if method == 'HEAD' and res.status_code == 404:   # Head 需要处理
                 info = dict()
@@ -3399,6 +3401,81 @@ class CosS3Client(object):
             **kwargs
         )
         return response
+
+    def put_async_fetch_task(self, Bucket, FetchTaskConfiguration={}, **kwargs):
+        """发起异步拉取对象到COS的任务
+
+        :param Bucket(string): 存储桶名称.
+        :param FetchTaskConfiguration(dict): 异步拉取任务的配置.
+        :kwargs(dict): 扩展参数.
+        :return(dict): 异步任务成功返回的结果，包含Taskid等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 发起异步拉取任务
+            response = client.put_async_fetch_task(
+                Bucket='bucket',
+                FetchTaskConfiguration={
+                    'Url':
+                    'Key':
+                    'MD5':
+                    'SuccessCallbackUrl':
+                    'FailureCallbackUrl':
+                }
+            )
+        """
+        url = '{scheme}://{region}.migration.myqcloud.com/{bucket}/'.format(scheme=self._conf._scheme, region=self._conf._region, bucket=Bucket)
+        if self._conf._domain is not None:
+            url = '{scheme}://{domain}/{bucket}/'.format(scheme=self._conf._scheme, domain=self._conf._domain, bucket=Bucket)
+        headers = {'Content-Type': 'application/json'}
+        signed_key = Bucket + '/'
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=None,
+            data=json.dumps(FetchTaskConfiguration),
+            headers=headers,
+            auth=CosS3Auth(self._conf, signed_key),
+            cos_request=False
+        )
+        data = rt.json()
+        return data
+
+    def get_async_fetch_task(self, Bucket, TaskId, **kwargs):
+        """获取异步拉取对象到COS的任务状态
+
+        :param Bucket(string): 存储桶名称.
+        :param TaskId(string): 异步拉取任务查询的唯一标识.
+        :kwargs(dict): 扩展参数.
+        :return(dict): 异步任务的状态
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取异步拉取任务
+            response = client.get_async_fetch_task(
+                Bucket='bucket',
+                TaskId='string'
+            )
+        """
+        url = '{scheme}://{region}.migration.myqcloud.com/{bucket}/{task_id}'.format(scheme=self._conf._scheme, region=self._conf._region, bucket=Bucket, task_id=TaskId)
+        if self._conf._domain is not None:
+            url = '{scheme}://{domain}/{bucket}/{task_id}'.format(scheme=self._conf._scheme, domain=self._conf._domain, bucket=Bucket, task_id=TaskId)
+        headers = {'Content-Type': 'application/json'}
+        signed_key = '{bucket}/{task_id}'.format(bucket=Bucket, task_id=TaskId)
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=None,
+            headers=headers,
+            auth=CosS3Auth(self._conf, signed_key),
+            cos_request=False
+        )
+        data = rt.json()
+        return data
 
 
 if __name__ == "__main__":

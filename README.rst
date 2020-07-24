@@ -27,7 +27,7 @@ __________
 使用方法
 __________
 
-使用python sdk，参照 https://github.com/tencentyun/cos-python-sdk-v5/blob/master/qcloud_cos/demo.py
+使用python sdk，参照 https://github.com/tencentyun/cos-python-sdk-v5/blob/master/demo/demo.py
 
 cos最新可用地域，参照 https://cloud.tencent.com/document/product/436/6224
 
