@@ -1164,6 +1164,10 @@ def _test_get_object_sensitive_content_recognition():
     print(response)
     assert response
 
+def test_download_file():
+    """测试断点续传下载接口"""
+    client.download_file(test_bucket, test_object, 'test_download_file.local')
+    client.download_file(test_bucket, test_object, 'test_download_rraffic_limit.local', TrafficLimit=1024)
 
 if __name__ == "__main__":
     setUp()
