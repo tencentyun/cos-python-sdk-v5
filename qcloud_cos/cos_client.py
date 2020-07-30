@@ -2944,7 +2944,7 @@ class CosS3Client(object):
         return True
 
     def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAZThread=5, EnableCRC=False, **Kwargs):
-        """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
+        """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
         
         :param Bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
