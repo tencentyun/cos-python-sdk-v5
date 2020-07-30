@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 # -*- coding: utf-8 -*-
 
-=======
->>>>>>> acf0420cb2642482f8b36c7dd3030993d4f0ad1f
 import json
 import os
 import sys
@@ -193,7 +190,11 @@ class PartInfo(object):
         return self.part_id, self.start, self.length
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         
+=======
+        
+>>>>>>> acf0420cb2642482f8b36c7dd3030993d4f0ad1f
 =======
         
 >>>>>>> acf0420cb2642482f8b36c7dd3030993d4f0ad1f
