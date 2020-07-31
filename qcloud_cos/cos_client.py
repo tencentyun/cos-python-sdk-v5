@@ -2960,7 +2960,7 @@ class CosS3Client(object):
         object_info = self.head_object(Bucket, Key)
         file_size = object_info['Content-Length']
         if file_size <= 1024*1024*20:
-            response = self.get_object(Bucket, Key)
+            response = self.get_object(Bucket, Key, **Kwargs)
             response['Body'].get_stream_to_file(DestFilePath)
             return
 
