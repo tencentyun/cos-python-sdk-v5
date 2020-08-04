@@ -1172,7 +1172,7 @@ def test_download_file():
         os.remove('test_download_file.local')
         
     # 测试限速下载
-    client.download_file(test_bucket, test_object, 'test_download_traffic_limit.local', TrafficLimit=1024)
+    client.download_file(test_bucket, test_object, 'test_download_traffic_limit.local', TrafficLimit='819200')
     if os.path.exists('test_download_traffic_limit.local'):
         os.remove('test_download_traffic_limit.local')
     
