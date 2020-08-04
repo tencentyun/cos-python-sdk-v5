@@ -60,7 +60,7 @@ class ResumableDownLoader(object):
         pool.wait_completion()
         result = pool.get_result()
         if not result['success_all']:
-            raise CosClientError('some upload_part fail after max_retry, please upload_file again')
+            raise CosClientError('some download_part fail after max_retry, please downloade_file again')
 
         if os.path.exists(self.__dest_file_path):
             os.remove(self.__dest_file_path)
