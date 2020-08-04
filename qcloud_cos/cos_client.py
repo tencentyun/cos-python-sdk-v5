@@ -2947,10 +2947,10 @@ class CosS3Client(object):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
         
         :param Bucket(string): 存储桶名称.
-        :param key(string): 分块上传路径名.
-        :param LocalFilePath(string): 本地文件路径名.
-        :param PartSize(int): 分块的大小设置,单位为MB.
-        :param MAXThread(int): 并发上传的最大线程数.
+        :param key(string): COS文件的路径名.
+        :param DestFilePath(string): 下载文件的目的路径.
+        :param PartSize(int): 分块下载的大小设置,单位为MB.
+        :param MAXThread(int): 并发下载的最大线程数.
         :param EnableCRC(bool): 校验下载文件与源文件是否一致
         :param kwargs(dict): 设置请求headers.
         """
