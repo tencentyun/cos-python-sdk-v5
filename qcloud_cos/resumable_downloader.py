@@ -74,7 +74,8 @@ class ResumableDownLoader(object):
 
     def __get_record_filename(self, bucket, key, dest_file_path):
         dest_file_path_md5 = hashlib.md5(dest_file_path).hexdigest()
-        return '{0}_{1}.{2}'.format(self.__bucket, self.__key, dest_file_path_md5)
+        key_md5 = hashlib.md5(key).hexdigest()
+        return '{0}_{1}.{2}'.format(bucket, key_md5, dest_file_path_md5)
 
     def __determine_part_size_internal(self, file_size, part_size):
         real_part_size = part_size * 1024 * 1024 # MB
@@ -145,11 +146,19 @@ class ResumableDownLoader(object):
         if os.path.exists(self.__record_filepath):
             with open(self.__record_filepath, 'r') as f:
                 record = json.load(f)
+
+            ret = self.__check_record(record)
+            # record记录是否跟head object的一致，不一致则删除
+            if ret == False:   
+                self.__del_record()
+                record = None
+            else:
                 self.__part_size = record['part_size']
                 self.__tmp_file = record['tmp_filename']
                 if not os.path.exists(self.__tmp_file):
                     record = None
                     self.__tmp_file = None
+                    self.__del_record()
                 else:
                     self.__finished_parts = list(PartInfo(p['part_id'], p['start'], p['length']) for p in record['parts'])
                     logger.debug('load record: finished parts nums: {0}'.format(len(self.__finished_parts)))
@@ -158,14 +167,20 @@ class ResumableDownLoader(object):
         if not record:
             self.__tmp_file = "{file_name}_{uuid}".format(file_name=self.__dest_file_path, uuid=uuid.uuid4().hex)
             record = {'bucket': self.__bucket, 'key': self.__key, 'tmp_filename':self.__tmp_file,
-                      'part_size': self.__part_size, 'parts':[]}
+                      'mtime':self.__object_info['Last-Modified'], 'etag':self.__object_info['ETag'],
+                      'file_size':self.__object_info['Content-Length'], 'part_size': self.__part_size, 'parts':[]}
             self.__record = record
             self.__dump_record(record)
 
+    def __check_record(self, record):
+        return record['etag'] == self.__object_info['ETag'] and\
+               record['mtime'] == self.__object_info['Last-Modified'] and\
+               record['file_size'] == self.__object_info['Content-Length']
+
     def __del_record(self):
-            os.remove(self.__record_filepath)
-            logger.debug('ResumableDownLoader delete record_file, path: {0}'.format(self.__record_filepath))
-            
+        os.remove(self.__record_filepath)
+        logger.debug('ResumableDownLoader delete record_file, path: {0}'.format(self.__record_filepath))
+
     def __check_crc(self):
         logger.debug('start to check crc')
         c64 = crcmod.mkCrcFun(0x142F0E1EBA9EA3693L, initCrc=0L, xorOut=0xffffffffffffffffL, rev=True)
