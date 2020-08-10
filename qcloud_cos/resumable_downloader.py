@@ -132,7 +132,7 @@ class ResumableDownLoader(object):
             self.__record['parts'].append({'part_id': part.part_id, 'start': part.start, 'length': part.length})
             self.__dump_record(self.__record)
 
-    def __dump_record(self, record): 
+    def __dump_record(self, record):
         with open(self.__record_filepath, 'w') as f:
             json.dump(record, f)
             logger.debug('dump record to {0}, bucket: {1}, key: {2}'.format(self.__record_filepath, self.__bucket, self.__key))
@@ -145,7 +145,7 @@ class ResumableDownLoader(object):
                 record = json.load(f)
             ret = self.__check_record(record)
             # record记录是否跟head object的一致，不一致则删除
-            if not ret: 
+            if not ret:
                 self.__del_record()
                 record = None
             else:
