@@ -1164,6 +1164,53 @@ def _test_get_object_sensitive_content_recognition():
     print(response)
     assert response
 
+def test_download_file():
+    """测试断点续传下载接口"""
+    #测试普通下载
+    client.download_file(copy_test_bucket, test_object, 'test_download_file.local')
+    if os.path.exists('test_download_file.local'):
+        os.remove('test_download_file.local')
+        
+    # 测试限速下载
+    client.download_file(copy_test_bucket, test_object, 'test_download_traffic_limit.local', TrafficLimit='819200')
+    if os.path.exists('test_download_traffic_limit.local'):
+        os.remove('test_download_traffic_limit.local')
+    
+    # 测试crc64校验开关
+    client.download_file(copy_test_bucket, test_object, 'test_download_crc.local', EnableCRC=True)
+    if os.path.exists('test_download_crc.local'):
+        os.remove('test_download_crc.local')
+    
+    # 测试源文件的md5与下载下来后的文件md5
+    file_size = 25 # MB
+    file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
+    file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
+    gen_file(file_name, file_size)
+
+    source_file_md5 = None
+    dest_file_md5 = None
+    with open(file_name, 'rb') as f:
+        source_file_md5 = get_raw_md5(f.read())
+
+    client.put_object_from_local_file(
+        Bucket=copy_test_bucket,
+        LocalFilePath=file_name,
+        Key=file_name
+    )
+
+    client.download_file(copy_test_bucket, file_name, 'test_download_md5.local')
+    if os.path.exists('test_download_md5.local'):
+        with open('test_download_md5.local', 'rb') as f:
+            dest_file_md5 = get_raw_md5(f.read())
+    assert source_file_md5 and dest_file_md5 and source_file_md5 == dest_file_md5
+
+    # 释放资源
+    client.delete_object(
+        Bucket=copy_test_bucket,
+        Key=file_name
+    )
+    if os.path.exists(file_name):
+        os.remove(file_name)
 
 if __name__ == "__main__":
     setUp()
@@ -1190,6 +1237,7 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_domain()
     test_select_object()
     _test_get_object_sensitive_content_recognition()
+    test_download_file()
     """
 
     tearDown()

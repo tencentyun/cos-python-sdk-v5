@@ -25,6 +25,7 @@ from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
 from .version import __version__
 from .select_event_stream import EventStream
+from .resumable_downloader import ResumableDownLoader
 logger = logging.getLogger(__name__)
 
 
@@ -185,7 +186,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_conf():
+    def get_conf(self):
         """获取配置"""
         return self._conf
 
@@ -2943,6 +2944,30 @@ class CosS3Client(object):
                 return False
             already_exist_parts[part_num] = part['ETag']
         return True
+
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAZThread=5, EnableCRC=False, **Kwargs):
+        """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
+        
+        :param Bucket(string): 存储桶名称.
+        :param key(string): COS文件的路径名.
+        :param DestFilePath(string): 下载文件的目的路径.
+        :param PartSize(int): 分块下载的大小设置,单位为MB.
+        :param MAXThread(int): 并发下载的最大线程数.
+        :param EnableCRC(bool): 校验下载文件与源文件是否一致
+        :param kwargs(dict): 设置请求headers.
+        """
+        logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB, "
+                    "max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAZThread))
+        
+        object_info = self.head_object(Bucket, Key)
+        file_size = object_info['Content-Length']
+        if file_size <= 1024*1024*20:
+            response = self.get_object(Bucket, Key, **Kwargs)
+            response['Body'].get_stream_to_file(DestFilePath)
+            return
+
+        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAZThread, EnableCRC, **Kwargs)
+        downloader.start()
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, **kwargs):
         """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
