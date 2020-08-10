@@ -67,7 +67,7 @@ class StreamBody():
             use_encoding = True
         read_len = 0
         fdst.seek(offset, 0)
- 
+
         if use_encoding and not auto_decompress:
             chunk = self._rt.raw.read(1024)
             while chunk:
