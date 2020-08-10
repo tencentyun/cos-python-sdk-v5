@@ -2945,7 +2945,7 @@ class CosS3Client(object):
 
     def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAZThread=5, EnableCRC=False, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
-        
+
         :param Bucket(string): 存储桶名称.
         :param key(string): COS文件的路径名.
         :param DestFilePath(string): 下载文件的目的路径.
@@ -2954,9 +2954,9 @@ class CosS3Client(object):
         :param EnableCRC(bool): 校验下载文件与源文件是否一致
         :param kwargs(dict): 设置请求headers.
         """
-        logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB, "
-                    "max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAZThread))
-        
+        logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB,\
+                     max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAZThread))
+ 
         object_info = self.head_object(Bucket, Key)
         file_size = object_info['Content-Length']
         if file_size <= 1024*1024*20:

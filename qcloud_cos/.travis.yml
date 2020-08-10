@@ -1,0 +1,30 @@
+sudo: false
+language: python
+python:
+- '2.7'
+- '3.5'
+- '3.6'
+install:
+- pip install requests
+- pip install six
+- pip install nose
+- pip install pycodestyle
+- pip install dicttoxml
+- pip install crcmod
+notifications:
+  email:
+    recipients:
+      - wjielai@tencent.com
+      - fysntian@tencent.com
+script:
+- pycodestyle --max-line-length=200 qcloud_cos/.
+- nosetests -s -v ut/
+deploy:
+  provider: pypi
+  distributions: sdist bdist_wheel
+  user: dt3310321
+  password:
+    secure: JCBE84C22lHElRm7HmIf//UI123EuiFznEFPoVMPlRGb/XBrtYb+x1SRaO7Dn165CfVDpXtdNbJYfD9s2p3FUKzxSqkwl7FkkSl2g1jwKO97gKBPGxozBN+9pOJLTQUXBwON+erJSpMCHxrUjKKZBi56mUYXPP+A1X8sIHFMF4rLdPSuobjx0VGm2qFWhFeuLFPNOfF5ZKQDCnieptBLhrMXRcxyhZja/HsQh/JOjnMKZAmgJep2w2hI7ScYeTF0Ljk3RQbSN88HjZ7XP+U3bhiy5IE2u0WhJr6Q1OwxIuw8EIP+5mBNELT8Q5AMDnR85ehOVf67nl8j0nCiLzS55t1wuFHWExwW4kKF0dLpeV/fj3huFwQuAYItgZzCA/h3Fne6D3omjknd1uvWcUQzzXU1ixdeuq8XoDYxF8eox3GWQ/jbZY8lLXQ1BhaMK5E/MY8DJs1S+i6I1mJ34rCcnRYS1R3zZAJryaFxI6UsEAniXu4ESI+da7KD4y4TC0hY4RlcFyqQ0OVeeXoclQytRfgIT+EPZHt1mAr8qinmy5K2GoVcWwEj54AXp4LwiOosve6vqdeXjR/EeGy3zWjEfhn5B4z8UMLyGS/S1k3rSpV85KB4nLuzKGlyUkC2sjGr/xiG7CBC1UCbqx1CGLlCZ/HvEmKvuSrbJNbsgBNU/og=
+  on:
+    tags: true
+    branch: master
