@@ -67,7 +67,7 @@ class StreamBody():
             use_encoding = True
         read_len = 0
         fdst.seek(offset, 0)
-        
+
         if use_encoding and not auto_decompress:
             chunk = self._rt.raw.read(1024)
             while chunk:
@@ -80,7 +80,5 @@ class StreamBody():
                     read_len += len(chunk)
                     fdst.write(chunk)
 
-        
         if not use_chunked and not (use_encoding and auto_decompress) and read_len != expected_len:
             raise IOError("download failed with incomplete file")
-
