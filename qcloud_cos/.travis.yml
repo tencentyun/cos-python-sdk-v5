@@ -28,4 +28,3 @@ deploy:
   on:
     tags: true
     branch: master
-
