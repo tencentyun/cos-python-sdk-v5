@@ -39,7 +39,6 @@ class ResumableDownLoader(object):
 
         if not os.path.exists(self.__dump_record_dir):
             os.makedirs(self.__dump_record_dir)
- 
         logger.debug('resumale downloader init finish, bucket: {0}, key: {1}'.format(bucket, key))
 
     def start(self):
@@ -133,11 +132,10 @@ class ResumableDownLoader(object):
             self.__record['parts'].append({'part_id': part.part_id, 'start': part.start, 'length': part.length})
             self.__dump_record(self.__record)
 
-    def __dump_record(self, record):       
+    def __dump_record(self, record): 
         with open(self.__record_filepath, 'w') as f:
             json.dump(record, f)
-            logger.debug('dump record to {0}, bucket: {1}, key: {2}'.\
-                         format(self.__record_filepath, self.__bucket, self.__key))
+            logger.debug('dump record to {0}, bucket: {1}, key: {2}'.format(self.__record_filepath, self.__bucket, self.__key))
 
     def __load_record(self):
         record = None
@@ -145,7 +143,6 @@ class ResumableDownLoader(object):
         if os.path.exists(self.__record_filepath):
             with open(self.__record_filepath, 'r') as f:
                 record = json.load(f)
-
             ret = self.__check_record(record)
             # record记录是否跟head object的一致，不一致则删除
             if not ret: 
