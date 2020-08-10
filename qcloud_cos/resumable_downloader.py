@@ -13,6 +13,7 @@ from .streambody import StreamBody
 from .cos_threadpool import SimpleThreadPool
 logger = logging.getLogger(__name__)
 
+
 class ResumableDownLoader(object):
     def __init__(self, cos_client, bucket, key, dest_filename, object_info, part_size=20, max_thread=5, enable_crc=False, **kwargs):
         self.__cos_client = cos_client
@@ -24,26 +25,29 @@ class ResumableDownLoader(object):
         self.__enable_crc = enable_crc
         self.__headers = kwargs
 
-        self.__max_part_count = 100 # 取决于服务端是否对并发有限制
+        # 取决于服务端是否对并发有限制
+        self.__max_part_count = 100
         self.__min_part_size = 1024 * 1024 # 1M
         self.__part_size = self.__determine_part_size_internal(int(object_info['Content-Length']), part_size)
         self.__finished_parts = []
         self.__lock = threading.Lock()
-        self.__record = None #记录当前的上下文
+        # 记录当前的上下文
+        self.__record = None
         self.__dump_record_dir = os.path.join(os.path.expanduser('~'), '.cos_download_tmp_file')
-        
+
         record_filename = self.__get_record_filename(bucket, key, self.__dest_file_path)
         self.__record_filepath = os.path.join(self.__dump_record_dir, record_filename) 
         self.__tmp_file = None
 
         if not os.path.exists(self.__dump_record_dir):
             os.makedirs(self.__dump_record_dir)
-        
+
         logger.debug('resumale downloader init finish, bucket: {0}, key: {1}'.format(bucket, key))
 
     def start(self):
         logger.debug('start resumable downloade, bucket: {0}, key: {1}'.format(self.__bucket, self.__key))
-        self.__load_record() # 从record文件中恢复读取上下文
+        # 从record文件中恢复读取上下文
+        self.__load_record()
 
         assert self.__tmp_file
         open(self.__tmp_file, 'a').close()
@@ -78,10 +82,10 @@ class ResumableDownLoader(object):
         return '{0}_{1}.{2}'.format(bucket, key_md5, dest_file_path_md5)
 
     def __determine_part_size_internal(self, file_size, part_size):
-        real_part_size = part_size * 1024 * 1024 # MB
+        real_part_size = part_size * 1024 * 1024  # MB
         if real_part_size < self.__min_part_size:
             real_part_size = self.__min_part_size
-        
+
         while real_part_size * self.__max_part_count < file_size:
             real_part_size = real_part_size * 2
         logger.debug('finish to determine part size, file_size: {0}, part_size: {1}'.format(file_size, real_part_size))
@@ -123,14 +127,14 @@ class ResumableDownLoader(object):
             result["Body"].pget_stream_to_file(f, part.start, part.length)
 
         self.__finish_part(part)
-    
+
     def __finish_part(self, part):
         logger.debug('download part finished,bucket: {0}, key: {1}, part_id: {2}'.
                      format(self.__bucket, self.__key, part.part_id))
         with self.__lock:
             self.__finished_parts.append(part)
-            self.__record['parts'].append({'part_id': part.part_id,
-                                           'start': part.start,
+            self.__record['parts'].append({'part_id': part.part_id,\
+                                           'start': part.start,\
                                            'length': part.length})
             self.__dump_record(self.__record)
 
@@ -149,7 +153,7 @@ class ResumableDownLoader(object):
 
             ret = self.__check_record(record)
             # record记录是否跟head object的一致，不一致则删除
-            if ret == False:   
+            if not ret:  
                 self.__del_record()
                 record = None
             else:
@@ -166,8 +170,8 @@ class ResumableDownLoader(object):
 
         if not record:
             self.__tmp_file = "{file_name}_{uuid}".format(file_name=self.__dest_file_path, uuid=uuid.uuid4().hex)
-            record = {'bucket': self.__bucket, 'key': self.__key, 'tmp_filename':self.__tmp_file,
-                      'mtime':self.__object_info['Last-Modified'], 'etag':self.__object_info['ETag'],
+            record = {'bucket': self.__bucket, 'key': self.__key, 'tmp_filename':self.__tmp_file,\
+                      'mtime':self.__object_info['Last-Modified'], 'etag':self.__object_info['ETag'],\
                       'file_size':self.__object_info['Content-Length'], 'part_size': self.__part_size, 'parts':[]}
             self.__record = record
             self.__dump_record(record)
@@ -189,6 +193,7 @@ class ResumableDownLoader(object):
         object_crc64 = self.__object_info['x-cos-hash-crc64ecma']
         if local_crc64 is not None and object_crc64 is not None and local_crc64 != object_crc64:
             raise CosClientError('crc of client: {0} is mismatch with cos: {1}'.format(local_crc64, object_crc64))
+
 
 class PartInfo(object):
     def __init__(self, part_id, start, length):
