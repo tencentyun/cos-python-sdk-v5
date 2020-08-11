@@ -1212,6 +1212,19 @@ def test_download_file():
     if os.path.exists(file_name):
         os.remove(file_name)
 
+def test_bucket_encryption():
+    """测试存储桶默认加密配置"""
+    # 测试设置存储桶的默认加密配置
+    client.put_bucket_encryption(copy_test_bucket, 'AES256')
+
+    # 测试获取存储桶默认加密配置
+    ret = client.get_bucket_encryption(copy_test_bucket)
+    assert(ret == 'AES256')
+
+    # 删除存储桶默认加密配置
+    client.delete_bucket_encryption(copy_test_bucket)
+
+
 if __name__ == "__main__":
     setUp()
     """
