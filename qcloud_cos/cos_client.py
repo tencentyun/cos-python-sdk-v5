@@ -3513,7 +3513,7 @@ class CosS3Client(object):
 
         response = dict(**rt.headers)
         return response
-        
+
 
 if __name__ == "__main__":
     pass
