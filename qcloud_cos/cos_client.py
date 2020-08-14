@@ -2958,7 +2958,7 @@ class CosS3Client(object):
                      max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAZThread))
 
         object_info = self.head_object(Bucket, Key)
-        file_size = object_info['Content-Length']
+        file_size = int(object_info['Content-Length'])
         if file_size <= 1024*1024*20:
             response = self.get_object(Bucket, Key, **Kwargs)
             response['Body'].get_stream_to_file(DestFilePath)
