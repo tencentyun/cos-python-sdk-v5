@@ -179,7 +179,7 @@ class ResumableDownLoader(object):
 
     def __check_crc(self):
         logger.debug('start to check crc')
-        c64 = crcmod.mkCrcFun(0x142F0E1EBA9EA3693L, initCrc=0L, xorOut=0xffffffffffffffffL, rev=True)
+        c64 = crcmod.mkCrcFun(0x142F0E1EBA9EA3693, initCrc=0, xorOut=0xffffffffffffffff, rev=True)
         with open(self.__dest_file_path, 'rb') as f:
             local_crc64 = str(c64(f.read()))
         object_crc64 = self.__object_info['x-cos-hash-crc64ecma']

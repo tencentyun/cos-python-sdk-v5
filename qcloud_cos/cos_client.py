@@ -2809,9 +2809,7 @@ class CosS3Client(object):
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取账户下所有存储桶信息
-            response = logging_client.list_buckets(
-                Bucket='bucket'
-            )
+            response = client.list_buckets()
         """
         headers = mapped(kwargs)
         url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
@@ -3427,6 +3425,84 @@ class CosS3Client(object):
         )
         return response
 
+    def put_bucket_encryption(self, Bucket, ServerSideEncryptionConfiguration={}, **kwargs):
+        """设置执行存储桶下的默认加密配置
+
+        :param Bucket(string): 存储桶名称.
+        :param ServerSideEncryptionConfiguration(dict): 设置Bucket的加密规则
+        :param kwargs(dict): 设置请求的headers.
+        :return: None.
+        """
+        # 类型为list的标签
+        lst = [
+            '<Rule>',
+            '</Rule>'
+        ]
+        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        params = {'encryption': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket encryption, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            data=xml_config,
+            headers=headers,
+            params=params)
+
+        return None
+
+    def get_bucket_encryption(self, Bucket, **kwargs):
+        """获取存储桶下的默认加密配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 返回bucket的加密规则.
+        """
+        headers = mapped(kwargs)
+        params = {'encryption': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket encryption, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['Rule'])
+        return data
+
+    def delete_bucket_encryption(self, Bucket, **kwargs):
+        """用于删除指定存储桶下的默认加密配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求的headers.
+        :return: None.
+        """
+        headers = mapped(kwargs)
+        params = {'encryption': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("delete bucket encryption, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        return None
     def put_async_fetch_task(self, Bucket, FetchTaskConfiguration={}, **kwargs):
         """发起异步拉取对象到COS的任务
 
