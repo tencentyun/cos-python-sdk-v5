@@ -2807,7 +2807,7 @@ class CosS3Client(object):
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取账户下所有存储桶信息
-            response = logging_client.list_buckets(
+            response = client.list_buckets(
                 Bucket='bucket'
             )
         """
@@ -3429,9 +3429,9 @@ class CosS3Client(object):
         """设置执行存储桶下的默认加密配置
 
         :param Bucket(string): 存储桶名称.
-        :param SSEAlgorithm(string): 要使用的服务端加密算法
-        :param kwargs(dict): 设置下载的headers.
-        :return(dict): 设置成功返回的结果.
+        :param ServerSideEncryptionConfiguration(dict): 设置Bucket的加密规则
+        :param kwargs(dict): 设置请求的headers.
+        :return: None.
         """
         # 类型为list的标签
         lst = [
@@ -3460,8 +3460,8 @@ class CosS3Client(object):
         """获取存储桶下的默认加密配置
 
         :param Bucket(string): 存储桶名称.
-        :param kwargs(dict): 设置下载的headers.
-        :return(string): 服务端的加密算法.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 返回bucket的加密规则.
         """
         headers = mapped(kwargs)
         params = {'encryption': ''}
@@ -3485,8 +3485,8 @@ class CosS3Client(object):
         """用于删除指定存储桶下的默认加密配置
 
         :param Bucket(string): 存储桶名称.
-        :param kwargs(dict): 设置下载的headers.
-        :return(dict): 上传成功返回的结果.
+        :param kwargs(dict): 设置请求的headers.
+        :return: None.
         """
         headers = mapped(kwargs)
         params = {'encryption': ''}
