@@ -90,7 +90,7 @@ class ResumableDownLoader(object):
     def __splite_to_parts(self):
         parts = []
         file_size = int(self.__object_info['Content-Length'])
-        num_parts = (file_size + self.__part_size - 1) / self.__part_size
+        num_parts = int((file_size + self.__part_size - 1) / self.__part_size)
         for i in range(num_parts):
             start = i * self.__part_size
             if i == num_parts - 1:
