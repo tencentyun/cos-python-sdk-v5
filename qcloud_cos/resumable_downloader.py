@@ -73,8 +73,8 @@ class ResumableDownLoader(object):
         logger.debug('download success, bucket: {0}, key: {1}'.format(self.__bucket, self.__key))
 
     def __get_record_filename(self, bucket, key, dest_file_path):
-        dest_file_path_md5 = hashlib.md5(dest_file_path).hexdigest()
-        key_md5 = hashlib.md5(key).hexdigest()
+        dest_file_path_md5 = hashlib.md5(dest_file_path.encode("utf-8")).hexdigest()
+        key_md5 = hashlib.md5(key.encode("utf-8")).hexdigest()
         return '{0}_{1}.{2}'.format(bucket, key_md5, dest_file_path_md5)
 
     def __determine_part_size_internal(self, file_size, part_size):
