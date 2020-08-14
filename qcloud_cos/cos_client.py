@@ -3503,6 +3503,7 @@ class CosS3Client(object):
             params=params)
 
         return None
+        
     def put_async_fetch_task(self, Bucket, FetchTaskConfiguration={}, **kwargs):
         """发起异步拉取对象到COS的任务
 
