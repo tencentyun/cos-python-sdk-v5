@@ -3439,7 +3439,6 @@ class CosS3Client(object):
             '</Rule>'
         ]
         xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration', lst=lst)
-        logger.info('xml_config: {0}'.format(xml_config))
         headers = mapped(kwargs)
         params = {'encryption': ''}
         url = self._conf.uri(bucket=Bucket)
@@ -3480,7 +3479,6 @@ class CosS3Client(object):
 
         data = xml_to_dict(rt.content)
         format_dict(data, ['Rule'])
-        logger.info('data: {0}'.format(data))
         return data
 
     def delete_bucket_encryption(self, Bucket, **kwargs):
