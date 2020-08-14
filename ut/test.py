@@ -1215,14 +1215,24 @@ def test_download_file():
 def test_bucket_encryption():
     """测试存储桶默认加密配置"""
     # 测试设置存储桶的默认加密配置
-    client.put_bucket_encryption(copy_test_bucket, 'AES256')
+    config_dict = {
+        'Rule': [
+            {
+                'ApplySideEncryptionConfiguration': {
+                    'SSEAlgorithm': 'AES256',
+                }
+            },
+        ]
+    }
+    client.put_bucket_encryption(test_bucket, config_dict)
 
     # 测试获取存储桶默认加密配置
-    ret = client.get_bucket_encryption(copy_test_bucket)
-    assert(ret == 'AES256')
+    ret = client.get_bucket_encryption(test_bucket)
+    sse_algorithm = ret['Rule'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm']
+    assert(sse_algorithm == 'AES256')
 
     # 删除存储桶默认加密配置
-    client.delete_bucket_encryption(copy_test_bucket)
+    client.delete_bucket_encryption(test_bucket)
 
 
 if __name__ == "__main__":

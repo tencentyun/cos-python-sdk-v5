@@ -3425,7 +3425,7 @@ class CosS3Client(object):
         )
         return response
 
-    def put_bucket_encryption(self, Bucket, SSEAlgorithm=None, **kwargs):
+    def put_bucket_encryption(self, Bucket, ServerSideEncryptionConfiguration={}, **kwargs):
         """设置执行存储桶下的默认加密配置
 
         :param Bucket(string): 存储桶名称.
@@ -3433,15 +3433,13 @@ class CosS3Client(object):
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 设置成功返回的结果.
         """
-        if SSEAlgorithm is None:
-            raise CosClientError('SSEAlgorithm is None and must be set!')
-
-        root = xml.etree.ElementTree.Element("ServerSideEncryptionConfiguration")
-        rule_node = xml.etree.ElementTree.SubElement(root, "Rule")
-        apply_node = xml.etree.ElementTree.SubElement(rule_node, "ApplySideEncryptionConfiguration")
-        xml.etree.ElementTree.SubElement(apply_node, "SSEAlgorithm").text = to_str(SSEAlgorithm)
-        body = xml.etree.ElementTree.tostring(root, encoding='utf-8')
-
+        # 类型为list的标签
+        lst = [
+            '<Rule>',
+            '</Rule>'
+        ]
+        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration', lst=lst)
+        logger.info('xml_config: {0}'.format(xml_config))
         headers = mapped(kwargs)
         params = {'encryption': ''}
         url = self._conf.uri(bucket=Bucket)
@@ -3453,12 +3451,11 @@ class CosS3Client(object):
             url=url,
             bucket=Bucket,
             auth=CosS3Auth(self._conf, params=params),
-            data=to_bytes(body),
+            data=xml_config,
             headers=headers,
             params=params)
 
-        response = dict(**rt.headers)
-        return response
+        return None
 
     def get_bucket_encryption(self, Bucket, **kwargs):
         """获取存储桶下的默认加密配置
@@ -3480,15 +3477,11 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
             params=params)
-        data = xml.etree.ElementTree.fromstring(rt.content)
-        sse_algorithm = None
-        rule = data.find('Rule')
-        if rule is not None:
-            apply = rule.find('ApplyServerSideEncryptionByDefault')
-            if apply is not None:
-                sse_algorithm = to_str(apply.find('SSEAlgorithm').text)
 
-        return sse_algorithm
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['Rule'])
+        logger.info('data: {0}'.format(data))
+        return data
 
     def delete_bucket_encryption(self, Bucket, **kwargs):
         """用于删除指定存储桶下的默认加密配置
@@ -3500,7 +3493,7 @@ class CosS3Client(object):
         headers = mapped(kwargs)
         params = {'encryption': ''}
         url = self._conf.uri(bucket=Bucket)
-        logger.info("put bucket encryption, url=:{url} ,headers=:{headers}".format(
+        logger.info("delete bucket encryption, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
@@ -3511,8 +3504,7 @@ class CosS3Client(object):
             headers=headers,
             params=params)
 
-        response = dict(**rt.headers)
-        return response
+        return None
 
 
 if __name__ == "__main__":
