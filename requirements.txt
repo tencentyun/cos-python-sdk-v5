@@ -1,3 +1,4 @@
 requests>=2.8
 dicttoxml
 six
+crcmod
