@@ -2807,9 +2807,7 @@ class CosS3Client(object):
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取账户下所有存储桶信息
-            response = client.list_buckets(
-                Bucket='bucket'
-            )
+            response = client.list_buckets()
         """
         headers = mapped(kwargs)
         url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
