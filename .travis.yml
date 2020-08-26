@@ -11,6 +11,7 @@ install:
 - pip install pycodestyle
 - pip install dicttoxml
 - pip install crcmod
+- pip install crypto
 notifications:
   email:
     recipients:
