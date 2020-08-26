@@ -1263,7 +1263,7 @@ def test_aes_client():
     response['Body'].get_stream_to_file('test_for_aes_local')
     with open('test_for_aes_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5(content[5:3000])
+    content_md5 = get_raw_md5(content[5:3001])
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_for_aes_local'):
         os.remove('test_for_aes_local')
@@ -1312,7 +1312,7 @@ def test_rsa_client():
     response['Body'].get_stream_to_file('test_for_rsa_local')
     with open('test_for_rsa_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5(content[5:3000])
+    content_md5 = get_raw_md5(content[5:3001])
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_for_rsa_local'):
         os.remove('test_for_rsa_local')

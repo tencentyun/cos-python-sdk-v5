@@ -163,8 +163,8 @@ class RSAProvider(BaseProvider):
         super(RSAProvider, self).__init__(cipher=cipher)
 
         default_rsa_dir = os.path.expanduser('~/.cos_local_rsa')
-        default_private_key_path = os.path.join(default_rsa_dir, '.public_key.pem')
-        default_public_key_path = os.path.join(default_rsa_dir, '.private_key.pem')
+        default_public_key_path = os.path.join(default_rsa_dir, '.public_key.pem')
+        default_private_key_path = os.path.join(default_rsa_dir, '.private_key.pem')
         self.__encrypt_obj = None
         self.__decrypt_obj = None
         self.__data_key = None
@@ -219,10 +219,10 @@ class RSAProvider(BaseProvider):
 
         if os.path.exists(public_path) and os.path.exists(private_path):
             with open(public_path, 'rb') as f:
-                decrypt_obj = PKCS1_OAEP.new(RSA.importKey(f.read(), passphrase=passphrase))
+                encrypt_obj = PKCS1_OAEP.new(RSA.importKey(f.read(), passphrase=passphrase))
 
             with open(private_path, 'rb') as f:
-                encrypt_obj = PKCS1_OAEP.new(RSA.importKey(f.read(), passphrase=passphrase))
+                decrypt_obj = PKCS1_OAEP.new(RSA.importKey(f.read(), passphrase=passphrase))
 
         return encrypt_obj, decrypt_obj
 
@@ -239,8 +239,8 @@ class RSAProvider(BaseProvider):
 
     def init_data_cipter_by_user(self, encrypt_key, encryt_start, offset=0):
         """根据密钥初始化cipher"""
-        self.__data_key = self.__encrypt_obj.decrypt(encrypt_key)
-        self.__data_start = int(self.__encrypt_obj.decrypt(encryt_start))
+        self.__data_key = self.__decrypt_obj.decrypt(encrypt_key)
+        self.__data_start = int(self.__decrypt_obj.decrypt(encryt_start))
         self.data_cipher.new_cipher(self.__data_key, self.__data_start, offset)
 
 
