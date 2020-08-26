@@ -155,6 +155,7 @@ class BaseProvider(object):
         """创建数据流解密适配器"""
         return DataDecryptAdapter(rt, copy.copy(self.data_cipher), offset)
 
+
 class RSAProvider(BaseProvider):
     """客户端非对称主密钥加密类"""
     def __init__(self, key_pair_info=None, cipher=AESCTRCipher(), passphrase=None):
@@ -242,6 +243,7 @@ class RSAProvider(BaseProvider):
         self.__data_start = int(self.__encrypt_obj.decrypt(encryt_start))
         self.data_cipher.new_cipher(self.__data_key, self.__data_start, offset)
 
+
 class AESProvider(BaseProvider):
     """客户端对称主密钥加密类"""
     def __init__(self, aes_key=None, aes_key_path=None, cipher=AESCTRCipher()):
@@ -315,7 +317,7 @@ class MetaHandle(object):
         meta_data['x-cos-meta-client-side-encryption-start'] = to_bytes(base64.b64encode(to_bytes(self.__encrypt_start)))
         headers['Metadata'] = meta_data
         return headers
-    
+
     def get_object_meta(self, headers):
         """从object的头部获取加密元信息"""
         if 'x-cos-meta-client-side-encryption-key' in headers and 'x-cos-meta-client-side-encryption-start' in headers:

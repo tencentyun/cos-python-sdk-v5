@@ -126,4 +126,3 @@ class CosEncryptionClient(CosS3Client):
         data = self.provider.make_data_encrypt_adapter(Body)
         response = super(CosEncryptionClient, self).upload_part(Bucket, Key, data, PartNumber, UploadId, EnableMD5=False, **kwargs)
         return response
-        
