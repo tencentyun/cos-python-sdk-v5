@@ -274,7 +274,6 @@ class AESProvider(BaseProvider):
             logger.warn('fail to get aes key, will generate key')
             aes_key = random_key(_AES_256_KEY_SIZE)
             self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=my_counter)
-            print aes_key
             if not os.path.exists(default_aes_dir):
                 os.makedirs(default_aes_dir)
 
