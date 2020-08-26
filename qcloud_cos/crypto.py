@@ -5,6 +5,7 @@ import random
 import logging
 import copy
 import base64
+import struct
 from .cos_comm import *
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
@@ -22,6 +23,17 @@ _AES_256_KEY_SIZE = 32
 
 def random_key(key_len):
     return Random.new().read(key_len)
+    
+
+def random_iv():
+    iv = Random.new().read(16)
+    return iv
+
+
+def iv_to_big_int(iv):
+    iv_pair = struct.unpack(">QQ", iv)
+    iv_int = iv_pair[0] << 64 | iv_pair[1]
+    return iv_int
 
 
 class AESCTRCipher(object):
@@ -92,9 +104,9 @@ class AESCTRCipher(object):
         """获取随机密钥"""
         return random_key(self.__key_len)
 
-    def get_counter_start(self):
+    def get_counter_iv(self):
         """获取对称加密初始随机值"""
-        return random.randint(1, 1000)
+        return random_iv()
 
 
 class RSAKeyPair:
@@ -129,7 +141,7 @@ class BaseProvider(object):
         pass
 
     @abstractmethod
-    def init_data_cipter_by_user(self, encrypt_key, encryt_start, offset=0):
+    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0):
         """根据密钥初始化cipher"""
         pass
 
@@ -168,7 +180,7 @@ class RSAProvider(BaseProvider):
         self.__encrypt_obj = None
         self.__decrypt_obj = None
         self.__data_key = None
-        self.__data_start = None
+        self.__data_iv = None
 
         if isinstance(key_pair_info, RSAKeyPair):
             self.__encrypt_obj = PKCS1_v1_5.new(RSA.importKey(key_pair_info.publick_key, passphrase=passphrase))
@@ -229,19 +241,21 @@ class RSAProvider(BaseProvider):
     def init_data_cipher(self):
         """初始化cipher"""
         encrypt_key = None
-        encrypt_start = None
+        encrypt_iv = None
         self.__data_key = self.get_data_key()
-        self.__data_start = self.data_cipher.get_counter_start()
-        self.data_cipher.new_cipher(self.__data_key, self.__data_start)
+        self.__data_iv = self.data_cipher.get_counter_iv()
+        start = iv_to_big_int(self.__data_iv)
+        self.data_cipher.new_cipher(self.__data_key, start)
         encrypt_key = self.__encrypt_obj.encrypt(self.__data_key)
-        encrypt_start = self.__encrypt_obj.encrypt(str(self.__data_start))
-        return encrypt_key, encrypt_start
+        encrypt_iv = self.__encrypt_obj.encrypt(self.__data_iv)
+        return encrypt_key, encrypt_iv
 
-    def init_data_cipter_by_user(self, encrypt_key, encryt_start, offset=0):
+    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0):
         """根据密钥初始化cipher"""
         self.__data_key = self.__decrypt_obj.decrypt(encrypt_key)
-        self.__data_start = int(self.__decrypt_obj.decrypt(encryt_start))
-        self.data_cipher.new_cipher(self.__data_key, self.__data_start, offset)
+        self.__data_iv = self.__decrypt_obj.decrypt(encrypt_iv)
+        start = iv_to_big_int(self.__data_iv)
+        self.data_cipher.new_cipher(self.__data_key, start, offset)
 
 
 class AESProvider(BaseProvider):
@@ -251,7 +265,7 @@ class AESProvider(BaseProvider):
         super(AESProvider, self).__init__(cipher=cipher)
         self.__ed_obj = None
         self.__data_key = None
-        self.__data_start = None
+        self.__data_iv = None
         self.__my_counter = Counter.new(_AES_CTR_COUNTER_BITS_LENGTH, initial_value=0)
         self.__aes_key = aes_key
         self.__aes_key_path = aes_key_path
@@ -284,49 +298,51 @@ class AESProvider(BaseProvider):
     def init_data_cipher(self):
         """初始化cipher"""
         encrypt_key = None
-        encrypt_start = None
+        encrypt_iv = None
         self.__data_key = self.get_data_key()
-        self.__data_start = self.data_cipher.get_counter_start()
-        self.data_cipher.new_cipher(self.__data_key, self.__data_start)
+        self.__data_iv = self.data_cipher.get_counter_iv()
+        start = iv_to_big_int(self.__data_iv)
+        self.data_cipher.new_cipher(self.__data_key, start)
 
         self.init_ed_obj()
         encrypt_key = self.__ed_obj.encrypt(self.__data_key)
-        encrypt_start = self.__ed_obj.encrypt(str(self.__data_start))
-        return encrypt_key, encrypt_start
+        encrypt_iv = self.__ed_obj.encrypt(self.__data_iv)
+        return encrypt_key, encrypt_iv
 
-    def init_data_cipter_by_user(self, encrypt_key, encryt_start, offset=0):
+    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0):
         """根据密钥初始化cipher"""
         self.init_ed_obj()
         self.__data_key = self.__ed_obj.decrypt(encrypt_key)
-        self.__data_start = int(self.__ed_obj.decrypt(encryt_start))
-        self.data_cipher.new_cipher(self.__data_key, self.__data_start, offset)
+        self.__data_iv = self.__ed_obj.decrypt(encrypt_iv)
+        start = iv_to_big_int(self.__data_iv)
+        self.data_cipher.new_cipher(self.__data_key, start, offset)
 
 
 class MetaHandle(object):
     """用于获取/生成加密的元信息"""
-    def __init__(self, encrypt_key=None, encrypt_start=None):
+    def __init__(self, encrypt_key=None, encrypt_iv=None):
         """初始化
 
         :param encrypt_key(string): 加密的数据密钥
-        :param encrypt_start(string): 加密counter的初始值
+        :param encrypt_iv(bytes): 加密counter的初始值
         """
         self.__encrypt_key = encrypt_key
-        self.__encrypt_start = encrypt_start
+        self.__encrypt_iv = encrypt_iv
 
     def set_object_meta(self, headers):
         """设置加密元信息到object的头部"""
         meta_data = dict()
         meta_data['x-cos-meta-client-side-encryption-key'] = to_bytes(base64.b64encode(to_bytes(self.__encrypt_key)))
-        meta_data['x-cos-meta-client-side-encryption-start'] = to_bytes(base64.b64encode(to_bytes(self.__encrypt_start)))
+        meta_data['x-cos-meta-client-side-encryption-iv'] = to_bytes(base64.b64encode(to_bytes(self.__encrypt_iv)))
         headers['Metadata'] = meta_data
         return headers
 
     def get_object_meta(self, headers):
         """从object的头部获取加密元信息"""
-        if 'x-cos-meta-client-side-encryption-key' in headers and 'x-cos-meta-client-side-encryption-start' in headers:
+        if 'x-cos-meta-client-side-encryption-key' in headers and 'x-cos-meta-client-side-encryption-iv' in headers:
             self.__encrypt_key = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-key']))
-            self.__encrypt_start = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-start']))
-        return self.__encrypt_key, self.__encrypt_start
+            self.__encrypt_iv = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-iv']))
+        return self.__encrypt_key, self.__encrypt_iv
 
 
 class DataEncryptAdapter(object):
