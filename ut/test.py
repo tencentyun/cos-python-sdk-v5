@@ -1244,6 +1244,7 @@ def test_bucket_encryption():
 def test_aes_client():
     """测试aes加密客户端的上传下载操作"""
     content = '123456' * 1024 + '1'
+    client_for_aes.delete_object(test_bucket, 'test_for_aes')
     client_for_aes.put_object(test_bucket, content, 'test_for_aes')
     # 测试整个文件的md5
     response = client_for_aes.get_object(test_bucket, 'test_for_aes')
@@ -1271,6 +1272,7 @@ def test_aes_client():
 
     content = '123456' * 1024
     # 测试分片上传
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
     response = client_for_aes.create_multipart_upload(test_bucket, 'test_multi_upload')
     uploadid = response['UploadId']
     client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
@@ -1291,6 +1293,7 @@ def test_aes_client():
 def test_rsa_client():
     """测试rsa加密客户端的上传下载操作"""
     content = '123456' * 1024 + '1'
+    client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
     client_for_rsa.put_object(test_bucket, content, 'test_for_rsa')
     # 测试整个文件的md5
     response = client_for_rsa.get_object(test_bucket, 'test_for_rsa')
@@ -1318,6 +1321,7 @@ def test_rsa_client():
 
     content = '123456' * 1024
     # 测试分片上传
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
     response = client_for_rsa.create_multipart_upload(test_bucket, 'test_multi_upload')
     uploadid = response['UploadId']
     client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
