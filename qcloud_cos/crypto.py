@@ -23,7 +23,7 @@ _AES_256_KEY_SIZE = 32
 
 def random_key(key_len):
     return Random.new().read(key_len)
-    
+
 
 def random_iv():
     iv = Random.new().read(16)
