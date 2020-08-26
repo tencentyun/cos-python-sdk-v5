@@ -1270,7 +1270,7 @@ def test_aes_client():
 
     client_for_aes.delete_object(test_bucket, 'test_for_aes')
 
-    content = '123456' * 1024
+    content = '123456' * 1024 * 1024
     # 测试分片上传
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
     response = client_for_aes.create_multipart_upload(test_bucket, 'test_multi_upload')
@@ -1319,7 +1319,7 @@ def test_rsa_client():
     
     client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
 
-    content = '123456' * 1024
+    content = '123456' * 1024 * 1024
     # 测试分片上传
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
     response = client_for_rsa.create_multipart_upload(test_bucket, 'test_multi_upload')
