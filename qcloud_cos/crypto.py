@@ -19,8 +19,10 @@ logger = logging.getLogger(__name__)
 _AES_CTR_COUNTER_BITS_LENGTH = 8 * 16
 _AES_256_KEY_SIZE = 32
 
+
 def random_key(key_len):
     return Random.new().read(key_len)
+
 
 class AESCTRCipher(object):
     """数据加密类，用于加密用户数据"""
@@ -32,7 +34,7 @@ class AESCTRCipher(object):
 
     def new_cipher(self, key, start, offset=0):
         """初始化AES加解密对象
-        
+
         :param key(string): 对称密钥
         :param start(int): 对称加密初始随机值
         :param offset(int): 主要用于解密，想要解密文本的偏移，必须为16的整数倍
@@ -40,7 +42,7 @@ class AESCTRCipher(object):
         block_index_offset = self.__calc_offset(offset)
         new_start = start + block_index_offset
         my_counter = Counter.new(_AES_CTR_COUNTER_BITS_LENGTH, initial_value=new_start)
-        self.__cipher = AES.new(key, AES.MODE_CTR, counter=my_counter)      
+        self.__cipher = AES.new(key, AES.MODE_CTR, counter=my_counter)
 
     def encrypt(self, plaintext):
         """加密数据
@@ -92,7 +94,8 @@ class AESCTRCipher(object):
 
     def get_counter_start(self):
         """获取对称加密初始随机值"""
-        return random.randint(1,1000)
+        return random.randint(1, 1000)
+
 
 class RSAKeyPair:
     """封装有公钥和私钥"""
@@ -100,11 +103,13 @@ class RSAKeyPair:
         self.publick_key = public_key
         self.private_key = private_key
 
+
 class RSAKeyPairPath:
     """封装有公钥和私钥的路径"""
     def __init__(self, public_key_path, private_key_path):
         self.public_key_path = public_key_path
         self.private_key_path = private_key_path
+
 
 class BaseProvider(object):
     """客户端主密钥加密基类"""
@@ -173,7 +178,7 @@ class RSAProvider(BaseProvider):
             logger.info('key_pair_info is None, try to get key from default path')
             if os.path.exists(default_private_key_path) and os.path.exists(default_public_key_path):
                 self.__encrypt_obj, self.__decrypt_obj = self.__get_key_by_path(default_public_key_path, default_private_key_path, passphrase)
-        
+
         # 为用户自动创建rsa
         if self.__encrypt_obj is None and self.__decrypt_obj is None:
             logger.warn('fail to get rsa key, will generate key')
@@ -197,7 +202,7 @@ class RSAProvider(BaseProvider):
         if public_key is None or private_key is None:
             raise CosClientError('public_key or private_key is not allowed to be None !!!')
         return RSAKeyPair(public_key, private_key)
-    
+
     def get_rsa_key_pair_path(self, public_key_path, private_key_path):
         """生成RSAKeyPairPath"""
         if public_key_path is None or private_key_path is None:
@@ -208,7 +213,7 @@ class RSAProvider(BaseProvider):
         """用于从提供的路径中获取公钥和私钥"""
         if public_path is None or private_path is None:
             return None, None
-        
+
         encrypt_obj, decrypt_obj = None, None
 
         if os.path.exists(public_path) and os.path.exists(private_path):
@@ -219,7 +224,7 @@ class RSAProvider(BaseProvider):
                 encrypt_obj = PKCS1_OAEP.new(RSA.importKey(f.read(), passphrase=passphrase))
 
         return encrypt_obj, decrypt_obj
-        
+
     def init_data_cipher(self):
         """初始化cipher"""
         encrypt_key = None
@@ -291,6 +296,7 @@ class AESProvider(BaseProvider):
         self.__data_start = int(self.__ed_obj.decrypt(encryt_start))
         self.data_cipher.new_cipher(self.__data_key, self.__data_start, offset)
 
+
 class MetaHandle(object):
     """用于获取/生成加密的元信息"""
     def __init__(self, encrypt_key=None, encrypt_start=None):
@@ -316,6 +322,7 @@ class MetaHandle(object):
             self.__encrypt_key = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-key']))
             self.__encrypt_start = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-start']))
         return self.__encrypt_key, self.__encrypt_start
+
 
 class DataEncryptAdapter(object):
     """用于读取经过加密后的的数据"""
@@ -348,6 +355,7 @@ class DataEncryptAdapter(object):
         content = self._data_cipher.encrypt(content)
         return content
 
+
 class DataDecryptAdapter(StreamBody):
     """用于读取经过解密后的数据"""
     def __init__(self, rt, data_cipher, offset=0):
@@ -378,5 +386,3 @@ class DataDecryptAdapter(StreamBody):
             content = content[self._offset:]
             self._read_len = self._offset
         return content
-    
-        

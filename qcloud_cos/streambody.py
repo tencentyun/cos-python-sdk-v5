@@ -16,10 +16,10 @@ class StreamBody(object):
             self._use_chunked = True
         else:
             raise IOError("create StreamBody failed without Content-Length header or Transfer-Encoding header")
-        
+
         if 'Content-Encoding' in self._rt.headers:
             self._use_encoding = True
-        
+
     def __iter__(self):
         """提供一个默认的迭代器"""
         return self._rt.iter_content(1024)
@@ -58,7 +58,7 @@ class StreamBody(object):
                 self._read_len += len(chunk)
                 fp.write(chunk)
 
-        print 'read_len:{0}, content_len:{1}'.format(self._read_len,self._content_len)
+        print 'read_len:{0}, content_len:{1}'.format(self._read_len, self._content_len)
         if not self._use_chunked and not (self._use_encoding and auto_decompress) and self._read_len != self._content_len:
             if os.path.exists(tmp_file_name):
                 os.remove(tmp_file_name)

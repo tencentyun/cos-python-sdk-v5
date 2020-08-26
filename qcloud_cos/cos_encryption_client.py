@@ -10,6 +10,7 @@ from .cos_comm import *
 from .cos_auth import CosS3Auth
 logger = logging.getLogger(__name__)
 
+
 class CosEncryptionClient(CosS3Client):
     """cos支持加密的客户端，封装相应请求"""
     def __init__(self, conf, provider, retry=1, session=None):
@@ -125,3 +126,4 @@ class CosEncryptionClient(CosS3Client):
         data = self.provider.make_data_encrypt_adapter(Body)
         response = super(CosEncryptionClient, self).upload_part(Bucket, Key, data, PartNumber, UploadId, EnableMD5=False, **kwargs)
         return response
+        
