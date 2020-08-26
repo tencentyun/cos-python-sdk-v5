@@ -1252,7 +1252,7 @@ def test_aes_client():
     local_file_md5 = None
     content_md5 = None
     with open('test_for_aes_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read().encode("utf-8"))
+        local_file_md5 = get_raw_md5(f.read())
     content_md5 = get_raw_md5(content.encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_for_aes_local'):
@@ -1262,7 +1262,7 @@ def test_aes_client():
     response = client_for_aes.get_object(test_bucket, 'test_for_aes', Range='bytes=5-3000')
     response['Body'].get_stream_to_file('test_for_aes_local')
     with open('test_for_aes_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read().encode("utf-8"))
+        local_file_md5 = get_raw_md5(f.read())
     content_md5 = get_raw_md5(content[5:3001].encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_for_aes_local'):
@@ -1282,7 +1282,7 @@ def test_aes_client():
     response = client_for_aes.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read().encode("utf-8"))
+        local_file_md5 = get_raw_md5(f.read())
     content_md5 = get_raw_md5((content+content).encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
@@ -1301,7 +1301,7 @@ def test_rsa_client():
     local_file_md5 = None
     content_md5 = None
     with open('test_for_rsa_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read().encode("utf-8"))
+        local_file_md5 = get_raw_md5(f.read())
     content_md5 = get_raw_md5(content.encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_for_rsa_local'):
@@ -1311,7 +1311,7 @@ def test_rsa_client():
     response = client_for_rsa.get_object(test_bucket, 'test_for_rsa', Range='bytes=5-3000')
     response['Body'].get_stream_to_file('test_for_rsa_local')
     with open('test_for_rsa_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read().encode("utf-8"))
+        local_file_md5 = get_raw_md5(f.read())
     content_md5 = get_raw_md5(content[5:3001].encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_for_rsa_local'):
@@ -1331,7 +1331,7 @@ def test_rsa_client():
     response = client_for_rsa.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read().encode("utf-8"))
+        local_file_md5 = get_raw_md5(f.read())
     content_md5 = get_raw_md5((content+content).encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
