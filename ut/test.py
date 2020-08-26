@@ -1242,6 +1242,7 @@ def test_bucket_encryption():
     client.delete_bucket_encryption(test_bucket)
 
 def test_aes_client():
+    """测试aes加密客户端的上传下载操作"""
     content = '123456' * 1024 + '1'
     client_for_aes.put_object(test_bucket, content, 'test_for_aes')
     # 测试整个文件的md5
@@ -1284,8 +1285,11 @@ def test_aes_client():
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
+    
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
 def test_rsa_client():
+    """测试rsa加密客户端的上传下载操作"""
     content = '123456' * 1024 + '1'
     client_for_rsa.put_object(test_bucket, content, 'test_for_rsa')
     # 测试整个文件的md5
@@ -1328,6 +1332,8 @@ def test_rsa_client():
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
+    
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
 
 if __name__ == "__main__":
