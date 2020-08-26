@@ -249,31 +249,32 @@ class AESProvider(BaseProvider):
     def __init__(self, aes_key=None, aes_key_path=None, cipher=AESCTRCipher()):
         """初始化"""
         super(AESProvider, self).__init__(cipher=cipher)
-
-        default_aes_dir = os.path.expanduser('~/.cos_local_rsa')
-        default_key_path = os.path.join(default_aes_dir, '.aes_key.pem')
         self.__ed_obj = None
         self.__data_key = None
         self.__data_start = None
+        self.__my_counter = Counter.new(_AES_CTR_COUNTER_BITS_LENGTH, initial_value=0)
+        self.__aes_key = aes_key
+        self.__aes_key_path = aes_key_path
 
-        my_counter = Counter.new(_AES_CTR_COUNTER_BITS_LENGTH, initial_value=0)
-
-        if aes_key:
-            self.__ed_obj = AES.new(aes_key.encode('utf-8'), AES.MODE_CTR, counter=my_counter)
-        elif aes_key_path:
-            if os.path.exists(aes_key_path):
-                with open(aes_key_path, 'rb') as f:
-                    self.__ed_obj = AES.new(f.read(), AES.MODE_CTR, counter=my_counter)
+    def init_ed_obj(self):
+        default_aes_dir = os.path.expanduser('~/.cos_local_aes')
+        default_key_path = os.path.join(default_aes_dir, '.aes_key.pem')
+        if self.__aes_key:
+            self.__ed_obj = AES.new(self.__aes_key.encode('utf-8'), AES.MODE_CTR, counter=self.__my_counter)
+        elif self.__aes_key_path:
+            if os.path.exists(self.__aes_key_path):
+                with open(self.__aes_key_path, 'rb') as f:
+                    self.__ed_obj = AES.new(f.read(), AES.MODE_CTR, counter=self.__my_counter)
         else:
             logger.info('aes_key and aes_key_path is None, try to get key from default path')
             if os.path.exists(default_key_path):
                 with open(default_key_path, 'rb') as f:
-                    self.__ed_obj = AES.new(f.read(), AES.MODE_CTR, counter=my_counter)
+                    self.__ed_obj = AES.new(f.read(), AES.MODE_CTR, counter=self.__my_counter)
 
         if self.__ed_obj is None:
             logger.warn('fail to get aes key, will generate key')
             aes_key = random_key(_AES_256_KEY_SIZE)
-            self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=my_counter)
+            self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
             if not os.path.exists(default_aes_dir):
                 os.makedirs(default_aes_dir)
 
@@ -287,12 +288,15 @@ class AESProvider(BaseProvider):
         self.__data_key = self.get_data_key()
         self.__data_start = self.data_cipher.get_counter_start()
         self.data_cipher.new_cipher(self.__data_key, self.__data_start)
+
+        self.init_ed_obj()
         encrypt_key = self.__ed_obj.encrypt(self.__data_key)
         encrypt_start = self.__ed_obj.encrypt(str(self.__data_start))
         return encrypt_key, encrypt_start
 
     def init_data_cipter_by_user(self, encrypt_key, encryt_start, offset=0):
         """根据密钥初始化cipher"""
+        self.init_ed_obj()
         self.__data_key = self.__ed_obj.decrypt(encrypt_key)
         self.__data_start = int(self.__ed_obj.decrypt(encryt_start))
         self.data_cipher.new_cipher(self.__data_key, self.__data_start, offset)
