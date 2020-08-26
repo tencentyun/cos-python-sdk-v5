@@ -1270,7 +1270,7 @@ def test_aes_client():
 
     client_for_aes.delete_object(test_bucket, 'test_for_aes')
 
-    content = '123456' * 1024 * 1024
+    content = '1' * 1024 * 1024
     # 测试分片上传
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
     response = client_for_aes.create_multipart_upload(test_bucket, 'test_multi_upload')
@@ -1283,7 +1283,7 @@ def test_aes_client():
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5(content)
+    content_md5 = get_raw_md5(content+content)
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
@@ -1319,7 +1319,7 @@ def test_rsa_client():
     
     client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
 
-    content = '123456' * 1024 * 1024
+    content = '1' * 1024 * 1024
     # 测试分片上传
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
     response = client_for_rsa.create_multipart_upload(test_bucket, 'test_multi_upload')
@@ -1332,7 +1332,7 @@ def test_rsa_client():
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5(content)
+    content_md5 = get_raw_md5(content+content)
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
