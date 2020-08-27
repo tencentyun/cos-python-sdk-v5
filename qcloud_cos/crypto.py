@@ -274,16 +274,22 @@ class AESProvider(BaseProvider):
         default_aes_dir = os.path.expanduser('~/.cos_local_aes')
         default_key_path = os.path.join(default_aes_dir, '.aes_key.pem')
         if self.__aes_key:
-            self.__ed_obj = AES.new(self.__aes_key.encode('utf-8'), AES.MODE_CTR, counter=self.__my_counter)
+            aes_key = to_bytes(base64.b64decode(to_bytes(self.__aes_key)))
+            self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
         elif self.__aes_key_path:
             if os.path.exists(self.__aes_key_path):
                 with open(self.__aes_key_path, 'rb') as f:
-                    self.__ed_obj = AES.new(f.read(), AES.MODE_CTR, counter=self.__my_counter)
+                    aes_key = f.read()
+                    if not isinstance(aes_key, bytes):
+                        aes_key = to_bytes(aes_key)
+                    self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
         else:
             logger.info('aes_key and aes_key_path is None, try to get key from default path')
             if os.path.exists(default_key_path):
                 with open(default_key_path, 'rb') as f:
-                    self.__ed_obj = AES.new(f.read(), AES.MODE_CTR, counter=self.__my_counter)
+                    aes_key = f.read()
+                    aes_key = to_bytes(base64.b64decode(to_bytes(aes_key)))
+                    self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
 
         if self.__ed_obj is None:
             logger.warn('fail to get aes key, will generate key')
@@ -293,6 +299,7 @@ class AESProvider(BaseProvider):
                 os.makedirs(default_aes_dir)
 
             with open(default_key_path, 'wb') as f:
+                aes_key = to_bytes(base64.b64encode(to_bytes(aes_key)))
                 f.write(aes_key)
 
     def init_data_cipher(self):
