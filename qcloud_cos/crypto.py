@@ -280,8 +280,7 @@ class AESProvider(BaseProvider):
             if os.path.exists(self.__aes_key_path):
                 with open(self.__aes_key_path, 'rb') as f:
                     aes_key = f.read()
-                    if not isinstance(aes_key, bytes):
-                        aes_key = to_bytes(aes_key)
+                    aes_key = to_bytes(base64.b64decode(to_bytes(aes_key)))
                     self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
         else:
             logger.info('aes_key and aes_key_path is None, try to get key from default path')
