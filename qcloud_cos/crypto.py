@@ -210,14 +210,16 @@ class RSAProvider(BaseProvider):
             with open(default_public_key_path, 'wb') as f:
                 f.write(public_key.exportKey(passphrase=passphrase))
 
-    def get_rsa_key_pair(self, public_key, private_key):
-        """生成RSAKeyPair"""
+    @staticmethod
+    def get_rsa_key_pair(public_key, private_key):
+        """开放给用户，用于生成RSAKeyPair"""
         if public_key is None or private_key is None:
             raise CosClientError('public_key or private_key is not allowed to be None !!!')
         return RSAKeyPair(public_key, private_key)
 
-    def get_rsa_key_pair_path(self, public_key_path, private_key_path):
-        """生成RSAKeyPairPath"""
+    @staticmethod
+    def get_rsa_key_pair_path(public_key_path, private_key_path):
+        """开放给用户，用于生成RSAKeyPairPath"""
         if public_key_path is None or private_key_path is None:
             raise CosClientError('public_key or private_key is not allowed to be None !!!')
         return RSAKeyPairPath(public_key_path, private_key_path)

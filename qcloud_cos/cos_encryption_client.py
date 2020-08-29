@@ -33,6 +33,20 @@ class CosEncryptionClient(CosS3Client):
         :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
         :kwargs(dict): 设置上传的headers.
         :return(dict): 上传成功返回的结果，包含ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            provider = RSAProvider()
+            client = CosEncryptionClient(config, provider)
+            # 上传本地文件到cos
+            with open('test.txt', 'rb') as fp:
+                response = client.put_object(
+                    Bucket='bucket',
+                    Body=fp,
+                    Key='test.txt'
+                )
+                print (response['ETag'])
         """
         encrypt_key, encrypt_start = self.provider.init_data_cipher()
         meta_handle = MetaHandle(encrypt_key, encrypt_start)
@@ -48,6 +62,18 @@ class CosEncryptionClient(CosS3Client):
         :param Key(string): COS路径.
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            provider = RSAProvider()
+            client = CosEncryptionClient(config, provider)
+            # 下载cos上的文件到本地
+            response = client.get_object(
+                Bucket='bucket',
+                Key='test.txt'
+            )
+            response['Body'].get_stream_to_file('local_file.txt')
         """
         response = self.head_object(Bucket, Key, **kwargs)
         meta_handle = MetaHandle()
@@ -104,6 +130,17 @@ class CosEncryptionClient(CosS3Client):
         :param Key(string): COS路径.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 初始化分块上传返回的结果，包含UploadId等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            provider = RSAProvider()
+            client = CosEncryptionClient(config, provider)
+            # 创建分块上传
+            response = client.create_multipart_upload(
+                Bucket='bucket',
+                Key='test.txt'
+            )
         """
         encrypt_key, encrypt_start = self.provider.init_data_cipher()
         meta_handle = MetaHandle(encrypt_key, encrypt_start)
@@ -122,6 +159,20 @@ class CosEncryptionClient(CosS3Client):
         :param kwargs(dict): 设置请求headers.
         :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
         :return(dict): 上传成功返回的结果，包含单个分块ETag等信息.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            provider = RSAProvider()
+            client = CosEncryptionClient(config, provider)
+            # 分块上传
+            with open('test.txt', 'rb') as fp:
+                data = fp.read(1024*1024)
+                response = client.upload_part(
+                    Bucket='bucket',
+                    Body=data,
+                    Key='test.txt'
+                )
         """
         data = self.provider.make_data_encrypt_adapter(Body)
         response = super(CosEncryptionClient, self).upload_part(Bucket, Key, data, PartNumber, UploadId, EnableMD5=False, **kwargs)

@@ -1278,7 +1278,7 @@ def test_aes_client():
     client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
     client_for_aes.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
     response = client_for_aes.list_parts(test_bucket,'test_multi_upload', uploadid)
-    client.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    client_for_aes.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
     response = client_for_aes.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
@@ -1327,7 +1327,7 @@ def test_rsa_client():
     client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
     client_for_rsa.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
     response = client_for_rsa.list_parts(test_bucket,'test_multi_upload', uploadid)
-    client.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    client_for_rsa.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
     response = client_for_rsa.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
