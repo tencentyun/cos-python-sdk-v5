@@ -10,6 +10,9 @@ from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
 from qcloud_cos import get_date
+from qcloud_cos.cos_encryption_client import CosEncryptionClient
+from qcloud_cos.crypto import AESProvider
+from qcloud_cos.crypto import RSAProvider
 from qcloud_cos.cos_comm import CiDetectType
 
 SECRET_ID = os.environ["SECRET_ID"]
@@ -27,6 +30,10 @@ conf = CosConfig(
     SecretKey=SECRET_KEY,
 )
 client = CosS3Client(conf, retry=3)
+rsa_provider = RSAProvider()
+client_for_rsa = CosEncryptionClient(conf, rsa_provider)
+aes_provider = AESProvider()
+client_for_aes = CosEncryptionClient(conf, aes_provider)
 
 
 def _create_test_bucket(test_bucket, create_region=None):
@@ -1234,6 +1241,104 @@ def test_bucket_encryption():
     # 删除存储桶默认加密配置
     client.delete_bucket_encryption(test_bucket)
 
+def test_aes_client():
+    """测试aes加密客户端的上传下载操作"""
+    content = '123456' * 1024 + '1'
+    client_for_aes.delete_object(test_bucket, 'test_for_aes')
+    client_for_aes.put_object(test_bucket, content, 'test_for_aes')
+    # 测试整个文件的md5
+    response = client_for_aes.get_object(test_bucket, 'test_for_aes')
+    response['Body'].get_stream_to_file('test_for_aes_local')
+    local_file_md5 = None
+    content_md5 = None
+    with open('test_for_aes_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content.encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_aes_local'):
+        os.remove('test_for_aes_local')
+
+    # 测试读取部分数据的md5
+    response = client_for_aes.get_object(test_bucket, 'test_for_aes', Range='bytes=5-3000')
+    response['Body'].get_stream_to_file('test_for_aes_local')
+    with open('test_for_aes_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content[5:3001].encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_aes_local'):
+        os.remove('test_for_aes_local')
+
+    client_for_aes.delete_object(test_bucket, 'test_for_aes')
+
+    content = '1' * 1024 * 1024
+    # 测试分片上传
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+    response = client_for_aes.create_multipart_upload(test_bucket, 'test_multi_upload')
+    uploadid = response['UploadId']
+    client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
+    client_for_aes.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
+    response = client_for_aes.list_parts(test_bucket,'test_multi_upload', uploadid)
+    client_for_aes.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    response = client_for_aes.get_object(test_bucket, 'test_multi_upload')
+    response['Body'].get_stream_to_file('test_multi_upload_local')
+    with open('test_multi_upload_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5((content+content).encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_multi_upload_local'):
+        os.remove('test_multi_upload_local')
+    
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+
+def test_rsa_client():
+    """测试rsa加密客户端的上传下载操作"""
+    content = '123456' * 1024 + '1'
+    client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
+    client_for_rsa.put_object(test_bucket, content, 'test_for_rsa')
+    # 测试整个文件的md5
+    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa')
+    response['Body'].get_stream_to_file('test_for_rsa_local')
+    local_file_md5 = None
+    content_md5 = None
+    with open('test_for_rsa_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content.encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_rsa_local'):
+        os.remove('test_for_rsa_local')
+
+    # 测试读取部分数据的md5
+    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa', Range='bytes=5-3000')
+    response['Body'].get_stream_to_file('test_for_rsa_local')
+    with open('test_for_rsa_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content[5:3001].encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_rsa_local'):
+        os.remove('test_for_rsa_local')
+    
+    client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
+
+    content = '1' * 1024 * 1024
+    # 测试分片上传
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+    response = client_for_rsa.create_multipart_upload(test_bucket, 'test_multi_upload')
+    uploadid = response['UploadId']
+    client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
+    client_for_rsa.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
+    response = client_for_rsa.list_parts(test_bucket,'test_multi_upload', uploadid)
+    client_for_rsa.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    response = client_for_rsa.get_object(test_bucket, 'test_multi_upload')
+    response['Body'].get_stream_to_file('test_multi_upload_local')
+    with open('test_multi_upload_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5((content+content).encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_multi_upload_local'):
+        os.remove('test_multi_upload_local')
+    
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+
 
 if __name__ == "__main__":
     setUp()
@@ -1261,6 +1366,8 @@ if __name__ == "__main__":
     test_select_object()
     _test_get_object_sensitive_content_recognition()
     test_download_file()
+    test_aes_client()
+    test_rsa_client()
     """
 
     tearDown()
