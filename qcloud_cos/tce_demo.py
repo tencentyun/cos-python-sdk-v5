@@ -21,7 +21,7 @@ class CosV5PythonSDKTest(object):
         self.cos_config = CosConfig(
             Secret_id=self.secret_id,
             Secret_key=self.secret_key,
-            Endpoint=self.end_point % region,
+            Endpoint=self.end_point,
             Scheme=self.scheme)
         self.client = CosS3Client(self.cos_config)
 
@@ -246,25 +246,15 @@ class CosV5PythonSDKTest(object):
             Bucket=bucket_name + '-' + self.appid, Delete=delete)
         return resp
 
-    def copy_object_in_same_bucket(self):
+    def copy_object_in_same_bucket(self, bucket_name, obj_name):
         # 桶内copy对象
-        bucket_name = "mainbkt"
-        object_key = "obj_copy"
-        copy_source = {
-            "Appid": self.appid,
-            "Bucket": "mainbkt",
-            "Key": "obj",
-            "Region": self.region
-        }
-        resp = self.client.copy_object(
-            Bucket=bucket_name + '-' + self.appid,
-            Key=object_key,
-            CopySource=copy_source,
-            CopyStatus="Copy")
+        bucket_with_appid = bucket_name + '-' + self.appid
+        copy_source = {'Bucket': bucket_with_appid, 'Key': obj_name, 'Endpoint': self.end_point}
+        resp = self.client.copy_object(Bucket=bucket_with_appid, Key='test_dst', CopySource=copy_source)
         return resp
 
     def copy_object_in_different_bucket(self):
-        # 桶内copy对象
+        # 不同桶内copy对象
         bucket_name = "wook-gao"
         object_key = "obj_copy"
         copy_source = {
@@ -377,6 +367,25 @@ class CosV5PythonSDKTest(object):
             Key=obj_name,
             LocalFilePath=file_path)
         return resp
+
+    def get_file_flow(self, bucket_name, obj_name):
+        # 获取文件流
+        response = self.client.get_object(
+            Bucket=bucket_name + '-' + self.appid,
+            Key=obj_name,
+        )
+        fp = response['Body'].get_raw_stream()
+        print(fp.read(10))
+
+    def get_file_range(self, bucket_name, obj_name):
+        # 文件下载 指定下载范围
+        response = main.client.get_object(
+            Bucket=bucket_name + '-' + self.appid,
+            Key=obj_name,
+            Range='bytes=1-10'
+        )
+        fp = response['Body'].get_raw_stream()
+        print(fp.read())
 
 
 if __name__ == "__main__":
@@ -602,6 +611,15 @@ if __name__ == "__main__":
             bucket_name="mainbkt",
             obj_name="upload1g.txt",
             file_path="f:\\test1g.txt")
+
+        # 获取文件流
+        main.get_file_flow(bucket_name="mainbkt", obj_name="part100m.txt")
+
+        # 文件下载 指定下载范围
+        main.get_file_range(bucket_name="mainbkt", obj_name="part100m.txt")
+
+        # 桶内拷贝
+        main.copy_object_in_same_bucket(bucket_name="mainbkt", obj_name="str1m.txt")
 
         print("Succeeded")
 
