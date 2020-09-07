@@ -277,7 +277,7 @@ class CosS3Client(object):
                     info['requestid'] = res.headers['x-cos-request-id']
                 if 'x-cos-trace-id' in res.headers:
                     info['traceid'] = res.headers['x-cos-trace-id']
-                logger.error(info)
+                logger.warn(info)
                 raise CosServiceError(method, info, res.status_code)
             else:
                 msg = res.text
