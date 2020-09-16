@@ -2814,7 +2814,7 @@ class CosS3Client(object):
                 Bucket='bucket'
             )
         """
-        xml_config=''
+        xml_config = ''
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2829,7 +2829,7 @@ class CosS3Client(object):
             headers=headers,
             params=params)
         return None
-		
+
     # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket
