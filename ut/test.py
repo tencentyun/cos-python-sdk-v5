@@ -1103,7 +1103,7 @@ def test_put_get_delete_bucket_referer():
         Bucket=test_bucket,
     )
     time.sleep(4)
-    response = client.get_bucker_referer(
+    response = client.get_bucket_referer(
         Bucket=test_bucket,
     )
     assert len(response)==0
