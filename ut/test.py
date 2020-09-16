@@ -1079,7 +1079,7 @@ def _test_put_get_delete_bucket_origin():
 
 
 def test_put_get_delete_bucket_referer():
-    """测试设置获取bucket防盗链规则"""
+    """测试设置获取删除bucket防盗链规则"""
     referer_config = {
         'Status': 'Enabled',
         'RefererType': 'White-List',
@@ -1100,11 +1100,11 @@ def test_put_get_delete_bucket_referer():
         Bucket=test_bucket,
     )
     response = client.delete_bucket_referer(
-        Bucket=test_bucker,
+        Bucket=test_bucket,
     )
     time.sleep(4)
     response = client.get_bucker_referer(
-        Bucket=test_bucker,
+        Bucket=test_bucket,
     )
     assert len(response)==0
 
