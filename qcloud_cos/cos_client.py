@@ -2798,6 +2798,38 @@ class CosS3Client(object):
             format_dict(data['DomainList'], ['Domain'])
         return data
 
+    def delete_bucket_referer(self, Bucket, **kwargs):
+        """删除bucket防盗链规则
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket标签
+            response = client.delete_bucket_referer(
+                Bucket='bucket'
+            )
+        """
+        xml_config = ''
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'referer': ''}
+        url = self._conf.uri(bucket=Bucket)
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket
