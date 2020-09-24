@@ -70,9 +70,9 @@ class StreamBody(object):
         """保存流到本地文件的offset偏移"""
         self._read_len = 0
         fdst.seek(offset, 0)
-
+        chunk_size = 1024 * 1024
         while 1:
-            chunk = self.read(1024, auto_decompress)
+            chunk = self.read(chunk_size, auto_decompress)
             if not chunk:
                 break
             self._read_len += len(chunk)

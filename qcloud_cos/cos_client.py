@@ -237,7 +237,12 @@ class CosS3Client(object):
             elif bucket is not None:
                 kwargs['headers']['Host'] = self._conf.get_host(bucket)
         kwargs['headers'] = format_values(kwargs['headers'])
+
+        file_position = None
         if 'data' in kwargs:
+            body = kwargs['data']
+            if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+                file_position = body.tell()  # 记录文件当前位置
             kwargs['data'] = to_bytes(kwargs['data'])
         if self._conf._ip is not None and self._conf._scheme == 'https':
             kwargs['verify'] = False
@@ -262,6 +267,11 @@ class CosS3Client(object):
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
                 if j < self._retry:
+                    if file_position is not None:
+                        try:
+                            kwargs['data'].seek(file_position)
+                        except IOError as ioe:
+                            raise CosClientError(str(ioe))
                     continue
                 raise CosClientError(str(e))
 
