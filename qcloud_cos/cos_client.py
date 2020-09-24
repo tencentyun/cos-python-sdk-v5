@@ -272,7 +272,7 @@ class CosS3Client(object):
                     body = kwargs[data]
                     if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
                         can_retry = True
-                    elif isinstance(body, unicode) or isinstance(body, text_type) or isinstance(body, binary_type):
+                    elif isinstance(body, text_type) or isinstance(body, binary_type):
                         can_retry = True
 
                 if j < self._retry and can_retry:
