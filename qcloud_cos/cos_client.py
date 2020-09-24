@@ -14,6 +14,7 @@ import xml.etree.ElementTree
 from requests import Request, Session
 from datetime import datetime
 from six.moves.urllib.parse import quote, unquote, urlencode
+from six import text_type, binary_type
 from hashlib import md5
 from dicttoxml import dicttoxml
 from .streambody import StreamBody
@@ -266,7 +267,15 @@ class CosS3Client(object):
                     break
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
-                if j < self._retry:
+                can_retry = False
+                if 'data' in kwargs:
+                    body = kwargs[data]
+                    if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+                        can_retry = True
+                    elif isinstance(body, unicode) or isinstance(body, text_type) or isinstance(body, binary_type):
+                        can_retry = True
+
+                if j < self._retry and can_retry:
                     if file_position is not None:
                         try:
                             kwargs['data'].seek(file_position)
