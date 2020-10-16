@@ -269,7 +269,7 @@ class CosS3Client(object):
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
                 can_retry = False
                 if 'data' in kwargs:
-                    body = kwargs[data]
+                    body = kwargs['data']
                     if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
                         can_retry = True
                     elif isinstance(body, text_type) or isinstance(body, binary_type):
