@@ -2994,7 +2994,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAZThread=5, EnableCRC=False, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -3006,7 +3006,7 @@ class CosS3Client(object):
         :param kwargs(dict): 设置请求headers.
         """
         logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB,\
-                     max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAZThread))
+                     max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAXThread))
 
         object_info = self.head_object(Bucket, Key)
         file_size = int(object_info['Content-Length'])
@@ -3015,7 +3015,7 @@ class CosS3Client(object):
             response['Body'].get_stream_to_file(DestFilePath)
             return
 
-        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAZThread, EnableCRC, **Kwargs)
+        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC, **Kwargs)
         downloader.start()
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, **kwargs):
