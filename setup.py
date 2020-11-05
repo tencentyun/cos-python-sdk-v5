@@ -10,13 +10,13 @@ def requirements():
 
 
 def long_description():
-    with open('README.rst', 'rb') as fileobj:
+    with open('README.rst', 'r', encoding='utf8') as fileobj:
         return fileobj.read()
 
 
 setup(
     name='cos-python-sdk-v5',
-    version='1.8.8',
+    version='1.8.9',
     url='https://www.qcloud.com/',
     license='MIT',
     author='tiedu, lewzylu, channingliu',
