@@ -3,6 +3,11 @@ from platform import python_version_tuple
 
 
 def requirements():
+    """
+    Parse the list of pip requirements file.
+
+    Args:
+    """
 
     with open('requirements.txt', 'r') as fileobj:
         requirements = [line.strip() for line in fileobj]
@@ -10,6 +15,11 @@ def requirements():
 
 
 def long_description():
+    """
+    Return the long description of a string.
+
+    Args:
+    """
     with open('README.rst', 'r', encoding='utf8') as fileobj:
         return fileobj.read()
 

@@ -12,14 +12,33 @@ logger = logging.getLogger(__name__)
 
 class EventStream():
     def __init__(self, rt):
+        """
+        Initialize a raw rd object.
+
+        Args:
+            self: (todo): write your description
+            rt: (int): write your description
+        """
         self._rt = rt
         self._raw = self._rt.raw
         self._finish = False
 
     def __iter__(self):
+        """
+        Returns an iterator over the iterable.
+
+        Args:
+            self: (todo): write your description
+        """
         return self
 
     def __next__(self):
+        """
+        Returns the next event.
+
+        Args:
+            self: (todo): write your description
+        """
         return self.next_event()
 
     next = __next__

@@ -5,6 +5,13 @@ import uuid
 
 class StreamBody(object):
     def __init__(self, rt):
+        """
+        Initialize the response.
+
+        Args:
+            self: (todo): write your description
+            rt: (int): write your description
+        """
         self._rt = rt
         self._read_len = 0
         self._content_len = 0
@@ -25,6 +32,12 @@ class StreamBody(object):
         return self._rt.iter_content(1024)
 
     def __len__(self):
+        """
+        The number of bytes in bytes.
+
+        Args:
+            self: (todo): write your description
+        """
         return self._content_len
 
     def get_raw_stream(self):
@@ -36,6 +49,14 @@ class StreamBody(object):
         return self._rt.iter_content(chunk_size=chunk_size)
 
     def read(self, chunk_size=1024, auto_decompress=False):
+        """
+        Reads at most likely chunk from the stream.
+
+        Args:
+            self: (todo): write your description
+            chunk_size: (int): write your description
+            auto_decompress: (bool): write your description
+        """
         chunk = None
         if self._use_encoding and not auto_decompress:
             chunk = self._rt.raw.read(chunk_size)

@@ -12,6 +12,18 @@ import string
 class CosV5PythonSDKTest(object):
     def __init__(self, region, appid, secret_id, secret_key, end_point,
                  scheme):
+        """
+        Initialize the application.
+
+        Args:
+            self: (todo): write your description
+            region: (str): write your description
+            appid: (todo): write your description
+            secret_id: (str): write your description
+            secret_key: (str): write your description
+            end_point: (str): write your description
+            scheme: (str): write your description
+        """
         self.region = region
         self.appid = appid
         self.secret_id = secret_id
@@ -26,11 +38,26 @@ class CosV5PythonSDKTest(object):
         self.client = CosS3Client(self.cos_config)
 
     def create_bucket(self, bucket_name):
+        """
+        Creates a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 创建存储桶
         self.client.create_bucket(Bucket=bucket_name + '-' + self.appid)
         return 0
 
     def create_bucket_with_ACL(self, bucket_name, acl):
+        """
+        Creates a bucket policy.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            acl: (todo): write your description
+        """
         # 创建存储桶 ACL
         self.client.create_bucket(
             Bucket=bucket_name + '-' + self.appid, ACL=acl)
@@ -38,6 +65,15 @@ class CosV5PythonSDKTest(object):
 
     def create_bucket_with_GrantFullControl(self, bucket_name, owner_uin,
                                             sub_uin):
+        """
+        Creates a bucket with a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            owner_uin: (todo): write your description
+            sub_uin: (todo): write your description
+        """
         # 创建存储桶 GrantFullControl
         grant_full_control = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin,
                                                                sub_uin)
@@ -47,6 +83,15 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def create_bucket_with_GrantRead(self, bucket_name, owner_uin, sub_uin):
+        """
+        Creates a bucket with the bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            owner_uin: (str): write your description
+            sub_uin: (todo): write your description
+        """
         # 创建存储桶 GrantRead
         grant_read = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin, sub_uin)
         self.client.create_bucket(
@@ -54,6 +99,15 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def create_bucket_with_GrantWrite(self, bucket_name, owner_uin, sub_uin):
+        """
+        Creates a new bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            owner_uin: (todo): write your description
+            sub_uin: (todo): write your description
+        """
         # 创建存储桶 GrantRead
         grant_write = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin, sub_uin)
         self.client.create_bucket(
@@ -61,51 +115,119 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def delete_bucket(self, bucket_name):
+        """
+        Deletes a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 删除存储桶
         self.client.delete_bucket(Bucket=bucket_name + '-' + self.appid)
         return 0
 
     def head_bucket(self, bucket_name):
+        """
+        Returns the bucket head.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 判断存储桶是否存在
         self.client.head_bucket(Bucket=bucket_name + '-' + self.appid)
         return 0
 
     def get_bucket_location(self, bucket_name):
+        """
+        Get bucket location.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 获取存储桶地域信息
         resp = self.client.get_bucket_location(Bucket=bucket_name + '-' +
                                                self.appid)
         return resp["LocationConstraint"]
 
     def list_objects(self, bucket_name):
+        """
+        List objects.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 获取存储桶下文件列表
         resp = self.client.list_objects(Bucket=bucket_name + '-' + self.appid)
         return resp
 
     def list_objects_with_prefix(self, bucket_name, prefix):
+        """
+        List objects in a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            prefix: (str): write your description
+        """
         # 获取存储桶下有prefix前缀的文件列表
         resp = self.client.list_objects(
             Bucket=bucket_name + '-' + self.appid, Prefix=prefix)
         return resp
 
     def list_objects_with_delimiter(self, bucket_name, delimiter):
+        """
+        List objects.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            delimiter: (str): write your description
+        """
         # 模拟文件夹结构获取存储桶下 的文件列表
         resp = self.client.list_objects(
             Bucket=bucket_name + '-' + self.appid, Delimiter=delimiter)
         return resp
 
     def list_objects_with_Marker(self, bucket_name, marker):
+        """
+        List objects in a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            marker: (str): write your description
+        """
         # 获取存储桶下文件名包含marker的文件列表
         resp = self.client.list_objects(
             Bucket=bucket_name + '-' + self.appid, Marker=marker)
         return resp
 
     def list_objects_with_Maxkeys(self, bucket_name, maxkeys):
+        """
+        List bucket objects.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            maxkeys: (int): write your description
+        """
         # 获取存储桶下最多maxkeys个文件列表
         resp = self.client.list_objects(
             Bucket=bucket_name + '-' + self.appid, MaxKeys=maxkeys)
         return resp
 
     def put_bucket_acl(self, bucket_name, acl):
+        """
+        Adds a bucket policy for a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            acl: (todo): write your description
+        """
         # 设置存储桶访问控制权限 ACL
         self.client.put_bucket_acl(
             Bucket=bucket_name + '-' + self.appid, ACL=acl)
@@ -113,6 +235,15 @@ class CosV5PythonSDKTest(object):
 
     def put_bucket_acl_with_GrantFullControl(self, bucket_name, owner_uin,
                                              sub_uin):
+        """
+        Adds a bucket s3 bucket policy.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            owner_uin: (todo): write your description
+            sub_uin: (todo): write your description
+        """
         # 设置存储桶访问控制权限 GrantFullControl
         grant_full_control = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin,
                                                                sub_uin)
@@ -121,6 +252,15 @@ class CosV5PythonSDKTest(object):
             GrantFullControl=grant_full_control)
 
     def put_bucket_acl_with_GrantRead(self, bucket_name, owner_uin, sub_uin):
+        """
+        Adds or update acl to acl
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            owner_uin: (str): write your description
+            sub_uin: (todo): write your description
+        """
         # 设置存储桶访问控制权限 GrantRead
         grant_read = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin, sub_uin)
         self.client.put_bucket_acl(
@@ -128,18 +268,42 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def put_bucket_acl_with_GrantWrite(self, bucket_name, owner_uin, sub_uin):
+        """
+        Adds a bucket s access control policy to a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            owner_uin: (str): write your description
+            sub_uin: (todo): write your description
+        """
         # 设置存储桶访问控制权限 GrantWrite
         grant_write = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin, sub_uin)
         self.client.put_bucket_acl(
             Bucket=bucket_name + '-' + self.appid, GrantRead=grant_write)
 
     def get_bucket_acl(self, bucket_name):
+        """
+        Returns the bucket s access control policy.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 获取存储桶访问控制权限
         resp = self.client.get_bucket_acl(Bucket=bucket_name + "-" +
                                           self.appid)
         return resp
 
     def put_bucket_cors(self, bucket_name, max_age_seconds=0):
+        """
+        Adds bucket cors to bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            max_age_seconds: (int): write your description
+        """
         # 设置一条存储桶跨域访问规则
         corsconfig = {
             "CORSRule": [{
@@ -155,6 +319,13 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def put_bucket_multi_cors(self, bucket_name):
+        """
+        Adds bucket cors to bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 设置多条存储桶跨域访问规则
         corsconfig = {
             "CORSRule": [{
@@ -177,17 +348,40 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def get_bucket_cors(self, bucket_name):
+        """
+        Get cors for a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 获取存储桶跨域访问规则
         resp = self.client.get_bucket_cors(Bucket=bucket_name + '-' +
                                            self.appid)
         return resp
 
     def delete_bucket_cors(self, bucket_name):
+        """
+        Deletes the cors.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         # 删除存储桶跨域访问规则
         self.client.delete_bucket_cors(Bucket=bucket_name + '-' + self.appid)
         return 0
 
     def put_object_str(self, bucket_name, obj_name, str_len):
+        """
+        Put a string into a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            str_len: (str): write your description
+        """
         # 上传字符串到对象
         self.client.put_object(
             Bucket=bucket_name + '-' + self.appid,
@@ -198,6 +392,15 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def put_object_file(self, bucket_name, obj_name, file_name):
+        """
+        Put an object in the bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            file_name: (str): write your description
+        """
         # 上传文件到对象
         self.client.put_object(
             Bucket=bucket_name + '-' + self.appid,
@@ -206,12 +409,29 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def head_object(self, bucket_name, obj_name):
+        """
+        Returns the object header.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+        """
         # 对象是否存在，获取对象属性
         resp = self.client.head_object(
             Bucket=bucket_name + '-' + self.appid, Key=obj_name)
         return resp
 
     def get_object(self, bucket_name, obj_name, file_name):
+        """
+        Retrieves the stream.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            file_name: (str): write your description
+        """
         # 下载对象
         resp = self.client.get_object(
             Bucket=bucket_name + '-' + self.appid, Key=obj_name)
@@ -219,12 +439,28 @@ class CosV5PythonSDKTest(object):
         return 0
 
     def delete_object(self, bucket_name, obj_name):
+        """
+        Delete an object.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+        """
         # 删除对象
         self.client.delete_object(
             Bucket=bucket_name + '-' + self.appid, Key=obj_name)
         return 0
 
     def delete_objects(self, bucket_name, obj_list):
+        """
+        Delete objects.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_list: (list): write your description
+        """
         # 批量删除对象
         _obj = []
         for obj in obj_list:
@@ -237,6 +473,15 @@ class CosV5PythonSDKTest(object):
         return resp
 
     def delete_objects_with_quiet(self, bucket_name, obj_list, quiet):
+        """
+        Delete objects.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_list: (list): write your description
+            quiet: (todo): write your description
+        """
         # 批量删除对象
         _obj = []
         for obj in obj_list:
@@ -247,6 +492,12 @@ class CosV5PythonSDKTest(object):
         return resp
 
     def copy_object_in_same_bucket(self):
+        """
+        Returns a bucket s same object to copy_object.
+
+        Args:
+            self: (todo): write your description
+        """
         # 桶内copy对象
         bucket_name = "mainbkt"
         object_key = "obj_copy"
@@ -264,6 +515,12 @@ class CosV5PythonSDKTest(object):
         return resp
 
     def copy_object_in_different_bucket(self):
+        """
+        Copy object to s3.
+
+        Args:
+            self: (todo): write your description
+        """
         # 桶内copy对象
         bucket_name = "wook-gao"
         object_key = "obj_copy"
@@ -280,6 +537,15 @@ class CosV5PythonSDKTest(object):
         return resp
 
     def put_object_acl(self, bucket_name, obj_name, acl):
+        """
+        Adds acl to an existing bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            acl: (todo): write your description
+        """
         # 设置对象访问控制权限 ACL
         self.client.put_object_acl(
             Bucket=bucket_name + '-' + self.appid, Key=obj_name, ACL=acl)
@@ -287,6 +553,16 @@ class CosV5PythonSDKTest(object):
 
     def put_object_acl_with_GrantFullControl(self, bucket_name, obj_name,
                                              owner_uin, sub_uin):
+        """
+        Updates the acl on a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            owner_uin: (todo): write your description
+            sub_uin: (todo): write your description
+        """
         # 设置对象访问控制权限 GrantFullControl
         grant_full_control = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin,
                                                                sub_uin)
@@ -297,6 +573,16 @@ class CosV5PythonSDKTest(object):
 
     def put_object_acl_with_GrantRead(self, bucket_name, obj_name, owner_uin,
                                       sub_uin):
+        """
+        Updates an acl on a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            owner_uin: (str): write your description
+            sub_uin: (int): write your description
+        """
         # 设置对象访问控制权限 GrantRead
         grant_read = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin, sub_uin)
         self.client.put_object_acl(
@@ -307,6 +593,16 @@ class CosV5PythonSDKTest(object):
 
     def put_object_acl_with_GrantWrite(self, bucket_name, obj_name, owner_uin,
                                        sub_uin):
+        """
+        Adds an acl on an acl policy.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            owner_uin: (str): write your description
+            sub_uin: (int): write your description
+        """
         # 设置对象访问控制权限 GrantWrite
         grant_write = 'id="qcs::cam::uin/%s:uin/%s"' % (owner_uin, sub_uin)
         self.client.put_object_acl(
@@ -315,18 +611,43 @@ class CosV5PythonSDKTest(object):
             GrantWrite=grant_write)
 
     def get_object_acl(self, bucket_name, obj_name):
+        """
+        Returns acls for a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+        """
         # 获取对象访问控制权限
         resp = self.client.get_object_acl(
             Bucket=bucket_name + '-' + self.appid, Key=obj_name)
         return resp
 
     def create_multipart_upload(self, bucket_name, obj_name):
+        """
+        Create a multipart upload.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+        """
         # 创建分块上传
         resp = self.client.create_multipart_upload(
             Bucket=bucket_name + '-' + self.appid, Key=obj_name)
         return resp
 
     def abort_multipart_upload(self, bucket_name, obj_name, upload_id):
+        """
+        Abort a multipart upload.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            upload_id: (str): write your description
+        """
         # 放弃分块上传
         self.client.abort_multipart_upload(
             Bucket=bucket_name + '-' + self.appid,
@@ -336,6 +657,17 @@ class CosV5PythonSDKTest(object):
 
     def upload_part(self, bucket_name, obj_name, part_number, upload_id,
                     str_len):
+        """
+        Uploads a part.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            part_number: (int): write your description
+            upload_id: (str): write your description
+            str_len: (str): write your description
+        """
         # 上传分块
         resp = self.client.upload_part(
             Bucket=bucket_name + '-' + self.appid,
@@ -348,6 +680,15 @@ class CosV5PythonSDKTest(object):
         return resp
 
     def list_parts(self, bucket_name, obj_name, upload_id):
+        """
+        List all parts.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            upload_id: (str): write your description
+        """
         # 列出上传分块
         resp = self.client.list_parts(
             Bucket=bucket_name + '-' + self.appid,
@@ -357,6 +698,16 @@ class CosV5PythonSDKTest(object):
 
     def complete_multipart_upload(self, bucket_name, obj_name, upload_id,
                                   multipart_upload):
+        """
+        Complete a multipart upload.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            upload_id: (str): write your description
+            multipart_upload: (bool): write your description
+        """
         # 完成分块上传
         resp = self.client.complete_multipart_upload(
             Bucket=bucket_name + '-' + self.appid,
@@ -366,11 +717,27 @@ class CosV5PythonSDKTest(object):
         return resp
 
     def list_multipart_uploads(self, bucket_name):
+        """
+        List all multipart uploads.
+
+        Args:
+            self: (todo): write your description
+            bucket_name: (str): write your description
+        """
         resp = self.client.list_multipart_uploads(Bucket=bucket_name + '-' +
                                                   self.appid)
         return resp
 
     def upload_file(self, bucket_name, obj_name, file_path):
+        """
+        Upload an object to s3.
+
+        Args:
+            self: (str): write your description
+            bucket_name: (str): write your description
+            obj_name: (str): write your description
+            file_path: (str): write your description
+        """
         # 文件上传(断点续传)
         resp = self.client.upload_file(
             Bucket=bucket_name + "-" + self.appid,

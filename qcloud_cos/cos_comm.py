@@ -350,6 +350,12 @@ def gen_copy_source_range(begin_range, end_range):
 
 
 def get_file_like_object_length(data):
+    """
+    Returns the length of the file.
+
+    Args:
+        data: (todo): write your description
+    """
     try:
         total_length = os.fstat(data.fileno()).st_size
     except IOError:

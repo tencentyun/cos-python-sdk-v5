@@ -22,15 +22,32 @@ _AES_256_KEY_SIZE = 32
 
 
 def random_key(key_len):
+    """
+    Generate a random key.
+
+    Args:
+        key_len: (str): write your description
+    """
     return Random.new().read(key_len)
 
 
 def random_iv():
+    """
+    Return a random iv.
+
+    Args:
+    """
     iv = Random.new().read(16)
     return iv
 
 
 def iv_to_big_int(iv):
+    """
+    Convert an integer to an integer.
+
+    Args:
+        iv: (str): write your description
+    """
     iv_pair = struct.unpack(">QQ", iv)
     iv_int = iv_pair[0] << 64 | iv_pair[1]
     return iv_int
@@ -112,6 +129,14 @@ class AESCTRCipher(object):
 class RSAKeyPair:
     """封装有公钥和私钥"""
     def __init__(self, public_key, private_key):
+        """
+        Initialize a private key.
+
+        Args:
+            self: (todo): write your description
+            public_key: (str): write your description
+            private_key: (str): write your description
+        """
         self.publick_key = public_key
         self.private_key = private_key
 
@@ -119,6 +144,14 @@ class RSAKeyPair:
 class RSAKeyPairPath:
     """封装有公钥和私钥的路径"""
     def __init__(self, public_key_path, private_key_path):
+        """
+        Initialize a private key.
+
+        Args:
+            self: (todo): write your description
+            public_key_path: (str): write your description
+            private_key_path: (str): write your description
+        """
         self.public_key_path = public_key_path
         self.private_key_path = private_key_path
 
@@ -273,6 +306,12 @@ class AESProvider(BaseProvider):
         self.__aes_key_path = aes_key_path
 
     def init_ed_obj(self):
+        """
+        Initialize an ed_key object.
+
+        Args:
+            self: (todo): write your description
+        """
         default_aes_dir = os.path.expanduser('~/.cos_local_aes')
         default_key_path = os.path.join(default_aes_dir, '.aes_key.pem')
         if self.__aes_key:
@@ -356,6 +395,15 @@ class MetaHandle(object):
 class DataEncryptAdapter(object):
     """用于读取经过加密后的的数据"""
     def __init__(self, data, content_len, data_cipher):
+        """
+        Sets the data.
+
+        Args:
+            self: (todo): write your description
+            data: (todo): write your description
+            content_len: (str): write your description
+            data_cipher: (str): write your description
+        """
         self._data = to_bytes(data)
         self._data_cipher = data_cipher
         self._content_len = content_len
@@ -363,6 +411,12 @@ class DataEncryptAdapter(object):
 
     @property
     def len(self):
+        """
+        The number of bytes in bytes.
+
+        Args:
+            self: (todo): write your description
+        """
         return self._content_len
 
     def read(self, length):

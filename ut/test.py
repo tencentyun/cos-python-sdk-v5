@@ -37,6 +37,13 @@ client_for_aes = CosEncryptionClient(conf, aes_provider)
 
 
 def _create_test_bucket(test_bucket, create_region=None):
+    """
+    Creates a bucket.
+
+    Args:
+        test_bucket: (todo): write your description
+        create_region: (str): write your description
+    """
     try:
         if create_region is None:
             response = client.create_bucket(
@@ -61,6 +68,13 @@ def _create_test_bucket(test_bucket, create_region=None):
 
 
 def _upload_test_file(test_bucket, test_key):
+    """
+    Uploads an s3 bucket to s3.
+
+    Args:
+        test_bucket: (str): write your description
+        test_key: (str): write your description
+    """
     response = client.put_object(
         Bucket=test_bucket,
         Key=test_key,
@@ -70,12 +84,25 @@ def _upload_test_file(test_bucket, test_key):
 
 
 def get_raw_md5(data):
+    """
+    Return md5 hash of data.
+
+    Args:
+        data: (todo): write your description
+    """
     m2 = hashlib.md5(data)
     etag = '"' + str(m2.hexdigest()) + '"'
     return etag
 
 
 def gen_file(path, size):
+    """
+    Generate a file.
+
+    Args:
+        path: (str): write your description
+        size: (int): write your description
+    """
     _file = open(path, 'w')
     _file.seek(1024*1024*size-3)
     _file.write('cos')
@@ -83,6 +110,12 @@ def gen_file(path, size):
 
 
 def print_error_msg(e):
+    """
+    Prints the error message.
+
+    Args:
+        e: (todo): write your description
+    """
     print (e.get_origin_msg())
     print (e.get_digest_msg())
     print (e.get_status_code())
@@ -94,6 +127,11 @@ def print_error_msg(e):
 
 
 def setUp():
+    """
+    Set bucket to bucket.
+
+    Args:
+    """
     print ("start test...")
     print ("start create bucket " + test_bucket)
     _create_test_bucket(test_bucket)
@@ -102,6 +140,11 @@ def setUp():
 
 
 def tearDown():
+    """
+    Tear down.
+
+    Args:
+    """
     print ("function teardown")
 
 
@@ -682,6 +725,11 @@ def test_list_multipart_uploads():
 
 
 def test_upload_file_from_buffer():
+    """
+    Uploads a file upload to a bucket.
+
+    Args:
+    """
     import io
     data = io.BytesIO(6*1024*1024*b'A')
     response = client.upload_file_from_buffer(
