@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 from platform import python_version_tuple
-
+import io
 
 def requirements():
 
@@ -10,13 +10,13 @@ def requirements():
 
 
 def long_description():
-    with open('README.rst', 'r', encoding='utf8') as fileobj:
+    with io.open('README.rst', 'r', encoding='utf8') as fileobj:
         return fileobj.read()
 
 
 setup(
     name='cos-python-sdk-v5',
-    version='1.8.9',
+    version='1.9.0',
     url='https://www.qcloud.com/',
     license='MIT',
     author='tiedu, lewzylu, channingliu',
