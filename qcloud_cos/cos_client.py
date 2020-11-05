@@ -3142,6 +3142,14 @@ class CosS3Client(object):
         return None
 
     def _check_same_region(self, dst_endpoint, CopySource):
+        """
+        Determine if the same region.
+
+        Args:
+            self: (todo): write your description
+            dst_endpoint: (str): write your description
+            CopySource: (bool): write your description
+        """
         src_endpoint = get_copy_source_info(CopySource)[2]
         if src_endpoint == dst_endpoint:
             return True

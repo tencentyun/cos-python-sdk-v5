@@ -16,6 +16,20 @@ logger = logging.getLogger(__name__)
 
 class ResumableDownLoader(object):
     def __init__(self, cos_client, bucket, key, dest_filename, object_info, part_size=20, max_thread=5, enable_crc=False, **kwargs):
+        """
+        Initialize a multipart object.
+
+        Args:
+            self: (todo): write your description
+            cos_client: (todo): write your description
+            bucket: (str): write your description
+            key: (str): write your description
+            dest_filename: (str): write your description
+            object_info: (todo): write your description
+            part_size: (int): write your description
+            max_thread: (int): write your description
+            enable_crc: (bool): write your description
+        """
         self.__cos_client = cos_client
         self.__bucket = bucket
         self.__key = key
@@ -42,6 +56,12 @@ class ResumableDownLoader(object):
         logger.debug('resumale downloader init finish, bucket: {0}, key: {1}'.format(bucket, key))
 
     def start(self):
+        """
+        Starts the stream
+
+        Args:
+            self: (todo): write your description
+        """
         logger.debug('start resumable downloade, bucket: {0}, key: {1}'.format(self.__bucket, self.__key))
         self.__load_record()  # 从record文件中恢复读取上下文
 
@@ -73,11 +93,28 @@ class ResumableDownLoader(object):
         logger.debug('download success, bucket: {0}, key: {1}'.format(self.__bucket, self.__key))
 
     def __get_record_filename(self, bucket, key, dest_file_path):
+        """
+        Returns the md5 hash for a bucket.
+
+        Args:
+            self: (todo): write your description
+            bucket: (str): write your description
+            key: (str): write your description
+            dest_file_path: (str): write your description
+        """
         dest_file_path_md5 = hashlib.md5(dest_file_path.encode("utf-8")).hexdigest()
         key_md5 = hashlib.md5(key.encode("utf-8")).hexdigest()
         return '{0}_{1}.{2}'.format(bucket, key_md5, dest_file_path_md5)
 
     def __determine_part_size_internal(self, file_size, part_size):
+        """
+        Determine the size of the part.
+
+        Args:
+            self: (todo): write your description
+            file_size: (int): write your description
+            part_size: (int): write your description
+        """
         real_part_size = part_size * 1024 * 1024  # MB
         if real_part_size < self.__min_part_size:
             real_part_size = self.__min_part_size
@@ -88,6 +125,12 @@ class ResumableDownLoader(object):
         return real_part_size
 
     def __splite_to_parts(self):
+        """
+        Splits the file size string.
+
+        Args:
+            self: (todo): write your description
+        """
         parts = []
         file_size = int(self.__object_info['Content-Length'])
         num_parts = int((file_size + self.__part_size - 1) / self.__part_size)
@@ -102,6 +145,12 @@ class ResumableDownLoader(object):
         return parts
 
     def __get_parts_need_to_download(self):
+        """
+        Returns a set of all of all parts of them.
+
+        Args:
+            self: (todo): write your description
+        """
         all_set = set(self.__splite_to_parts())
         logger.debug('all_set: {0}'.format(len(all_set)))
         finished_set = set(self.__finished_parts)
@@ -109,6 +158,14 @@ class ResumableDownLoader(object):
         return list(all_set - finished_set)
 
     def __download_part(self, part, headers):
+        """
+        Download part : class : ~.
+
+        Args:
+            self: (todo): write your description
+            part: (str): write your description
+            headers: (str): write your description
+        """
         with open(self.__tmp_file, 'rb+') as f:
             f.seek(part.start, 0)
             range = None
@@ -125,6 +182,13 @@ class ResumableDownLoader(object):
         self.__finish_part(part)
 
     def __finish_part(self, part):
+        """
+        Finishes part.
+
+        Args:
+            self: (todo): write your description
+            part: (int): write your description
+        """
         logger.debug('download part finished,bucket: {0}, key: {1}, part_id: {2}'.
                      format(self.__bucket, self.__key, part.part_id))
         with self.__lock:
@@ -133,11 +197,24 @@ class ResumableDownLoader(object):
             self.__dump_record(self.__record)
 
     def __dump_record(self, record):
+        """
+        Dump record to file.
+
+        Args:
+            self: (todo): write your description
+            record: (todo): write your description
+        """
         with open(self.__record_filepath, 'w') as f:
             json.dump(record, f)
             logger.debug('dump record to {0}, bucket: {1}, key: {2}'.format(self.__record_filepath, self.__bucket, self.__key))
 
     def __load_record(self):
+        """
+        Loads the record
+
+        Args:
+            self: (todo): write your description
+        """
         record = None
 
         if os.path.exists(self.__record_filepath):
@@ -169,15 +246,34 @@ class ResumableDownLoader(object):
             self.__dump_record(record)
 
     def __check_record(self, record):
+        """
+        Check if a record
+
+        Args:
+            self: (todo): write your description
+            record: (todo): write your description
+        """
         return record['etag'] == self.__object_info['ETag'] and\
                record['mtime'] == self.__object_info['Last-Modified'] and\
                record['file_size'] == self.__object_info['Content-Length']
 
     def __del_record(self):
+        """
+        Delete the record from the database.
+
+        Args:
+            self: (todo): write your description
+        """
         os.remove(self.__record_filepath)
         logger.debug('ResumableDownLoader delete record_file, path: {0}'.format(self.__record_filepath))
 
     def __check_crc(self):
+        """
+        Check if the file is correct
+
+        Args:
+            self: (todo): write your description
+        """
         logger.debug('start to check crc')
         c64 = crcmod.mkCrcFun(0x142F0E1EBA9EA3693, initCrc=0, xorOut=0xffffffffffffffff, rev=True)
         with open(self.__dest_file_path, 'rb') as f:
@@ -189,15 +285,43 @@ class ResumableDownLoader(object):
 
 class PartInfo(object):
     def __init__(self, part_id, start, length):
+        """
+        Initialize the part.
+
+        Args:
+            self: (todo): write your description
+            part_id: (str): write your description
+            start: (int): write your description
+            length: (int): write your description
+        """
         self.part_id = part_id
         self.start = start
         self.length = length
 
     def __eq__(self, other):
+        """
+        Return true if other is equal values.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         return self.__key() == other.__key()
 
     def __hash__(self):
+        """
+        Returns the hash of the field.
+
+        Args:
+            self: (todo): write your description
+        """
         return hash(self.__key())
 
     def __key(self):
+        """
+        Return the part of the node.
+
+        Args:
+            self: (todo): write your description
+        """
         return self.part_id, self.start, self.length

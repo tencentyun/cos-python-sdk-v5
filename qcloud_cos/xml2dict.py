@@ -5,6 +5,13 @@ import xml.etree.ElementTree
 class Xml2Dict(dict):
 
     def __init__(self, parent_node):
+        """
+        Recursively create an xml element.
+
+        Args:
+            self: (todo): write your description
+            parent_node: (dict): write your description
+        """
         if parent_node.items():
             self.updateDict(dict(parent_node.items()))
         for element in parent_node:
@@ -20,6 +27,13 @@ class Xml2Dict(dict):
                 self.updateDict({element.tag: element.text})
 
     def updateDict(self, aDict):
+        """
+        Recursively merkict
+
+        Args:
+            self: (todo): write your description
+            aDict: (dict): write your description
+        """
         for key in aDict:
             if key in self:
                 value = self.pop(key)

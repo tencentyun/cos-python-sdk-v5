@@ -10,6 +10,13 @@ logger = getLogger(__name__)
 
 class WorkerThread(Thread):
     def __init__(self, task_queue, *args, **kwargs):
+        """
+        Initialize tasks.
+
+        Args:
+            self: (todo): write your description
+            task_queue: (todo): write your description
+        """
         super(WorkerThread, self).__init__(*args, **kwargs)
 
         self._task_queue = task_queue
@@ -18,6 +25,12 @@ class WorkerThread(Thread):
         self._ret = list()
 
     def run(self):
+        """
+        Run the given arguments in the queue.
+
+        Args:
+            self: (todo): write your description
+        """
         while True:
             func, args, kwargs = self._task_queue.get()
             # 判断线程是否需要退出
@@ -36,12 +49,26 @@ class WorkerThread(Thread):
                 self._task_queue.task_done()
 
     def get_result(self):
+        """
+        Return the result of the task.
+
+        Args:
+            self: (todo): write your description
+        """
         return self._succ_task_num, self._fail_task_num, self._ret
 
 
 class SimpleThreadPool:
 
     def __init__(self, num_threads=5, num_queue=0):
+        """
+        Initialize threads.
+
+        Args:
+            self: (todo): write your description
+            num_threads: (int): write your description
+            num_queue: (int): write your description
+        """
         self._num_threads = num_threads
         self._queue = Queue(num_queue)
         self._lock = Lock()
@@ -50,6 +77,13 @@ class SimpleThreadPool:
         self._finished = False
 
     def add_task(self, func, *args, **kwargs):
+        """
+        Add a new task to the pool.
+
+        Args:
+            self: (todo): write your description
+            func: (todo): write your description
+        """
         if not self._active:
             with self._lock:
                 if not self._active:
@@ -64,6 +98,12 @@ class SimpleThreadPool:
         self._queue.put((func, args, kwargs))
 
     def wait_completion(self):
+        """
+        Wait for all threads to complete.
+
+        Args:
+            self: (todo): write your description
+        """
         self._queue.join()
         self._finished = True
         # 已经结束的任务, 需要将线程都退出, 防止卡死
@@ -73,6 +113,12 @@ class SimpleThreadPool:
         self._active = False
 
     def get_result(self):
+        """
+        Return a dictionary of all workers.
+
+        Args:
+            self: (todo): write your description
+        """
         assert self._finished
         detail = [worker.get_result() for worker in self._workers]
         succ_all = all([tp[1] == 0 for tp in detail])
@@ -84,11 +130,22 @@ if __name__ == '__main__':
     pool = SimpleThreadPool(2)
 
     def task_sleep(x):
+        """
+        Return the number of a task.
+
+        Args:
+            x: (todo): write your description
+        """
         from time import sleep
         sleep(x)
         return 'hello, sleep %d seconds' % x
 
     def raise_exception():
+        """
+        Raises an exception if the given exception occurs.
+
+        Args:
+        """
         raise ValueError("Pa! Exception!")
     for i in range(1000):
         pool.add_task(task_sleep, 0.001)

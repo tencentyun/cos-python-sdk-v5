@@ -26,6 +26,16 @@ def filter_headers(data):
 class CosS3Auth(AuthBase):
 
     def __init__(self, conf, key=None, params={}, expire=10000):
+        """
+        Initialize a new configuration.
+
+        Args:
+            self: (todo): write your description
+            conf: (todo): write your description
+            key: (str): write your description
+            params: (dict): write your description
+            expire: (float): write your description
+        """
         self._secret_id = conf._secret_id
         self._secret_key = conf._secret_key
         self._anonymous = conf._anonymous
@@ -41,6 +51,13 @@ class CosS3Auth(AuthBase):
             self._path = u'/'
 
     def __call__(self, r):
+        """
+        Makes a request.
+
+        Args:
+            self: (todo): write your description
+            r: (array): write your description
+        """
         path = self._path
         uri_params = self._params
         headers = filter_headers(r.headers)
