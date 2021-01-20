@@ -949,7 +949,7 @@ def test_put_get_delete_bucket_domain():
     }
 
     response = client.delete_bucket_domain(
-	Bucket=test_bucket
+	    Bucket=test_bucket
     ) 
 
     time.sleep(2)
