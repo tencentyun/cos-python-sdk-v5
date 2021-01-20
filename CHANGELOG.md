@@ -345,8 +345,6 @@ fix some bugs on 200 ok failures(CompleteMultipartUpload Copy Object) and suppor
 
 ## [v1.5.7](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.5.6...v1.5.7) - 2018-09-07
 
-Support ip and port to access cos, and you can use EnableMD5 to vertify your content.
-
 ### Merged
 
 - S3 [`#68`](https://github.com/tencentyun/cos-python-sdk-v5/pull/68)
