@@ -16,9 +16,16 @@ def filter_headers(data):
     :param data(dict): 所有的头部信息.
     :return(dict): 计算进签名的头部.
     """
+    valid_headers = ["cache-control",
+            "content-disposition",
+            "content-encoding",
+            "content-type",
+            "expires",
+            "content-md5",
+            "host"]
     headers = {}
     for i in data:
-        if i == 'Content-Type' or i == 'Host' or i[0] == 'x' or i[0] == 'X':
+        if str.lower(i) in valid_headers or str.lower(i[0]) == "x":
             headers[i] = data[i]
     return headers
 
