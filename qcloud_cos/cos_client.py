@@ -1047,6 +1047,7 @@ class CosS3Client(object):
             lst = []
             lst.append(data['AccessControlList']['Grant'])
             data['AccessControlList']['Grant'] = lst
+        data['CannedACL'] = parse_object_canned_acl(data, rt.headers)
         return data
 
     def restore_object(self, Bucket, Key, RestoreRequest={}, **kwargs):
@@ -1497,6 +1498,7 @@ class CosS3Client(object):
             lst = []
             lst.append(data['AccessControlList']['Grant'])
             data['AccessControlList']['Grant'] = lst
+        data['CannedACL'] = parse_bucket_canned_acl(data)
         return data
 
     def put_bucket_cors(self, Bucket, CORSConfiguration={}, **kwargs):
