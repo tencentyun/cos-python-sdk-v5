@@ -414,6 +414,29 @@ def get_date(yy, mm, dd):
     return final_date_str
 
 
+def parse_object_canned_acl(result_acl, rsp_headers):
+    """根据ACL返回的body信息,以及default头部来判断CannedACL"""
+    if "x-cos-acl" in rsp_headers and rsp_headers["x-cos-acl"] == "default":
+        return "default"
+    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'READ'}
+    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+        if public_read in result_acl['AccessControlList']['Grant']:
+            return "public-read"
+    return "private"
+
+
+def parse_bucket_canned_acl(result_acl):
+    """根据ACL返回的body信息来判断Bucket CannedACL"""
+    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'READ'}
+    public_write = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'WRITE'}
+    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+        if public_read in result_acl['AccessControlList']['Grant']:
+            if public_write in result_acl['AccessControlList']['Grant']:
+                return "public-read-write"
+            return "public-read"
+    return "private"
+
+
 class CiDetectType():
     """ci内容设备的类型设置,可与操作设多个"""
     PORN = 1
