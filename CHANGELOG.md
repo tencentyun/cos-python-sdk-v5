@@ -327,8 +327,6 @@ support file-like-object and chunked upload
 
 ## [v1.5.8](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.5.7...v1.5.8) - 2018-09-28
 
-fix some bugs on 200 ok failures(CompleteMultipartUpload Copy Object) and support chunked download.
-
 ### Merged
 
 - S3 [`#70`](https://github.com/tencentyun/cos-python-sdk-v5/pull/70)
