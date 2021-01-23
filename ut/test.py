@@ -1165,6 +1165,120 @@ def _test_get_object_sensitive_content_recognition():
     assert response
 
 
+def test_live_channel():
+    print ("create live channel...")
+    livechannel_config = {
+        'Description': 'cos python sdk test',
+        'Switch': 'Enabled',
+        'Target': {
+            'Type': 'HLS',
+            'FragDuration': '3',
+            'FragCount': '5',
+        }
+    }
+    channel_name = 'cos-python-sdk-uttest-ch1'
+    try:
+        response = client.put_live_channel(
+            Bucket = test_bucket,
+            ChannelName = channel_name,
+            LiveChannelConfiguration = livechannel_config)
+        assert(response)
+        print(response)
+    except Exception as e:
+        if e.get_error_code() != 'ChannelStillLive':
+            return
+
+    print ("get live channel info...")
+    response = client.get_live_channel_info(
+        Bucket = test_bucket,
+        ChannelName = channel_name)
+    print(response)
+    assert(response['Switch'] == 'Enabled')
+    assert(response['Description'] == 'cos python sdk test')
+    assert(response['Target']['Type'] == 'HLS')
+    assert(response['Target']['FragDuration'] == '3')
+    assert(response['Target']['FragCount'] == '5')
+    assert(response['Target']['PlaylistName'] == 'playlist.m3u8')
+
+    print ("put live channel switch...")
+    client.put_live_channel_switch(
+        Bucket = test_bucket,
+        ChannelName = channel_name,
+        Switch = 'disabled')
+    response = client.get_live_channel_info(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    assert(response['Switch'] == 'Disabled')
+    client.put_live_channel_switch(
+        Bucket=test_bucket,
+        ChannelName=channel_name,
+        Switch='enabled')
+    response = client.get_live_channel_info(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    assert (response['Switch'] == 'Enabled')
+
+    print ("get live channel history...")
+    response = client.get_live_channel_history(
+        Bucket = test_bucket,
+        ChannelName = channel_name)
+    print(response)
+
+    print ("get live channel status...")
+    response = client.get_live_channel_status(
+        Bucket = test_bucket,
+        ChannelName = channel_name)
+    print(response)
+    assert (response['Status'] == 'Idle' or response['Status'] == 'Live')
+
+    print ("list channel...")
+    #for i in range(1, 20):
+    #    channel_name = 'test-list-channel-' + str(i)
+    #    client.put_live_channel(
+    #        Bucket=test_bucket,
+    #        ChannelName=channel_name,
+    #        LiveChannelConfiguration=livechannel_config)
+    #response = client.list_live_channel(Bucket = test_bucket, MaxKeys = 10)
+    #print(response)
+    #for i in range(1, 100):
+    #    channel_name = 'test-list-channel-' + str(i)
+    #    client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
+
+    print ("post vod playlist")
+    try:
+        client.post_vod_playlist(
+            Bucket = test_bucket,
+            ChannelName = channel_name,
+            PlaylistName = 'test',
+            StartTime = int(time.time()) - 10000,
+            EndTime = int(time.time()))
+    except Exception as e:
+        print e
+    try:
+        client.post_vod_playlist(
+            Bucket = test_bucket,
+            ChannelName = channel_name,
+            PlaylistName = 'test.m3u8',
+            StartTime = 10,
+            EndTime = 9)
+    except Exception as e:
+        print e
+
+    client.post_vod_playlist(
+            Bucket = test_bucket,
+            ChannelName = channel_name,
+            PlaylistName = 'test.m3u8',
+            StartTime = int(time.time()) - 10000,
+            EndTime = int(time.time()))
+    response = client.head_object(
+        Bucket = test_bucket,
+        Key = channel_name + '/test.m3u8')
+    assert(response)
+
+    print ("delete live channel...")
+    response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
+    assert(response)
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1190,6 +1304,7 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_domain()
     test_select_object()
     _test_get_object_sensitive_content_recognition()
+    test_live_channel()
     """
 
     tearDown()
