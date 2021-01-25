@@ -437,6 +437,22 @@ def parse_bucket_canned_acl(result_acl):
     return "private"
 
 
+def client_can_retry(file_position, **kwargs):
+    """如果客户端请求中不包含data则可以重试,以及判断包含data的请求是否可以重试"""
+    if 'data' not in kwargs:
+        return True
+    body = kwargs['data']
+    if isinstance(body, text_type) or isinstance(body, binary_type):
+        return True
+    if file_position is not None and hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+        try:
+            kwargs['data'].seek(file_position)
+            return True
+        except Exception as ioe:
+            return False
+    return False
+
+
 class CiDetectType():
     """ci内容设备的类型设置,可与操作设多个"""
     PORN = 1

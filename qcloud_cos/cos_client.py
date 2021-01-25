@@ -11,7 +11,7 @@ import copy
 import json
 import xml.dom.minidom
 import xml.etree.ElementTree
-from requests import Request, Session
+from requests import Request, Session, ConnectionError, Timeout
 from datetime import datetime
 from six.moves.urllib.parse import quote, unquote, urlencode
 from six import text_type, binary_type
@@ -265,23 +265,16 @@ class CosS3Client(object):
                     return res
                 elif res.status_code < 500:  # 4xx 不重试
                     break
+                else:
+                    if j < self._retry and client_can_retry(file_position, **kwargs):
+                        continue
+                    else:
+                        break
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
-                can_retry = False
-                if 'data' in kwargs:
-                    body = kwargs['data']
-                    if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
-                        can_retry = True
-                    elif isinstance(body, text_type) or isinstance(body, binary_type):
-                        can_retry = True
-
-                if j < self._retry and can_retry:
-                    if file_position is not None:
-                        try:
-                            kwargs['data'].seek(file_position)
-                        except IOError as ioe:
-                            raise CosClientError(str(ioe))
-                    continue
+                if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
+                    if client_can_retry(file_position, **kwargs):
+                        continue
                 raise CosClientError(str(e))
 
         if not cos_request:
