@@ -309,8 +309,6 @@ Fix bugs of thread pool
 
 ## [v1.6.1](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.5.8...v1.6.1) - 2018-11-05
 
-support file-like-object and chunked upload
-
 ### Merged
 
 - pep8 adapted [`#76`](https://github.com/tencentyun/cos-python-sdk-v5/pull/76)
