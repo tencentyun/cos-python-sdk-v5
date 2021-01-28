@@ -3737,7 +3737,7 @@ class CosS3Client(object):
             params=params)
         return None
 
-    '''def list_live_channel(self, Bucket, MaxKeys = 100, Prefix = '', Marker = '', **kwargs):
+    def list_live_channel(self, Bucket, MaxKeys = 100, Prefix = '', Marker = '', **kwargs):
         """获取直播通道列表
 
         :param Bucket(string): 存储桶名称.
@@ -3784,7 +3784,6 @@ class CosS3Client(object):
                 ['LiveChannel', 'Name'],
             ])
         return data
-'''
 
 if __name__ == "__main__":
     pass

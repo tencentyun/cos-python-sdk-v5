@@ -17,7 +17,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ["REGION"]
 APPID = '1251668577'
-test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + APPID
+test_bucket = 'jackytestgz1-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
@@ -1177,6 +1177,7 @@ def test_live_channel():
         }
     }
     channel_name = 'cos-python-sdk-uttest-ch1'
+
     try:
         response = client.put_live_channel(
             Bucket = test_bucket,
@@ -1232,17 +1233,25 @@ def test_live_channel():
     assert (response['Status'] == 'Idle' or response['Status'] == 'Live')
 
     print ("list channel...")
-    #for i in range(1, 20):
-    #    channel_name = 'test-list-channel-' + str(i)
-    #    client.put_live_channel(
-    #        Bucket=test_bucket,
-    #        ChannelName=channel_name,
-    #        LiveChannelConfiguration=livechannel_config)
-    #response = client.list_live_channel(Bucket = test_bucket, MaxKeys = 10)
-    #print(response)
-    #for i in range(1, 100):
-    #    channel_name = 'test-list-channel-' + str(i)
-    #    client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
+    create_chan_num = 20
+    for i in range(1, create_chan_num):
+        ch_name = 'test-list-channel-' + str(i)
+        client.put_live_channel(
+            Bucket=test_bucket,
+            ChannelName=ch_name,
+            LiveChannelConfiguration=livechannel_config)
+    response = client.list_live_channel(Bucket = test_bucket, MaxKeys = 10)
+    print(response)
+    assert (response['MaxKeys'] == '10')
+    assert (response['IsTruncated'] == 'true')
+    response = client.list_live_channel(Bucket=test_bucket, MaxKeys=5, Marker = response['NextMarker'])
+    print(response)
+    assert (response['MaxKeys'] == '5')
+    assert (response['IsTruncated'] == 'true')
+
+    for i in range(1, create_chan_num):
+        ch_name = 'test-list-channel-' + str(i)
+        client.delete_live_channel(Bucket=test_bucket, ChannelName=ch_name)
 
     print ("post vod playlist")
     try:
@@ -1304,7 +1313,7 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_domain()
     test_select_object()
     _test_get_object_sensitive_content_recognition()
-    test_live_channel()
     """
+    test_live_channel()
 
     tearDown()
