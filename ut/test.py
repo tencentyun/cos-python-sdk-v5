@@ -1313,7 +1313,7 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_domain()
     test_select_object()
     _test_get_object_sensitive_content_recognition()
-    """
     test_live_channel()
+    """
 
     tearDown()
