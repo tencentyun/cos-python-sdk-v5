@@ -3526,6 +3526,21 @@ class CosS3Client(object):
                 data['PublishUrls']['Url'] = url
         return data
 
+    def get_rtmp_signed_url(self, Bucket, ChannelName, Expire=3600, Params={}):
+        """获取直播通道带签名的推流url
+        :param Bucket(string): 存储桶名称.
+        :param ChannelName(string): 直播通道名称.
+        :return: dict.
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            resp = client.get_rtmp_signed_url(Bucket='bucket', ChannelName='ch1')
+        """
+        rtmp_signed_url = 'rtmp://{bucket}.cos.{region}.myqcloud.com/live/{channel}'.format(bucket=Bucket, region=self._conf._region, channel=ChannelName)
+        rtmpAuth = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, params = Params, expire=Expire)
+        return rtmp_signed_url + '?' +  rtmpAuth.get_rtmp_sign()
+
     def get_live_channel_info(self, Bucket, ChannelName, **kwargs):
         """获取直播通道配置信息
 

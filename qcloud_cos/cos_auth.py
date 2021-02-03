@@ -87,15 +87,21 @@ class CosRtmpAuth(AuthBase):
     def __init__(self, conf, bucket=None, channel=None, params={}, expire=10000):
         self._secret_id = conf._secret_id
         self._secret_key = conf._secret_key
+        self._token = conf._token
         self._anonymous = conf._anonymous
         self._expire = expire
         self._params = params
+        if self._token:
+            self._params['q-token'] = self._token
         self._path = u'/' + bucket + u'/' + channel
 
     def get_rtmp_sign(self):
-        # make params empty for now
         # get rtmp string
-        rtmp_str = u"{path}\n{params}\n".format(path=self._path, params='')
+        canonicalized_param = ''
+        for k, v in self._params.iteritems():
+            canonicalized_param += '{key}={value}&'.format(key=k, value=v)
+        canonicalized_param = canonicalized_param.rstrip('&')
+        rtmp_str = u"{path}\n{params}\n".format(path=self._path, params=canonicalized_param)
         logger.debug("rtmp str: " + rtmp_str)
 
         sha1 = hashlib.sha1()
@@ -108,8 +114,12 @@ class CosRtmpAuth(AuthBase):
         # get sinature
         signature = hmac.new(to_bytes(self._secret_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
         logger.debug('signature: ' + str(signature))
-        sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-signature={sign}"
-        return sign_tpl.format(ak=self._secret_id, sign_time=sign_time_str, key_time=sign_time_str, sign=signature)
+        rtmp_sign = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-signature={sign}".format(
+                ak=self._secret_id, sign_time=sign_time_str, key_time=sign_time_str, sign=signature)
+        if canonicalized_param != '':
+            return rtmp_sign + "&{params}".format(params=canonicalized_param)
+        else:
+            return rtmp_sign
 
 if __name__ == "__main__":
     pass
