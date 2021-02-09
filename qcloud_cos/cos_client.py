@@ -3107,7 +3107,7 @@ class CosS3Client(object):
         params = {}
         if versionid != '':
             params['versionId'] = versionid
-        url = self._conf.uri(bucket=bucket, path=path, endpoint=endpoint)
+        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket, endpoint=endpoint, path=quote(to_bytes(path), '/-_.~'))
         rt = self.send_request(
             method='HEAD',
             url=url,
