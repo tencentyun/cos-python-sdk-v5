@@ -290,9 +290,6 @@ Fix bugs of thread pool
 
 ## [v1.6.2](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.6.1...v1.6.2) - 2018-11-20
 
-1. Add logging NullHandler
-2. Return Dict instead of CaseInsensitiveDict 
-
 ### Merged
 
 - S3 [`#77`](https://github.com/tencentyun/cos-python-sdk-v5/pull/77)
