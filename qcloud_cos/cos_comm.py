@@ -414,6 +414,45 @@ def get_date(yy, mm, dd):
     return final_date_str
 
 
+def parse_object_canned_acl(result_acl, rsp_headers):
+    """根据ACL返回的body信息,以及default头部来判断CannedACL"""
+    if "x-cos-acl" in rsp_headers and rsp_headers["x-cos-acl"] == "default":
+        return "default"
+    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'READ'}
+    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+        if public_read in result_acl['AccessControlList']['Grant']:
+            return "public-read"
+    return "private"
+
+
+def parse_bucket_canned_acl(result_acl):
+    """根据ACL返回的body信息来判断Bucket CannedACL"""
+    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'READ'}
+    public_write = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'WRITE'}
+    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+        if public_read in result_acl['AccessControlList']['Grant']:
+            if public_write in result_acl['AccessControlList']['Grant']:
+                return "public-read-write"
+            return "public-read"
+    return "private"
+
+
+def client_can_retry(file_position, **kwargs):
+    """如果客户端请求中不包含data则可以重试,以及判断包含data的请求是否可以重试"""
+    if 'data' not in kwargs:
+        return True
+    body = kwargs['data']
+    if isinstance(body, text_type) or isinstance(body, binary_type):
+        return True
+    if file_position is not None and hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+        try:
+            kwargs['data'].seek(file_position)
+            return True
+        except Exception as ioe:
+            return False
+    return False
+
+
 class CiDetectType():
     """ci内容设备的类型设置,可与操作设多个"""
     PORN = 1

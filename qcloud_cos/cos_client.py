@@ -11,9 +11,10 @@ import copy
 import json
 import xml.dom.minidom
 import xml.etree.ElementTree
-from requests import Request, Session
+from requests import Request, Session, ConnectionError, Timeout
 from datetime import datetime
 from six.moves.urllib.parse import quote, unquote, urlencode
+from six import text_type, binary_type
 from hashlib import md5
 from dicttoxml import dicttoxml
 from .streambody import StreamBody
@@ -26,6 +27,7 @@ from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
 from .version import __version__
 from .select_event_stream import EventStream
+from .resumable_downloader import ResumableDownLoader
 logger = logging.getLogger(__name__)
 
 
@@ -186,7 +188,7 @@ class CosS3Client(object):
         else:
             self._session = session
 
-    def get_conf():
+    def get_conf(self):
         """获取配置"""
         return self._conf
 
@@ -237,7 +239,12 @@ class CosS3Client(object):
             elif bucket is not None:
                 kwargs['headers']['Host'] = self._conf.get_host(bucket)
         kwargs['headers'] = format_values(kwargs['headers'])
+
+        file_position = None
         if 'data' in kwargs:
+            body = kwargs['data']
+            if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
+                file_position = body.tell()  # 记录文件当前位置
             kwargs['data'] = to_bytes(kwargs['data'])
         if self._conf._ip is not None and self._conf._scheme == 'https':
             kwargs['verify'] = False
@@ -259,10 +266,16 @@ class CosS3Client(object):
                     return res
                 elif res.status_code < 500:  # 4xx 不重试
                     break
+                else:
+                    if j < self._retry and client_can_retry(file_position, **kwargs):
+                        continue
+                    else:
+                        break
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
-                if j < self._retry:
-                    continue
+                if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
+                    if client_can_retry(file_position, **kwargs):
+                        continue
                 raise CosClientError(str(e))
 
         if not cos_request:
@@ -277,7 +290,7 @@ class CosS3Client(object):
                     info['requestid'] = res.headers['x-cos-request-id']
                 if 'x-cos-trace-id' in res.headers:
                     info['traceid'] = res.headers['x-cos-trace-id']
-                logger.error(info)
+                logger.warn(info)
                 raise CosServiceError(method, info, res.status_code)
             else:
                 msg = res.text
@@ -1028,6 +1041,7 @@ class CosS3Client(object):
             lst = []
             lst.append(data['AccessControlList']['Grant'])
             data['AccessControlList']['Grant'] = lst
+        data['CannedACL'] = parse_object_canned_acl(data, rt.headers)
         return data
 
     def restore_object(self, Bucket, Key, RestoreRequest={}, **kwargs):
@@ -1478,6 +1492,7 @@ class CosS3Client(object):
             lst = []
             lst.append(data['AccessControlList']['Grant'])
             data['AccessControlList']['Grant'] = lst
+        data['CannedACL'] = parse_bucket_canned_acl(data)
         return data
 
     def put_bucket_cors(self, Bucket, CORSConfiguration={}, **kwargs):
@@ -2798,6 +2813,38 @@ class CosS3Client(object):
             format_dict(data['DomainList'], ['Domain'])
         return data
 
+    def delete_bucket_referer(self, Bucket, **kwargs):
+        """删除bucket防盗链规则
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket标签
+            response = client.delete_bucket_referer(
+                Bucket='bucket'
+            )
+        """
+        xml_config = ''
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'referer': ''}
+        url = self._conf.uri(bucket=Bucket)
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     # service interface begin
     def list_buckets(self, **kwargs):
         """列出所有bucket
@@ -2809,9 +2856,7 @@ class CosS3Client(object):
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取账户下所有存储桶信息
-            response = logging_client.list_buckets(
-                Bucket='bucket'
-            )
+            response = client.list_buckets()
         """
         headers = mapped(kwargs)
         url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
@@ -2945,6 +2990,30 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, **Kwargs):
+        """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
+
+        :param Bucket(string): 存储桶名称.
+        :param key(string): COS文件的路径名.
+        :param DestFilePath(string): 下载文件的目的路径.
+        :param PartSize(int): 分块下载的大小设置,单位为MB.
+        :param MAXThread(int): 并发下载的最大线程数.
+        :param EnableCRC(bool): 校验下载文件与源文件是否一致
+        :param kwargs(dict): 设置请求headers.
+        """
+        logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB,\
+                     max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAXThread))
+
+        object_info = self.head_object(Bucket, Key)
+        file_size = int(object_info['Content-Length'])
+        if file_size <= 1024*1024*20:
+            response = self.get_object(Bucket, Key, **Kwargs)
+            response['Body'].get_stream_to_file(DestFilePath)
+            return
+
+        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC, **Kwargs)
+        downloader.start()
+
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, **kwargs):
         """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
 
@@ -3039,7 +3108,7 @@ class CosS3Client(object):
         params = {}
         if versionid != '':
             params['versionId'] = versionid
-        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket, endpoint=endpoint, path=path)
+        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket, endpoint=endpoint, path=quote(to_bytes(path), '/-_.~'))
         rt = self.send_request(
             method='HEAD',
             url=url,
@@ -3402,6 +3471,85 @@ class CosS3Client(object):
             **kwargs
         )
         return response
+
+    def put_bucket_encryption(self, Bucket, ServerSideEncryptionConfiguration={}, **kwargs):
+        """设置执行存储桶下的默认加密配置
+
+        :param Bucket(string): 存储桶名称.
+        :param ServerSideEncryptionConfiguration(dict): 设置Bucket的加密规则
+        :param kwargs(dict): 设置请求的headers.
+        :return: None.
+        """
+        # 类型为list的标签
+        lst = [
+            '<Rule>',
+            '</Rule>'
+        ]
+        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration', lst=lst)
+        headers = mapped(kwargs)
+        params = {'encryption': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket encryption, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            data=xml_config,
+            headers=headers,
+            params=params)
+
+        return None
+
+    def get_bucket_encryption(self, Bucket, **kwargs):
+        """获取存储桶下的默认加密配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 返回bucket的加密规则.
+        """
+        headers = mapped(kwargs)
+        params = {'encryption': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket encryption, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['Rule'])
+        return data
+
+    def delete_bucket_encryption(self, Bucket, **kwargs):
+        """用于删除指定存储桶下的默认加密配置
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求的headers.
+        :return: None.
+        """
+        headers = mapped(kwargs)
+        params = {'encryption': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("delete bucket encryption, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        return None
 
     def put_async_fetch_task(self, Bucket, FetchTaskConfiguration={}, **kwargs):
         """发起异步拉取对象到COS的任务

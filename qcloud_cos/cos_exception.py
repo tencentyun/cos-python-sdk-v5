@@ -90,10 +90,10 @@ class CosServiceError(CosException):
 
     def get_trace_id(self):
         if isinstance(self._digest_msg, dict):
-            return self._digest_msg['requestid']
+            return self._digest_msg['traceid']
         return "Unknown"
 
     def get_request_id(self):
         if isinstance(self._digest_msg, dict):
-            return self._digest_msg['traceid']
+            return self._digest_msg['requestid']
         return "Unknown"
