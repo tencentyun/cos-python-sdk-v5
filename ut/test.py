@@ -862,8 +862,8 @@ def test_bucket_exists():
     assert status is True
 
 
-def test_put_get_bucket_policy():
-    """设置获取bucket的policy配置"""
+def test_put_get_delete_bucket_policy():
+    """设置获取删除bucket的policy配置"""
     resource = "qcs::cos:" + REGION + ":uid/" + APPID + ":" + test_bucket + "/*"
     resource_list = [resource]
     policy = {
@@ -889,6 +889,9 @@ def test_put_get_bucket_policy():
         Policy=policy
     )
     response = client.get_bucket_policy(
+        Bucket=test_bucket,
+    )
+    response = client.delete_bucket_policy(
         Bucket=test_bucket,
     )
 
