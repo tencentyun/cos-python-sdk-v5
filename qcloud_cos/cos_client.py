@@ -2263,6 +2263,37 @@ class CosS3Client(object):
         data = {'Policy': json.dumps(rt.json())}
         return data
 
+    def delete_bucket_policy(self, Bucket, **kwargs):
+        """删除bucket policy
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket policy服务配置
+            response = client.delete_bucket_policy(
+                Bucket=bucket
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'policy': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("delete bucket policy, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     def put_bucket_domain(self, Bucket, DomainConfiguration={}, **kwargs):
         """设置bucket的自定义域名
 
