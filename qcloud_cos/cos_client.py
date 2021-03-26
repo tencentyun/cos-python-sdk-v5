@@ -3991,5 +3991,6 @@ class CosS3Client(object):
             ])
         return data
 
+
 if __name__ == "__main__":
     pass

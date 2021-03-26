@@ -132,5 +132,6 @@ class CosRtmpAuth(AuthBase):
         else:
             return rtmp_sign
 
+
 if __name__ == "__main__":
     pass
