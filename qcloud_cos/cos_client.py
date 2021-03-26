@@ -3668,6 +3668,7 @@ class CosS3Client(object):
         :return(dict): publish url and playurl.
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 设置直播通道配置
@@ -3699,10 +3700,10 @@ class CosS3Client(object):
             params=params)
         data = xml_to_dict(rt.content)
         if data['PublishUrls']['Url'] is not None:
-                rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire)
-                url = data['PublishUrls']['Url']
-                url += '?' + rtmpSign.get_rtmp_sign()
-                data['PublishUrls']['Url'] = url
+            rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire)
+            url = data['PublishUrls']['Url']
+            url += '?' + rtmpSign.get_rtmp_sign()
+            data['PublishUrls']['Url'] = url
         return data
 
     def get_rtmp_signed_url(self, Bucket, ChannelName, Expire=3600, Params={}):
@@ -3712,13 +3713,16 @@ class CosS3Client(object):
         :return: dict.
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             resp = client.get_rtmp_signed_url(Bucket='bucket', ChannelName='ch1')
         """
-        rtmp_signed_url = 'rtmp://{bucket}.cos.{region}.myqcloud.com/live/{channel}'.format(bucket=Bucket, region=self._conf._region, channel=ChannelName)
-        rtmpAuth = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, params = Params, expire=Expire)
-        return rtmp_signed_url + '?' +  rtmpAuth.get_rtmp_sign()
+        rtmp_signed_url = 'rtmp://{bucket}.cos.{region}.myqcloud.com/live/{channel}'.format(bucket=Bucket,
+                                                                                            region=self._conf._region,
+                                                                                            channel=ChannelName)
+        rtmpAuth = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, params=Params, expire=Expire)
+        return rtmp_signed_url + '?' + rtmpAuth.get_rtmp_sign()
 
     def get_live_channel_info(self, Bucket, ChannelName, **kwargs):
         """获取直播通道配置信息
@@ -3729,6 +3733,7 @@ class CosS3Client(object):
         :return: dict.
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             resp = client.get_live_channel_info(Bucket='bucket', ChannelName='ch1')
@@ -3757,6 +3762,7 @@ class CosS3Client(object):
         :return(None).
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             client.put_live_channel_switch(Bucket='bucket', ChannelName='ch1', Switch='enabled')
@@ -3788,11 +3794,12 @@ class CosS3Client(object):
         :return(dict).
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             resp = client.get_live_channel_history(Bucket='bucket', ChannelName='ch1')
         """
-        params = {'live': '', 'comp' : 'history'}
+        params = {'live': '', 'comp': 'history'}
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=ChannelName)
         logger.info("get live channel history, url=:{url} ,headers=:{headers}".format(url=url, headers=headers))
@@ -3816,11 +3823,12 @@ class CosS3Client(object):
         :return(dict).
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             resp = client.get_live_channel_status(Bucket='bucket', ChannelName='ch1')
         """
-        params = {'live': '', 'comp' : 'status'}
+        params = {'live': '', 'comp': 'status'}
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=ChannelName)
         logger.info("get live channel status, url=:{url} ,headers=:{headers}".format(url=url, headers=headers))
@@ -3843,6 +3851,7 @@ class CosS3Client(object):
         :return(dict).
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             client.delete_live_channel(Bucket='bucket', ChannelName='ch1')
@@ -3861,7 +3870,7 @@ class CosS3Client(object):
         data = dict(**rt.headers)
         return data
 
-    def get_vod_playlist(self, Bucket, ChannelName, StartTime = 0, EndTime = 0, **kwargs):
+    def get_vod_playlist(self, Bucket, ChannelName, StartTime=0, EndTime=0, **kwargs):
         """查询指定时间段播放列表文件
 
         :param Bucket(string): 存储桶名称.
@@ -3872,6 +3881,7 @@ class CosS3Client(object):
         :return(string).
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             resp = client.get_vod_playlist(Bucket='bucket', ChannelName='ch1', StartTime=1611218201, EndTime=1611218300)
@@ -3881,7 +3891,7 @@ class CosS3Client(object):
         if StartTime >= EndTime:
             raise CosClientError('StartTime must be less than EndTime')
 
-        params = {'vod': '', 'starttime' : StartTime, 'endtime' : EndTime}
+        params = {'vod': '', 'starttime': StartTime, 'endtime': EndTime}
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket, path=ChannelName)
         logger.info("get vod playlist, url=:{url} ,headers=:{headers}".format(url=url, headers=headers))
@@ -3894,7 +3904,7 @@ class CosS3Client(object):
             params=params)
         return rt.content
 
-    def post_vod_playlist(self, Bucket, ChannelName, PlaylistName, StartTime = 0, EndTime = 0, **kwargs):
+    def post_vod_playlist(self, Bucket, ChannelName, PlaylistName, StartTime=0, EndTime=0, **kwargs):
         """生成点播播放列表文件
 
         :param Bucket(string): 存储桶名称.
@@ -3906,6 +3916,7 @@ class CosS3Client(object):
         :return(None).
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             resp = client.post_vod_playlist(Bucket='bucket', ChannelName='ch1', PlaylistName='test.m3u8', StartTime=1611218201, EndTime=1611218300)
@@ -3917,7 +3928,7 @@ class CosS3Client(object):
         if not PlaylistName.endswith('.m3u8'):
             raise CosClientError('PlaylistName must be end with .m3u8')
 
-        params = {'vod': '', 'starttime' : StartTime, 'endtime' : EndTime}
+        params = {'vod': '', 'starttime': StartTime, 'endtime': EndTime}
         headers = mapped(kwargs)
         file_path = ChannelName + '/' + PlaylistName
         url = self._conf.uri(bucket=Bucket, path=file_path)
@@ -3931,7 +3942,7 @@ class CosS3Client(object):
             params=params)
         return None
 
-    def list_live_channel(self, Bucket, MaxKeys = 100, Prefix = '', Marker = '', **kwargs):
+    def list_live_channel(self, Bucket, MaxKeys=100, Prefix='', Marker='', **kwargs):
         """获取直播通道列表
 
         :param Bucket(string): 存储桶名称.
@@ -3942,11 +3953,12 @@ class CosS3Client(object):
         :return: string.
 
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             resp = client.list_channel(Bucket='bucket', MaxKeys=100)
         """
-        params = {'live' : ''}
+        params = {'live': ''}
         if MaxKeys >= 1:
             params['max-keys'] = MaxKeys
         if Prefix != '':

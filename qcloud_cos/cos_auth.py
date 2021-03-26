@@ -92,7 +92,9 @@ class CosS3Auth(AuthBase):
         logger.debug("request headers: " + str(r.headers))
         return r
 
+
 class CosRtmpAuth(AuthBase):
+
     def __init__(self, conf, bucket=None, channel=None, params={}, expire=10000):
         self._secret_id = conf._secret_id
         self._secret_key = conf._secret_key
@@ -117,8 +119,8 @@ class CosRtmpAuth(AuthBase):
         sha1.update(to_bytes(rtmp_str))
         # get time
         sign_time = int(time.time())
-        sign_time_str = "{start_time};{end_time}".format(start_time = sign_time - 60, end_time = sign_time + self._expire)
-        str_to_sign = "sha1\n{time}\n{sha1}\n".format(time = sign_time_str, sha1 = sha1.hexdigest())
+        sign_time_str = "{start_time};{end_time}".format(start_time=sign_time-60, end_time=sign_time+self._expire)
+        str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time_str, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
         # get sinature
         signature = hmac.new(to_bytes(self._secret_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
