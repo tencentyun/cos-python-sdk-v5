@@ -1358,7 +1358,7 @@ def test_rsa_client():
 
 
 def test_live_channel():
-    print ("create live channel...")
+    """测试rtmp推流功能"""
     livechannel_config = {
         'Description': 'cos python sdk test',
         'Switch': 'Enabled',
@@ -1372,36 +1372,35 @@ def test_live_channel():
 
     try:
         response = client.put_live_channel(
-            Bucket = test_bucket,
-            ChannelName = channel_name,
-            LiveChannelConfiguration = livechannel_config)
-        assert(response)
-        print(response)
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            LiveChannelConfiguration=livechannel_config)
+        assert (response)
     except Exception as e:
         if e.get_error_code() != 'ChannelStillLive':
             return
 
-    print ("get live channel info...")
-    response = client.get_live_channel_info(
-        Bucket = test_bucket,
-        ChannelName = channel_name)
-    print(response)
-    assert(response['Switch'] == 'Enabled')
-    assert(response['Description'] == 'cos python sdk test')
-    assert(response['Target']['Type'] == 'HLS')
-    assert(response['Target']['FragDuration'] == '3')
-    assert(response['Target']['FragCount'] == '5')
-    assert(response['Target']['PlaylistName'] == 'playlist.m3u8')
-
-    print ("put live channel switch...")
-    client.put_live_channel_switch(
-        Bucket = test_bucket,
-        ChannelName = channel_name,
-        Switch = 'disabled')
+    print("get live channel info...")
     response = client.get_live_channel_info(
         Bucket=test_bucket,
         ChannelName=channel_name)
-    assert(response['Switch'] == 'Disabled')
+    print(response)
+    assert (response['Switch'] == 'Enabled')
+    assert (response['Description'] == 'cos python sdk test')
+    assert (response['Target']['Type'] == 'HLS')
+    assert (response['Target']['FragDuration'] == '3')
+    assert (response['Target']['FragCount'] == '5')
+    assert (response['Target']['PlaylistName'] == 'playlist.m3u8')
+
+    print("put live channel switch...")
+    client.put_live_channel_switch(
+        Bucket=test_bucket,
+        ChannelName=channel_name,
+        Switch='disabled')
+    response = client.get_live_channel_info(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    assert (response['Switch'] == 'Disabled')
     client.put_live_channel_switch(
         Bucket=test_bucket,
         ChannelName=channel_name,
@@ -1411,20 +1410,20 @@ def test_live_channel():
         ChannelName=channel_name)
     assert (response['Switch'] == 'Enabled')
 
-    print ("get live channel history...")
+    print("get live channel history...")
     response = client.get_live_channel_history(
-        Bucket = test_bucket,
-        ChannelName = channel_name)
+        Bucket=test_bucket,
+        ChannelName=channel_name)
     print(response)
 
-    print ("get live channel status...")
+    print("get live channel status...")
     response = client.get_live_channel_status(
-        Bucket = test_bucket,
-        ChannelName = channel_name)
+        Bucket=test_bucket,
+        ChannelName=channel_name)
     print(response)
     assert (response['Status'] == 'Idle' or response['Status'] == 'Live')
 
-    print ("list channel...")
+    print("list channel...")
     create_chan_num = 20
     for i in range(1, create_chan_num):
         ch_name = 'test-list-channel-' + str(i)
@@ -1432,11 +1431,11 @@ def test_live_channel():
             Bucket=test_bucket,
             ChannelName=ch_name,
             LiveChannelConfiguration=livechannel_config)
-    response = client.list_live_channel(Bucket = test_bucket, MaxKeys = 10)
+    response = client.list_live_channel(Bucket=test_bucket, MaxKeys=10)
     print(response)
     assert (response['MaxKeys'] == '10')
     assert (response['IsTruncated'] == 'true')
-    response = client.list_live_channel(Bucket=test_bucket, MaxKeys=5, Marker = response['NextMarker'])
+    response = client.list_live_channel(Bucket=test_bucket, MaxKeys=5, Marker=response['NextMarker'])
     print(response)
     assert (response['MaxKeys'] == '5')
     assert (response['IsTruncated'] == 'true')
@@ -1445,40 +1444,43 @@ def test_live_channel():
         ch_name = 'test-list-channel-' + str(i)
         client.delete_live_channel(Bucket=test_bucket, ChannelName=ch_name)
 
-    print ("post vod playlist")
+    print("post vod playlist")
+    '''playlist不以.m3u8结尾'''
     try:
         client.post_vod_playlist(
-            Bucket = test_bucket,
-            ChannelName = channel_name,
-            PlaylistName = 'test',
-            StartTime = int(time.time()) - 10000,
-            EndTime = int(time.time()))
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test',
+            StartTime=int(time.time()) - 10000,
+            EndTime=int(time.time()))
     except Exception as e:
-        print e
+        pass
+
+    '''starttime大于endtimne'''
     try:
         client.post_vod_playlist(
-            Bucket = test_bucket,
-            ChannelName = channel_name,
-            PlaylistName = 'test.m3u8',
-            StartTime = 10,
-            EndTime = 9)
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test.m3u8',
+            StartTime=10,
+            EndTime=9)
     except Exception as e:
-        print e
+        pass
 
     client.post_vod_playlist(
-            Bucket = test_bucket,
-            ChannelName = channel_name,
-            PlaylistName = 'test.m3u8',
-            StartTime = int(time.time()) - 10000,
-            EndTime = int(time.time()))
+        Bucket=test_bucket,
+        ChannelName=channel_name,
+        PlaylistName='test.m3u8',
+        StartTime=int(time.time()) - 10000,
+        EndTime=int(time.time()))
     response = client.head_object(
-        Bucket = test_bucket,
-        Key = channel_name + '/test.m3u8')
-    assert(response)
+        Bucket=test_bucket,
+        Key=channel_name + '/test.m3u8')
+    assert (response)
 
-    print ("delete live channel...")
+    print("delete live channel...")
     response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
-    assert(response)
+    assert (response)
 
 if __name__ == "__main__":
     setUp()
