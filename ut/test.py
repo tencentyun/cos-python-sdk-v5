@@ -1358,7 +1358,7 @@ def test_rsa_client():
 
 
 def test_live_channel():
-    print("create live channel...")
+    """测试rtmp推流功能"""
     livechannel_config = {
         'Description': 'cos python sdk test',
         'Switch': 'Enabled',
@@ -1445,6 +1445,7 @@ def test_live_channel():
         client.delete_live_channel(Bucket=test_bucket, ChannelName=ch_name)
 
     print("post vod playlist")
+    '''playlist不以.m3u8结尾'''
     try:
         client.post_vod_playlist(
             Bucket=test_bucket,
@@ -1453,7 +1454,9 @@ def test_live_channel():
             StartTime=int(time.time()) - 10000,
             EndTime=int(time.time()))
     except Exception as e:
-        print_error_msg(e)
+        pass
+
+    '''starttime大于endtimne'''
     try:
         client.post_vod_playlist(
             Bucket=test_bucket,
@@ -1462,7 +1465,7 @@ def test_live_channel():
             StartTime=10,
             EndTime=9)
     except Exception as e:
-        print_error_msg(e)
+        pass
 
     client.post_vod_playlist(
         Bucket=test_bucket,
