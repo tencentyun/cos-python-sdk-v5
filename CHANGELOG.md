@@ -274,9 +274,6 @@ Fix bugs of thread pool
 
 ## [v1.6.3](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.6.2...v1.6.3) - 2018-12-05
 
-1.support upload from stdin
-2.support anonymous request
-
 ### Merged
 
 - Supoort anonymous operation [`#78`](https://github.com/tencentyun/cos-python-sdk-v5/pull/78)
