@@ -940,6 +940,10 @@ def test_put_get_delete_bucket_domain():
             },
         ]
     }
+    
+    client.delete_bucket_domain(Bucket=test_bucket)
+    time.sleep(1)
+
     response = client.put_bucket_domain(
         Bucket=test_bucket,
         DomainConfiguration=domain_config

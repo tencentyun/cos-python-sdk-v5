@@ -3040,8 +3040,10 @@ class CosS3Client(object):
             offset = 0  # 记录文件偏移量
             lst = list()  # 记录分块信息
             pool = SimpleThreadPool(MAXThread)
-
-            callback = ProgressCallback(file_size, progress_callback)
+            
+            callback = None
+            if progress_callback:
+                callback = ProgressCallback(file_size, progress_callback)
             for i in range(1, parts_num+1):
                 if i == parts_num:  # 最后一块
                     pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, traffic_limit, callback)
