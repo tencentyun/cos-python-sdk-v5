@@ -3040,7 +3040,6 @@ class CosS3Client(object):
             offset = 0  # 记录文件偏移量
             lst = list()  # 记录分块信息
             pool = SimpleThreadPool(MAXThread)
-            
             callback = None
             if progress_callback:
                 callback = ProgressCallback(file_size, progress_callback)
