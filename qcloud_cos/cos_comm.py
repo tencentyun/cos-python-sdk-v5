@@ -8,6 +8,7 @@ import os
 import io
 import re
 import sys
+import threading
 import xml.dom.minidom
 import xml.etree.ElementTree
 from datetime import datetime
@@ -459,3 +460,16 @@ class CiDetectType():
     TERRORIST = 2
     POLITICS = 4
     ADS = 8
+
+
+class ProgressCallback():
+    def __init__(self, file_size, progress_callback):
+        self.__lock = threading.Lock()
+        self.__finished_size = 0
+        self.__file_size = file_size
+        self.__progress_callback = progress_callback
+
+    def report(self, size):
+        with self.__lock:
+            self.__finished_size += size
+            self.__progress_callback(self.__finished_size, self.__file_size)

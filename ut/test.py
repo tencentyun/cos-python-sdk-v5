@@ -92,6 +92,16 @@ def print_error_msg(e):
     print (e.get_trace_id())
     print (e.get_request_id())
 
+def percentage(consumed_bytes, total_bytes):
+    """进度条回调函数，计算当前完成的百分比
+    
+    :param consumed_bytes: 已经上传/下载的数据量
+    :param total_bytes: 总数据量
+    """
+    if total_bytes:
+        rate = int(100 * (float(consumed_bytes) / float(total_bytes)))
+        print('\r{0}% '.format(rate))
+        sys.stdout.flush()
 
 def setUp():
     print ("start test...")
@@ -712,6 +722,25 @@ def test_upload_file_multithreading():
     if os.path.exists(file_name):
         os.remove(file_name)
     print (ed - st)
+
+
+def test_upload_file_with_progress_callback():
+    """带有进度条功能的并发上传"""
+    file_name = "test_progress_callback"
+    file_size = 1024
+    if TRAVIS_FLAG == 'true':
+        file_size = 5  # set 5MB beacuse travis too slow
+    gen_file(file_name, file_size)
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=file_name,
+        LocalFilePath=file_name,
+        MAXThread=5,
+        EnableMD5=True,
+        progress_callback=percentage
+    )
+    if os.path.exists(file_name):
+        os.remove(file_name)
 
 
 def test_copy_file_automatically():
@@ -1493,6 +1522,7 @@ if __name__ == "__main__":
     test_put_get_delete_replication()
     test_upload_part_copy()
     test_upload_file_multithreading()
+    test_upload_file_with_progress_callback()
     test_copy_file_automatically()
     test_copy_10G_file_in_same_region()
     test_list_objects()
