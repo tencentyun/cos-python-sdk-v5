@@ -1217,6 +1217,7 @@ def _test_get_object_sensitive_content_recognition():
     print(response)
     assert response
 
+
 def test_download_file():
     """测试断点续传下载接口"""
     #测试普通下载
@@ -1265,6 +1266,7 @@ def test_download_file():
     if os.path.exists(file_name):
         os.remove(file_name)
 
+
 def test_put_get_bucket_intelligenttiering():
     """测试设置获取智能分层"""
     intelligent_tiering_conf = {
@@ -1282,6 +1284,7 @@ def test_put_get_bucket_intelligenttiering():
     response = client.get_bucket_intelligenttiering(
         Bucket=test_bucket,
     )
+
 
 def test_bucket_encryption():
     """测试存储桶默认加密配置"""
@@ -1304,6 +1307,7 @@ def test_bucket_encryption():
 
     # 删除存储桶默认加密配置
     client.delete_bucket_encryption(test_bucket)
+
 
 def test_aes_client():
     """测试aes加密客户端的上传下载操作"""
@@ -1352,35 +1356,6 @@ def test_aes_client():
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
 
-    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
-
-def test_rsa_client():
-    """测试rsa加密客户端的上传下载操作"""
-    content = '123456' * 1024 + '1'
-    client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
-    client_for_rsa.put_object(test_bucket, content, 'test_for_rsa')
-    # 测试整个文件的md5
-    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa')
-    response['Body'].get_stream_to_file('test_for_rsa_local')
-    local_file_md5 = None
-    content_md5 = None
-    with open('test_for_rsa_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5(content.encode("utf-8"))
-    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
-    if os.path.exists('test_for_rsa_local'):
-        os.remove('test_for_rsa_local')
-
-    # 测试读取部分数据的md5
-    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa', Range='bytes=5-3000')
-    response['Body'].get_stream_to_file('test_for_rsa_local')
-    with open('test_for_rsa_local', 'rb') as f:
-        local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5(content[5:3001].encode("utf-8"))
-    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
-    if os.path.exists('test_for_rsa_local'):
-        os.remove('test_for_rsa_local')
-
     client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
 
     content = '1' * 1024 * 1024
@@ -1400,7 +1375,6 @@ def test_rsa_client():
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
-
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
 
@@ -1528,6 +1502,7 @@ def test_live_channel():
     print("delete live channel...")
     response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
     assert (response)
+
 
 if __name__ == "__main__":
     setUp()

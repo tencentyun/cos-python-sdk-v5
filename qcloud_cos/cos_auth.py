@@ -16,9 +16,18 @@ def filter_headers(data):
     :param data(dict): 所有的头部信息.
     :return(dict): 计算进签名的头部.
     """
+    valid_headers = [
+        "cache-control",
+        "content-disposition",
+        "content-encoding",
+        "content-type",
+        "expires",
+        "content-md5",
+        "host"
+    ]
     headers = {}
     for i in data:
-        if i == 'Content-Type' or i == 'Host' or i[0] == 'x' or i[0] == 'X':
+        if str.lower(i) in valid_headers or str.lower(i[0]) == "x":
             headers[i] = data[i]
     return headers
 
@@ -82,6 +91,46 @@ class CosS3Auth(AuthBase):
         logger.debug(r.headers['Authorization'])
         logger.debug("request headers: " + str(r.headers))
         return r
+
+
+class CosRtmpAuth(AuthBase):
+
+    def __init__(self, conf, bucket=None, channel=None, params={}, expire=10000):
+        self._secret_id = conf._secret_id
+        self._secret_key = conf._secret_key
+        self._token = conf._token
+        self._anonymous = conf._anonymous
+        self._expire = expire
+        self._params = params
+        if self._token:
+            self._params['q-token'] = self._token
+        self._path = u'/' + bucket + u'/' + channel
+
+    def get_rtmp_sign(self):
+        # get rtmp string
+        canonicalized_param = ''
+        for k, v in self._params.iteritems():
+            canonicalized_param += '{key}={value}&'.format(key=k, value=v)
+        canonicalized_param = canonicalized_param.rstrip('&')
+        rtmp_str = u"{path}\n{params}\n".format(path=self._path, params=canonicalized_param)
+        logger.debug("rtmp str: " + rtmp_str)
+
+        sha1 = hashlib.sha1()
+        sha1.update(to_bytes(rtmp_str))
+        # get time
+        sign_time = int(time.time())
+        sign_time_str = "{start_time};{end_time}".format(start_time=sign_time-60, end_time=sign_time+self._expire)
+        str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time_str, sha1=sha1.hexdigest())
+        logger.debug('str_to_sign: ' + str(str_to_sign))
+        # get sinature
+        signature = hmac.new(to_bytes(self._secret_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
+        logger.debug('signature: ' + str(signature))
+        rtmp_sign = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-signature={sign}".format(
+                ak=self._secret_id, sign_time=sign_time_str, key_time=sign_time_str, sign=signature)
+        if canonicalized_param != '':
+            return rtmp_sign + "&{params}".format(params=canonicalized_param)
+        else:
+            return rtmp_sign
 
 
 if __name__ == "__main__":

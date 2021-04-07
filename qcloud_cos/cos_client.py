@@ -2850,7 +2850,9 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): None.
+
         .. code-block:: python
+
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
             # 获取bucket标签
