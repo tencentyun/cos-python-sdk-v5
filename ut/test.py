@@ -10,6 +10,9 @@ from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
 from qcloud_cos import get_date
+from qcloud_cos.cos_encryption_client import CosEncryptionClient
+from qcloud_cos.crypto import AESProvider
+from qcloud_cos.crypto import RSAProvider
 from qcloud_cos.cos_comm import CiDetectType
 
 SECRET_ID = os.environ["SECRET_ID"]
@@ -27,6 +30,10 @@ conf = CosConfig(
     SecretKey=SECRET_KEY,
 )
 client = CosS3Client(conf, retry=3)
+rsa_provider = RSAProvider()
+client_for_rsa = CosEncryptionClient(conf, rsa_provider)
+aes_provider = AESProvider()
+client_for_aes = CosEncryptionClient(conf, aes_provider)
 
 
 def _create_test_bucket(test_bucket, create_region=None):
@@ -884,8 +891,8 @@ def test_bucket_exists():
     assert status is True
 
 
-def test_put_get_bucket_policy():
-    """设置获取bucket的policy配置"""
+def test_put_get_delete_bucket_policy():
+    """设置获取删除bucket的policy配置"""
     resource = "qcs::cos:" + REGION + ":uid/" + APPID + ":" + test_bucket + "/*"
     resource_list = [resource]
     policy = {
@@ -911,6 +918,9 @@ def test_put_get_bucket_policy():
         Policy=policy
     )
     response = client.get_bucket_policy(
+        Bucket=test_bucket,
+    )
+    response = client.delete_bucket_policy(
         Bucket=test_bucket,
     )
 
@@ -969,6 +979,12 @@ def test_put_get_delete_bucket_domain():
             },
         ]
     }
+
+    response = client.delete_bucket_domain(
+	    Bucket=test_bucket
+    ) 
+
+    time.sleep(2)
     response = client.put_bucket_domain(
         Bucket=test_bucket,
         DomainConfiguration=domain_config
@@ -1100,8 +1116,8 @@ def _test_put_get_delete_bucket_origin():
     )
 
 
-def test_put_get_bucket_referer():
-    """测试设置获取bucket防盗链规则"""
+def test_put_get_delete_bucket_referer():
+    """测试设置获取删除bucket防盗链规则"""
     referer_config = {
         'Status': 'Enabled',
         'RefererType': 'White-List',
@@ -1121,6 +1137,14 @@ def test_put_get_bucket_referer():
     response = client.get_bucket_referer(
         Bucket=test_bucket,
     )
+    response = client.delete_bucket_referer(
+        Bucket=test_bucket,
+    )
+    time.sleep(4)
+    response = client.get_bucket_referer(
+        Bucket=test_bucket,
+    )
+    assert len(response)==0
 
 
 def test_put_get_traffic_limit():
@@ -1259,6 +1283,252 @@ def test_put_get_bucket_intelligenttiering():
         Bucket=test_bucket,
     )
 
+def test_bucket_encryption():
+    """测试存储桶默认加密配置"""
+    # 测试设置存储桶的默认加密配置
+    config_dict = {
+        'Rule': [
+            {
+                'ApplySideEncryptionConfiguration': {
+                    'SSEAlgorithm': 'AES256',
+                }
+            },
+        ]
+    }
+    client.put_bucket_encryption(test_bucket, config_dict)
+
+    # 测试获取存储桶默认加密配置
+    ret = client.get_bucket_encryption(test_bucket)
+    sse_algorithm = ret['Rule'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm']
+    assert(sse_algorithm == 'AES256')
+
+    # 删除存储桶默认加密配置
+    client.delete_bucket_encryption(test_bucket)
+
+def test_aes_client():
+    """测试aes加密客户端的上传下载操作"""
+    content = '123456' * 1024 + '1'
+    client_for_aes.delete_object(test_bucket, 'test_for_aes')
+    client_for_aes.put_object(test_bucket, content, 'test_for_aes')
+    # 测试整个文件的md5
+    response = client_for_aes.get_object(test_bucket, 'test_for_aes')
+    response['Body'].get_stream_to_file('test_for_aes_local')
+    local_file_md5 = None
+    content_md5 = None
+    with open('test_for_aes_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content.encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_aes_local'):
+        os.remove('test_for_aes_local')
+
+    # 测试读取部分数据的md5
+    response = client_for_aes.get_object(test_bucket, 'test_for_aes', Range='bytes=5-3000')
+    response['Body'].get_stream_to_file('test_for_aes_local')
+    with open('test_for_aes_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content[5:3001].encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_aes_local'):
+        os.remove('test_for_aes_local')
+
+    client_for_aes.delete_object(test_bucket, 'test_for_aes')
+
+    content = '1' * 1024 * 1024
+    # 测试分片上传
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+    response = client_for_aes.create_multipart_upload(test_bucket, 'test_multi_upload')
+    uploadid = response['UploadId']
+    client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
+    client_for_aes.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
+    response = client_for_aes.list_parts(test_bucket,'test_multi_upload', uploadid)
+    client_for_aes.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    response = client_for_aes.get_object(test_bucket, 'test_multi_upload')
+    response['Body'].get_stream_to_file('test_multi_upload_local')
+    with open('test_multi_upload_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5((content+content).encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_multi_upload_local'):
+        os.remove('test_multi_upload_local')
+
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+
+def test_rsa_client():
+    """测试rsa加密客户端的上传下载操作"""
+    content = '123456' * 1024 + '1'
+    client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
+    client_for_rsa.put_object(test_bucket, content, 'test_for_rsa')
+    # 测试整个文件的md5
+    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa')
+    response['Body'].get_stream_to_file('test_for_rsa_local')
+    local_file_md5 = None
+    content_md5 = None
+    with open('test_for_rsa_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content.encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_rsa_local'):
+        os.remove('test_for_rsa_local')
+
+    # 测试读取部分数据的md5
+    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa', Range='bytes=5-3000')
+    response['Body'].get_stream_to_file('test_for_rsa_local')
+    with open('test_for_rsa_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content[5:3001].encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_rsa_local'):
+        os.remove('test_for_rsa_local')
+
+    client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
+
+    content = '1' * 1024 * 1024
+    # 测试分片上传
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+    response = client_for_rsa.create_multipart_upload(test_bucket, 'test_multi_upload')
+    uploadid = response['UploadId']
+    client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
+    client_for_rsa.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
+    response = client_for_rsa.list_parts(test_bucket,'test_multi_upload', uploadid)
+    client_for_rsa.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    response = client_for_rsa.get_object(test_bucket, 'test_multi_upload')
+    response['Body'].get_stream_to_file('test_multi_upload_local')
+    with open('test_multi_upload_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5((content+content).encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_multi_upload_local'):
+        os.remove('test_multi_upload_local')
+
+    client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+
+
+def test_live_channel():
+    """测试rtmp推流功能"""
+    livechannel_config = {
+        'Description': 'cos python sdk test',
+        'Switch': 'Enabled',
+        'Target': {
+            'Type': 'HLS',
+            'FragDuration': '3',
+            'FragCount': '5',
+        }
+    }
+    channel_name = 'cos-python-sdk-uttest-ch1'
+
+    try:
+        response = client.put_live_channel(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            LiveChannelConfiguration=livechannel_config)
+        assert (response)
+    except Exception as e:
+        if e.get_error_code() != 'ChannelStillLive':
+            return
+
+    print("get live channel info...")
+    response = client.get_live_channel_info(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    print(response)
+    assert (response['Switch'] == 'Enabled')
+    assert (response['Description'] == 'cos python sdk test')
+    assert (response['Target']['Type'] == 'HLS')
+    assert (response['Target']['FragDuration'] == '3')
+    assert (response['Target']['FragCount'] == '5')
+    assert (response['Target']['PlaylistName'] == 'playlist.m3u8')
+
+    print("put live channel switch...")
+    client.put_live_channel_switch(
+        Bucket=test_bucket,
+        ChannelName=channel_name,
+        Switch='disabled')
+    response = client.get_live_channel_info(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    assert (response['Switch'] == 'Disabled')
+    client.put_live_channel_switch(
+        Bucket=test_bucket,
+        ChannelName=channel_name,
+        Switch='enabled')
+    response = client.get_live_channel_info(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    assert (response['Switch'] == 'Enabled')
+
+    print("get live channel history...")
+    response = client.get_live_channel_history(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    print(response)
+
+    print("get live channel status...")
+    response = client.get_live_channel_status(
+        Bucket=test_bucket,
+        ChannelName=channel_name)
+    print(response)
+    assert (response['Status'] == 'Idle' or response['Status'] == 'Live')
+
+    print("list channel...")
+    create_chan_num = 20
+    for i in range(1, create_chan_num):
+        ch_name = 'test-list-channel-' + str(i)
+        client.put_live_channel(
+            Bucket=test_bucket,
+            ChannelName=ch_name,
+            LiveChannelConfiguration=livechannel_config)
+    response = client.list_live_channel(Bucket=test_bucket, MaxKeys=10)
+    print(response)
+    assert (response['MaxKeys'] == '10')
+    assert (response['IsTruncated'] == 'true')
+    response = client.list_live_channel(Bucket=test_bucket, MaxKeys=5, Marker=response['NextMarker'])
+    print(response)
+    assert (response['MaxKeys'] == '5')
+    assert (response['IsTruncated'] == 'true')
+
+    for i in range(1, create_chan_num):
+        ch_name = 'test-list-channel-' + str(i)
+        client.delete_live_channel(Bucket=test_bucket, ChannelName=ch_name)
+
+    print("post vod playlist")
+    '''playlist不以.m3u8结尾'''
+    try:
+        client.post_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test',
+            StartTime=int(time.time()) - 10000,
+            EndTime=int(time.time()))
+    except Exception as e:
+        pass
+
+    '''starttime大于endtimne'''
+    try:
+        client.post_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test.m3u8',
+            StartTime=10,
+            EndTime=9)
+    except Exception as e:
+        pass
+
+    client.post_vod_playlist(
+        Bucket=test_bucket,
+        ChannelName=channel_name,
+        PlaylistName='test.m3u8',
+        StartTime=int(time.time()) - 10000,
+        EndTime=int(time.time()))
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=channel_name + '/test.m3u8')
+    assert (response)
+
+    print("delete live channel...")
+    response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
+    assert (response)
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1285,8 +1555,10 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_domain()
     test_select_object()
     _test_get_object_sensitive_content_recognition()
+    test_live_channel()
     test_download_file()
     test_put_get_bucket_intelligenttiering()
+    test_aes_client()
+    test_rsa_client()
     """
-
     tearDown()
