@@ -2847,6 +2847,7 @@ class CosS3Client(object):
 
     def delete_bucket_referer(self, Bucket, **kwargs):
         """删除bucket防盗链规则
+
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): None.
