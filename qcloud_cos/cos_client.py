@@ -2861,6 +2861,7 @@ class CosS3Client(object):
                 Bucket='bucket'
             )
         """
+
         xml_config = ''
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
@@ -2876,6 +2877,78 @@ class CosS3Client(object):
             headers=headers,
             params=params)
         return None
+
+    def put_bucket_intelligenttiering(self, Bucket, IntelligentTieringConfiguration=None, **kwargs):
+        """设置存储桶智能分层配置
+
+        :param Bucket(string): 存储桶名称.
+        :param IntelligentTieringConfiguration(dict): 只能分层配置
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+
+            intelligent_tiering_conf = {
+                'Status': 'Enable',
+                'Transition': {
+                    'Days': '30|60|90',
+                    'RequestFrequent': '1'
+                }
+            }
+            client.put_bucket_intelligenttiering(Bucket="bucket", IntelligentTieringConfiguration=intelligent_tiering_conf)
+        """
+
+        if IntelligentTieringConfiguration is None:
+            IntelligentTieringConfiguration = {}
+        xml_config = format_xml(data=IntelligentTieringConfiguration, root='IntelligentTieringConfiguration')
+        headers = mapped(kwargs)
+        headers['Content-Type'] = 'application/xml'
+        params = {'intelligenttiering': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket intelligenttiering, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_intelligenttiering(self, Bucket, **kwargs):
+        """获取存储桶智能分层配置
+        :param Bucket(string): 存储桶名称.
+        :param IntelligentTieringConfiguration(dict): 只能分层配置
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 智能分层配置.
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            client.get_bucket_intelligenttiering(Bucket='bucket')
+        """
+
+        headers = mapped(kwargs)
+        params = {'intelligenttiering': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket intelligenttiering, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        return data
 
     # service interface begin
     def list_buckets(self, **kwargs):

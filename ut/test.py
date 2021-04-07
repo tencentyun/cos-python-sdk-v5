@@ -1217,6 +1217,7 @@ def _test_get_object_sensitive_content_recognition():
     print(response)
     assert response
 
+
 def test_download_file():
     """测试断点续传下载接口"""
     #测试普通下载
@@ -1265,6 +1266,26 @@ def test_download_file():
     if os.path.exists(file_name):
         os.remove(file_name)
 
+
+def test_put_get_bucket_intelligenttiering():
+    """测试设置获取智能分层"""
+    intelligent_tiering_conf = {
+                'Status': 'Enable',
+                'Transition': {
+                    'Days': '30',
+                    'RequestFrequent': '1'
+                }
+            }
+    response = client.put_bucket_intelligenttiering(
+        Bucket=test_bucket,
+        IntelligentTieringConfiguration=intelligent_tiering_conf
+    )
+    time.sleep(2)
+    response = client.get_bucket_intelligenttiering(
+        Bucket=test_bucket,
+    )
+
+
 def test_bucket_encryption():
     """测试存储桶默认加密配置"""
     # 测试设置存储桶的默认加密配置
@@ -1286,6 +1307,7 @@ def test_bucket_encryption():
 
     # 删除存储桶默认加密配置
     client.delete_bucket_encryption(test_bucket)
+
 
 def test_aes_client():
     """测试aes加密客户端的上传下载操作"""
@@ -1333,7 +1355,7 @@ def test_aes_client():
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
-    
+
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
 def test_rsa_client():
@@ -1362,7 +1384,7 @@ def test_rsa_client():
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_for_rsa_local'):
         os.remove('test_for_rsa_local')
-    
+
     client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
 
     content = '1' * 1024 * 1024
@@ -1382,7 +1404,7 @@ def test_rsa_client():
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
-    
+
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
 
@@ -1511,6 +1533,7 @@ def test_live_channel():
     response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
     assert (response)
 
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1539,6 +1562,7 @@ if __name__ == "__main__":
     _test_get_object_sensitive_content_recognition()
     test_live_channel()
     test_download_file()
+    test_put_get_bucket_intelligenttiering()
     test_aes_client()
     test_rsa_client()
     """
