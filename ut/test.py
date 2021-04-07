@@ -1241,6 +1241,24 @@ def test_download_file():
     if os.path.exists(file_name):
         os.remove(file_name)
 
+def test_put_get_bucket_intelligenttiering():
+    """测试设置获取智能分层"""
+    intelligent_tiering_conf = {
+                'Status': 'Enable',
+                'Transition': {
+                    'Days': '30',
+                    'RequestFrequent': '1'
+                }
+            }
+    response = client.put_bucket_intelligenttiering(
+        Bucket=test_bucket,
+        IntelligentTieringConfiguration=intelligent_tiering_conf
+    )
+    time.sleep(2)
+    response = client.get_bucket_intelligenttiering(
+        Bucket=test_bucket,
+    )
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1268,6 +1286,7 @@ if __name__ == "__main__":
     test_select_object()
     _test_get_object_sensitive_content_recognition()
     test_download_file()
+    test_put_get_bucket_intelligenttiering()
     """
 
     tearDown()
