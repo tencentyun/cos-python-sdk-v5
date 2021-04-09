@@ -95,12 +95,13 @@ class CosS3Auth(AuthBase):
 
 class CosRtmpAuth(AuthBase):
 
-    def __init__(self, conf, bucket=None, channel=None, params={}, expire=10000):
+    def __init__(self, conf, bucket=None, channel=None, params={}, expire=3600, presign_expire=0):
         self._secret_id = conf._secret_id
         self._secret_key = conf._secret_key
         self._token = conf._token
         self._anonymous = conf._anonymous
         self._expire = expire
+        self._presign_expire = presign_expire
         self._params = params
         if self._token:
             self._params['q-token'] = self._token
@@ -111,6 +112,8 @@ class CosRtmpAuth(AuthBase):
         canonicalized_param = ''
         for k, v in self._params.iteritems():
             canonicalized_param += '{key}={value}&'.format(key=k, value=v)
+        if self._presign_expire >= 60:
+            canonicalized_param += 'presign={value}'.format(value=self._presign_expire)
         canonicalized_param = canonicalized_param.rstrip('&')
         rtmp_str = u"{path}\n{params}\n".format(path=self._path, params=canonicalized_param)
         logger.debug("rtmp str: " + rtmp_str)
