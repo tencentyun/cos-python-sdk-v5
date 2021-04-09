@@ -3735,12 +3735,13 @@ class CosS3Client(object):
         data = rt.json()
         return data
 
-    def put_live_channel(self, Bucket, ChannelName, Expire=3600, LiveChannelConfiguration={}, **kwargs):
+    def put_live_channel(self, Bucket, ChannelName, Expire=3600, PreSignExpire=0, LiveChannelConfiguration={}, **kwargs):
         """创建直播通道
 
         :param Bucket(string): 存储桶名称.
         :param ChannelName(string): 直播通道名称.
         :param Expire(int): 推流url签名过期时间.
+        :param PreSignExpire(int): playlist中ts分片签名的过期时间,合法值[60,43200],默认为0,不开启该签名.
         :param LiveChannelConfiguration(dict): 直播通道配置.
         :param kwargs(dict): 设置请求headers.
         :return(dict): publish url and playurl.
@@ -3778,7 +3779,7 @@ class CosS3Client(object):
             params=params)
         data = xml_to_dict(rt.content)
         if data['PublishUrls']['Url'] is not None:
-            rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire)
+            rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire, presign_expire=PreSignExpire)
             url = data['PublishUrls']['Url']
             url += '?' + rtmpSign.get_rtmp_sign()
             data['PublishUrls']['Url'] = url
