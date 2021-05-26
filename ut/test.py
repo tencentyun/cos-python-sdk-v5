@@ -583,7 +583,8 @@ def test_put_get_delete_replication():
                 'Status': 'Enabled',
                 'Prefix': '中文',
                 'Destination': {
-                    'Bucket': 'qcs::cos:ap-shanghai::' + replic_dest_bucket
+                    'Bucket': 'qcs::cos:ap-shanghai::' + replic_dest_bucket,
+                    'StorageClass': 'Standard'
                 }
             }
         ]
@@ -1270,10 +1271,10 @@ def test_download_file():
         os.remove(file_name)
 
 
-def test_put_get_bucket_intelligenttiering():
+def _test_put_get_bucket_intelligenttiering():
     """测试设置获取智能分层"""
     intelligent_tiering_conf = {
-                'Status': 'Enable',
+                'Status': 'Enabled',
                 'Transition': {
                     'Days': '30',
                     'RequestFrequent': '1'
