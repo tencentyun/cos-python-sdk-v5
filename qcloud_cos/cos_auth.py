@@ -23,6 +23,7 @@ def filter_headers(data):
         "content-type",
         "expires",
         "content-md5",
+        "content-length",
         "host"
     ]
     headers = {}
