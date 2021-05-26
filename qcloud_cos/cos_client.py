@@ -400,12 +400,15 @@ class CosS3Client(object):
 
         return response
 
-    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, **kwargs):
+    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, Interval=None, MaxFrames=None, BizType=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param Interval(int): 截帧频率，GIF图/长图检测专用，默认值为0，表示只会检测GIF图/长图的第一帧.
+        :param MaxFrames(int): 最大截帧数量，GIF图/长图检测专用，默认值为1，表示只取GIF的第1帧图片进行审核，或长图不做切分识别.
+        :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -413,7 +416,7 @@ class CosS3Client(object):
 
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
-            # 下载cos上的文件到本地
+            # 识别cos上的图片
             response = client.get_object_sensitive_content_recognition(
                 Bucket='bucket',
                 DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
@@ -452,6 +455,12 @@ class CosS3Client(object):
             detect_type += 'ads'
 
         params['detect-type'] = detect_type
+        if Interval:
+            params['interval'] = Interval
+        if MaxFrames:
+            params['max-frames'] = MaxFrames
+        if BizType:
+            params['biz-type'] = BizType
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
