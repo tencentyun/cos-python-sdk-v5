@@ -83,18 +83,18 @@ def gen_file(path, size):
 
 
 def print_error_msg(e):
-    print (e.get_origin_msg())
-    print (e.get_digest_msg())
-    print (e.get_status_code())
-    print (e.get_error_code())
-    print (e.get_error_msg())
-    print (e.get_resource_location())
-    print (e.get_trace_id())
-    print (e.get_request_id())
+    print(e.get_origin_msg())
+    print(e.get_digest_msg())
+    print(e.get_status_code())
+    print(e.get_error_code())
+    print(e.get_error_msg())
+    print(e.get_resource_location())
+    print(e.get_trace_id())
+    print(e.get_request_id())
+
 
 def percentage(consumed_bytes, total_bytes):
     """进度条回调函数，计算当前完成的百分比
-    
     :param consumed_bytes: 已经上传/下载的数据量
     :param total_bytes: 总数据量
     """
@@ -103,16 +103,17 @@ def percentage(consumed_bytes, total_bytes):
         print('\r{0}% '.format(rate))
         sys.stdout.flush()
 
+
 def setUp():
-    print ("start test...")
-    print ("start create bucket " + test_bucket)
+    print("start test...")
+    print("start create bucket " + test_bucket)
     _create_test_bucket(test_bucket)
     _create_test_bucket(copy_test_bucket)
     _upload_test_file(copy_test_bucket, test_object)
 
 
 def tearDown():
-    print ("function teardown")
+    print("function teardown")
 
 
 def test_put_get_delete_object_10MB():
@@ -445,7 +446,7 @@ def test_get_presigned_url():
         Key='中文.txt'
     )
     assert url
-    print (url)
+    print(url)
 
 
 def test_get_bucket_location():
@@ -722,7 +723,7 @@ def test_upload_file_multithreading():
     ed = time.time()  # 记录结束时间
     if os.path.exists(file_name):
         os.remove(file_name)
-    print (ed - st)
+    print(ed - st)
 
 
 def test_upload_file_with_progress_callback():
@@ -818,7 +819,7 @@ def test_put_get_bucket_logging():
     response = logging_client.get_bucket_logging(
         Bucket=logging_bucket
     )
-    print (response)
+    print(response)
     assert response['LoggingEnabled']['TargetBucket'] == logging_bucket
     assert response['LoggingEnabled']['TargetPrefix'] == 'test'
 
@@ -982,8 +983,8 @@ def test_put_get_delete_bucket_domain():
     }
 
     response = client.delete_bucket_domain(
-	    Bucket=test_bucket
-    ) 
+        Bucket=test_bucket
+    )
 
     time.sleep(2)
     response = client.put_bucket_domain(
@@ -1145,7 +1146,7 @@ def test_put_get_delete_bucket_referer():
     response = client.get_bucket_referer(
         Bucket=test_bucket,
     )
-    assert len(response)==0
+    assert len(response) == 0
 
 
 def test_put_get_traffic_limit():
@@ -1224,23 +1225,23 @@ def _test_get_object_sensitive_content_recognition():
 
 def test_download_file():
     """测试断点续传下载接口"""
-    #测试普通下载
+    # 测试普通下载
     client.download_file(copy_test_bucket, test_object, 'test_download_file.local')
     if os.path.exists('test_download_file.local'):
         os.remove('test_download_file.local')
-        
+
     # 测试限速下载
     client.download_file(copy_test_bucket, test_object, 'test_download_traffic_limit.local', TrafficLimit='819200')
     if os.path.exists('test_download_traffic_limit.local'):
         os.remove('test_download_traffic_limit.local')
-    
+
     # 测试crc64校验开关
     client.download_file(copy_test_bucket, test_object, 'test_download_crc.local', EnableCRC=True)
     if os.path.exists('test_download_crc.local'):
         os.remove('test_download_crc.local')
-    
+
     # 测试源文件的md5与下载下来后的文件md5
-    file_size = 25 # MB
+    file_size = 25  # MB
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
     gen_file(file_name, file_size)
@@ -1348,9 +1349,9 @@ def test_aes_client():
     response = client_for_aes.create_multipart_upload(test_bucket, 'test_multi_upload')
     uploadid = response['UploadId']
     client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
-    client_for_aes.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
-    response = client_for_aes.list_parts(test_bucket,'test_multi_upload', uploadid)
-    client_for_aes.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 2, uploadid)
+    response = client_for_aes.list_parts(test_bucket, 'test_multi_upload', uploadid)
+    client_for_aes.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part': response['Part']})
     response = client_for_aes.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
@@ -1361,6 +1362,7 @@ def test_aes_client():
         os.remove('test_multi_upload_local')
 
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+
 
 def test_rsa_client():
     """测试rsa加密客户端的上传下载操作"""
@@ -1397,9 +1399,9 @@ def test_rsa_client():
     response = client_for_rsa.create_multipart_upload(test_bucket, 'test_multi_upload')
     uploadid = response['UploadId']
     client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
-    client_for_rsa.upload_part(test_bucket,'test_multi_upload', content, 2, uploadid)
-    response = client_for_rsa.list_parts(test_bucket,'test_multi_upload', uploadid)
-    client_for_rsa.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part':response['Part']})
+    client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 2, uploadid)
+    response = client_for_rsa.list_parts(test_bucket, 'test_multi_upload', uploadid)
+    client_for_rsa.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part': response['Part']})
     response = client_for_rsa.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
@@ -1538,8 +1540,18 @@ def test_live_channel():
     assert (response)
 
 
+def test_get_object_url():
+    """测试获取对象访问URL"""
+    response = client.get_object_url(
+        Bucket=test_bucket,
+        Key='test.txt'
+    )
+    print(response)
+
+
 if __name__ == "__main__":
     setUp()
+    test_get_object_url()
     """
     test_put_object_enable_md5()
     test_upload_with_server_side_encryption()

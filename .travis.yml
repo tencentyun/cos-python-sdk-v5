@@ -20,6 +20,7 @@ notifications:
       - fysntian@tencent.com
 script:
 - pycodestyle --max-line-length=200 qcloud_cos/.
+- pycodestyle --max-line-length=200 ut/.
 - nosetests -s -v ut/
 deploy:
   provider: pypi

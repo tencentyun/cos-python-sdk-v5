@@ -533,6 +533,26 @@ class CosS3Client(object):
         """
         return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers)
 
+    def get_object_url(self, Bucket, Key):
+        """生成对象访问的url
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :return(string): 对象访问的URL.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取预签名链接
+            response = client.get_object_url(
+                Bucket='bucket',
+                Key='test.txt'
+            )
+        """
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        return url
+
     def delete_object(self, Bucket, Key, **kwargs):
         """单文件删除接口
 
