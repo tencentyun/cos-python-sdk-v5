@@ -1,24 +1,24 @@
 sudo: false
 language: python
 python:
-- '2.7'
-- '3.5'
-- '3.6'
+  - '2.7'
+  - '3.5'
+  - '3.6'
 install:
-- pip install requests
-- pip install six
-- pip install nose
-- pip install pycodestyle
-- pip install dicttoxml
-- pip install crcmod
+  - pip install requests
+  - pip install six
+  - pip install nose
+  - pip install pycodestyle
+  - pip install dicttoxml
+  - pip install crcmod
 notifications:
   email:
     recipients:
       - wjielai@tencent.com
       - fysntian@tencent.com
 script:
-- pycodestyle --max-line-length=200 qcloud_cos/.
-- nosetests -s -v ut/
+  - pycodestyle --max-line-length=200 qcloud_cos/.
+  - nosetests -s -v ut/
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel

@@ -29,14 +29,17 @@ from .cos_exception import CosServiceError
 from .version import __version__
 from .select_event_stream import EventStream
 from .resumable_downloader import ResumableDownLoader
+
 logger = logging.getLogger(__name__)
 
 
 class CosConfig(object):
     """config类，保存用户相关信息"""
+
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
-                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10, PoolMaxSize=10):
+                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
+                 PoolMaxSize=10):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -81,18 +84,18 @@ class CosConfig(object):
         if Scheme is None:
             Scheme = u'https'
         Scheme = to_unicode(Scheme)
-        if(Scheme != u'http' and Scheme != u'https'):
+        if (Scheme != u'http' and Scheme != u'https'):
             raise CosClientError('Scheme can be only set to http/https')
         self._scheme = Scheme
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
-        if(SecretId and SecretKey):
+        if (SecretId and SecretKey):
             self._secret_id = to_unicode(SecretId)
             self._secret_key = to_unicode(SecretKey)
-        elif(Secret_id and Secret_key):
+        elif (Secret_id and Secret_key):
             self._secret_id = to_unicode(Secret_id)
             self._secret_key = to_unicode(Secret_key)
-        elif(Access_id and Access_key):
+        elif (Access_id and Access_key):
             self._secret_id = to_unicode(Access_id)
             self._secret_key = to_unicode(Access_key)
         else:
@@ -173,6 +176,7 @@ class CosConfig(object):
 
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
+
     def __init__(self, conf, retry=1, session=None):
         """初始化client对象
 
@@ -184,8 +188,10 @@ class CosS3Client(object):
         self._retry = retry  # 重试的次数，分片上传时可适当增大
         if session is None:
             self._session = requests.session()
-            self._session.mount('http://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections, pool_maxsize=self._conf._pool_maxsize))
-            self._session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections, pool_maxsize=self._conf._pool_maxsize))
+            self._session.mount('http://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections,
+                                                                         pool_maxsize=self._conf._pool_maxsize))
+            self._session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections,
+                                                                          pool_maxsize=self._conf._pool_maxsize))
         else:
             self._session = session
 
@@ -282,7 +288,7 @@ class CosS3Client(object):
         if not cos_request:
             return res
         if res.status_code >= 400:  # 所有的4XX,5XX都认为是COSServiceError
-            if method == 'HEAD' and res.status_code == 404:   # Head 需要处理
+            if method == 'HEAD' and res.status_code == 404:  # Head 需要处理
                 info = dict()
                 info['code'] = 'NoSuchResource'
                 info['message'] = 'The Resource You Head Not Exist'
@@ -387,13 +393,13 @@ class CosS3Client(object):
             headers=headers,
             params=params))
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=Bucket,
-                stream=True,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                params=params,
-                headers=headers)
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
 
         response = dict(**rt.headers)
         response['Body'] = StreamBody(rt)
@@ -460,13 +466,13 @@ class CosS3Client(object):
             headers=headers,
             params=params))
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=Bucket,
-                stream=True,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                params=params,
-                headers=headers)
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
 
         data = xml_to_dict(rt.content)
 
@@ -572,12 +578,12 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='DELETE',
-                url=url,
-                bucket=Bucket,
-                auth=CosS3Auth(self._conf, Key),
-                headers=headers,
-                params=params)
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key),
+            headers=headers,
+            params=params)
         data = dict(**rt.headers)
         return data
 
@@ -750,12 +756,12 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='PUT',
-                url=url,
-                bucket=Bucket,
-                headers=headers,
-                params=params,
-                auth=CosS3Auth(self._conf, Key, params=params))
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            headers=headers,
+            params=params,
+            auth=CosS3Auth(self._conf, Key, params=params))
         body = xml_to_dict(rt.content)
         data = dict(**rt.headers)
         data.update(body)
@@ -787,12 +793,12 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='POST',
-                url=url,
-                bucket=Bucket,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                headers=headers,
-                params=params)
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
 
         data = xml_to_dict(rt.content)
         return data
@@ -836,13 +842,13 @@ class CosS3Client(object):
             if md5_str:
                 headers['Content-MD5'] = md5_str
         rt = self.send_request(
-                method='PUT',
-                url=url,
-                bucket=Bucket,
-                headers=headers,
-                params=params,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                data=Body)
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            headers=headers,
+            params=params,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            data=Body)
         response = dict(**rt.headers)
         return response
 
@@ -876,14 +882,14 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='POST',
-                url=url,
-                bucket=Bucket,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                data=dict_to_xml(MultipartUpload),
-                timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
-                headers=headers,
-                params=params)
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            data=dict_to_xml(MultipartUpload),
+            timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
+            headers=headers,
+            params=params)
         body = xml_to_dict(rt.content)
         # 分块上传文件返回200OK并不能代表文件上传成功,返回的body里面如果没有ETag则认为上传失败
         if 'ETag' not in body:
@@ -921,12 +927,12 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='DELETE',
-                url=url,
-                bucket=Bucket,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                headers=headers,
-                params=params)
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
         return None
 
     def list_parts(self, Bucket, Key, UploadId, EncodingType='', MaxParts=1000, PartNumberMarker=0, **kwargs):
@@ -971,12 +977,12 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=Bucket,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                headers=headers,
-                params=params)
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
         data = xml_to_dict(rt.content)
         format_dict(data, ['Part'])
         if decodeflag:
@@ -1094,7 +1100,8 @@ class CosS3Client(object):
             params=params)
         return None
 
-    def select_object_content(self, Bucket, Key, Expression, ExpressionType, InputSerialization, OutputSerialization, RequestProgress=None, **kwargs):
+    def select_object_content(self, Bucket, Key, Expression, ExpressionType, InputSerialization, OutputSerialization,
+                              RequestProgress=None, **kwargs):
         """从指定文对象中检索内容
 
         :param Bucket(string): 存储桶名称.
@@ -1157,11 +1164,11 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='PUT',
-                url=url,
-                bucket=Bucket,
-                auth=CosS3Auth(self._conf),
-                headers=headers)
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf),
+            headers=headers)
         return None
 
     def delete_bucket(self, Bucket, **kwargs):
@@ -1186,11 +1193,11 @@ class CosS3Client(object):
             url=url,
             headers=headers))
         rt = self.send_request(
-                method='DELETE',
-                url=url,
-                bucket=Bucket,
-                auth=CosS3Auth(self._conf),
-                headers=headers)
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf),
+            headers=headers)
         return None
 
     def list_objects(self, Bucket, Prefix="", Delimiter="", Marker="", MaxKeys=1000, EncodingType="", **kwargs):
@@ -1228,7 +1235,7 @@ class CosS3Client(object):
             'delimiter': Delimiter,
             'marker': Marker,
             'max-keys': MaxKeys
-            }
+        }
         if EncodingType:
             if EncodingType != 'url':
                 raise CosClientError('EncodingType must be url')
@@ -1238,12 +1245,12 @@ class CosS3Client(object):
             params['encoding-type'] = 'url'
         params = format_values(params)
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=Bucket,
-                params=params,
-                headers=headers,
-                auth=CosS3Auth(self._conf, params=params))
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            params=params,
+            headers=headers,
+            auth=CosS3Auth(self._conf, params=params))
         data = xml_to_dict(rt.content)
         format_dict(data, ['Contents', 'CommonPrefixes'])
         if decodeflag:
@@ -1261,7 +1268,8 @@ class CosS3Client(object):
             )
         return data
 
-    def list_objects_versions(self, Bucket, Prefix="", Delimiter="", KeyMarker="", VersionIdMarker="", MaxKeys=1000, EncodingType="", **kwargs):
+    def list_objects_versions(self, Bucket, Prefix="", Delimiter="", KeyMarker="", VersionIdMarker="", MaxKeys=1000,
+                              EncodingType="", **kwargs):
         """获取文件列表
 
         :param Bucket(string): 存储桶名称.
@@ -1299,7 +1307,7 @@ class CosS3Client(object):
             'key-marker': KeyMarker,
             'version-id-marker': VersionIdMarker,
             'max-keys': MaxKeys
-            }
+        }
         if EncodingType:
             if EncodingType != 'url':
                 raise CosClientError('EncodingType must be url')
@@ -1309,12 +1317,12 @@ class CosS3Client(object):
             params['encoding-type'] = 'url'
         params = format_values(params)
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=Bucket,
-                params=params,
-                headers=headers,
-                auth=CosS3Auth(self._conf, params=params))
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            params=params,
+            headers=headers,
+            auth=CosS3Auth(self._conf, params=params))
         data = xml_to_dict(rt.content)
         format_dict(data, ['Version', 'DeleteMarker', 'CommonPrefixes'])
         if decodeflag:
@@ -1335,7 +1343,8 @@ class CosS3Client(object):
             )
         return data
 
-    def list_multipart_uploads(self, Bucket, Prefix="", Delimiter="", KeyMarker="", UploadIdMarker="", MaxUploads=1000, EncodingType="", **kwargs):
+    def list_multipart_uploads(self, Bucket, Prefix="", Delimiter="", KeyMarker="", UploadIdMarker="", MaxUploads=1000,
+                               EncodingType="", **kwargs):
         """获取Bucket中正在进行的分块上传
 
         :param Bucket(string): 存储桶名称.
@@ -1373,7 +1382,7 @@ class CosS3Client(object):
             'key-marker': KeyMarker,
             'upload-id-marker': UploadIdMarker,
             'max-uploads': MaxUploads
-            }
+        }
         if EncodingType:
             if EncodingType != 'url':
                 raise CosClientError('EncodingType must be url')
@@ -1383,12 +1392,12 @@ class CosS3Client(object):
             params['encoding-type'] = 'url'
         params = format_values(params)
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=Bucket,
-                params=params,
-                headers=headers,
-                auth=CosS3Auth(self._conf, params=params))
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            params=params,
+            headers=headers,
+            auth=CosS3Auth(self._conf, params=params))
 
         data = xml_to_dict(rt.content)
         format_dict(data, ['Upload', 'CommonPrefixes'])
@@ -2988,12 +2997,12 @@ class CosS3Client(object):
         if self._conf._service_domain is not None:
             url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=None,
-                headers=headers,
-                auth=CosS3Auth(self._conf),
-                )
+            method='GET',
+            url=url,
+            bucket=None,
+            headers=headers,
+            auth=CosS3Auth(self._conf),
+        )
         data = xml_to_dict(rt.content)
         if data['Buckets'] is not None and not isinstance(data['Buckets']['Bucket'], list):
             lst = []
@@ -3002,7 +3011,8 @@ class CosS3Client(object):
         return data
 
     # Advanced interface
-    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag, already_exist_parts, enable_md5, traffic_limit, progress_callback=None):
+    def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag,
+                     already_exist_parts, enable_md5, traffic_limit, progress_callback=None):
         """从本地文件中读取分块, 上传单个分块,将结果记录在md5——list中
 
         :param bucket(string): 存储桶名称.
@@ -3072,7 +3082,8 @@ class CosS3Client(object):
                 return True
         return False
 
-    def _check_all_upload_parts(self, bucket, key, uploadid, local_path, parts_num, part_size, last_size, already_exist_parts):
+    def _check_all_upload_parts(self, bucket, key, uploadid, local_path, parts_num, part_size, last_size,
+                                already_exist_parts):
         """获取所有已经上传的分块的信息,和本地的文件进行对比
 
         :param bucket(string): 存储桶名称.
@@ -3133,15 +3144,17 @@ class CosS3Client(object):
 
         object_info = self.head_object(Bucket, Key)
         file_size = int(object_info['Content-Length'])
-        if file_size <= 1024*1024*20:
+        if file_size <= 1024 * 1024 * 20:
             response = self.get_object(Bucket, Key, **Kwargs)
             response['Body'].get_stream_to_file(DestFilePath)
             return
 
-        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC, **Kwargs)
+        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC,
+                                         **Kwargs)
         downloader.start()
 
-    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None, **kwargs):
+    def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
+                    **kwargs):
         """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
 
         :param Bucket(string): 存储桶名称.
@@ -3168,12 +3181,12 @@ class CosS3Client(object):
             )
         """
         file_size = os.path.getsize(LocalFilePath)
-        if file_size <= 1024*1024*20:
+        if file_size <= 1024 * 1024 * 20:
             with open(LocalFilePath, 'rb') as fp:
                 rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, EnableMD5=EnableMD5, **kwargs)
             return rt
         else:
-            part_size = 1024*1024*PartSize  # 默认按照1MB分块,最大支持10G的文件，超过10G的分块数固定为10000
+            part_size = 1024 * 1024 * PartSize  # 默认按照1MB分块,最大支持10G的文件，超过10G的分块数固定为10000
             last_size = 0  # 最后一块可以小于1MB
             parts_num = file_size // part_size
             last_size = file_size % part_size
@@ -3196,7 +3209,8 @@ class CosS3Client(object):
             if uploadid is not None:
                 logger.info("fetch an existed uploadid in remote cos, uploadid={uploadid}".format(uploadid=uploadid))
                 # 校验服务端返回的每个块的信息是否和本地的每个块的信息相同,只有校验通过的情况下才可以进行断点续传
-                resumable_flag = self._check_all_upload_parts(Bucket, Key, uploadid, LocalFilePath, parts_num, part_size, last_size, already_exist_parts)
+                resumable_flag = self._check_all_upload_parts(Bucket, Key, uploadid, LocalFilePath, parts_num,
+                                                              part_size, last_size, already_exist_parts)
             # 如果不能断点续传,则创建一个新的分块上传
             if not resumable_flag:
                 rt = self.create_multipart_upload(Bucket=Bucket, Key=Key, **kwargs)
@@ -3214,11 +3228,14 @@ class CosS3Client(object):
             callback = None
             if progress_callback:
                 callback = ProgressCallback(file_size, progress_callback)
-            for i in range(1, parts_num+1):
+            for i in range(1, parts_num + 1):
                 if i == parts_num:  # 最后一块
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size-offset, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, traffic_limit, callback)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size - offset, i,
+                                  uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, traffic_limit,
+                                  callback)
                 else:
-                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, traffic_limit, callback)
+                    pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst,
+                                  resumable_flag, already_exist_parts, EnableMD5, traffic_limit, callback)
                     offset += part_size
 
             pool.wait_completion()
@@ -3228,7 +3245,8 @@ class CosS3Client(object):
             lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
 
             # 完成分块上传
-            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid,
+                                                MultipartUpload={'Part': lst})
             return rt
 
     def _inner_head_object(self, CopySource):
@@ -3237,7 +3255,8 @@ class CosS3Client(object):
         params = {}
         if versionid != '':
             params['versionId'] = versionid
-        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket, endpoint=endpoint, path=quote(to_bytes(path), '/-_.~'))
+        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket,
+                                                              endpoint=endpoint, path=quote(to_bytes(path), '/-_.~'))
         rt = self.send_request(
             method='HEAD',
             url=url,
@@ -3315,7 +3334,7 @@ class CosS3Client(object):
             return response
 
         # 如果源文件大小大于等于5G，则先创建分块上传，在调用upload_part
-        part_size = 1024*1024*PartSize  # 默认按照10MB分块
+        part_size = 1024 * 1024 * PartSize  # 默认按照10MB分块
         last_size = 0  # 最后一块可以小于1MB
         parts_num = file_size // part_size
         last_size = file_size % part_size
@@ -3335,12 +3354,12 @@ class CosS3Client(object):
         lst = list()  # 记录分块信息
         pool = SimpleThreadPool(MAXThread)
 
-        for i in range(1, parts_num+1):
+        for i in range(1, parts_num + 1):
             if i == parts_num:  # 最后一块
-                copy_range = gen_copy_source_range(offset, file_size-1)
+                copy_range = gen_copy_source_range(offset, file_size - 1)
                 pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
             else:
-                copy_range = gen_copy_source_range(offset, offset+part_size-1)
+                copy_range = gen_copy_source_range(offset, offset + part_size - 1)
                 pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
                 offset += part_size
 
@@ -3352,7 +3371,8 @@ class CosS3Client(object):
         lst = sorted(lst, key=lambda x: x['PartNumber'])  # 按PartNumber升序排列
         # 完成分片上传
         try:
-            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid,
+                                                MultipartUpload={'Part': lst})
         except Exception as e:
             abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
             raise e
@@ -3389,7 +3409,7 @@ class CosS3Client(object):
         if not hasattr(Body, 'read'):
             raise CosClientError("Body must has attr read")
 
-        part_size = 1024*1024*PartSize
+        part_size = 1024 * 1024 * PartSize
 
         # 先读一个块,如果直接EOF了就调用简单文件上传
         part_num = 1
@@ -3404,7 +3424,7 @@ class CosS3Client(object):
         uploadid = rt['UploadId']
 
         lst = list()  # 记录分块信息
-        MAXQueue = MaxBufferSize//PartSize
+        MAXQueue = MaxBufferSize // PartSize
         if MAXQueue == 0:
             MAXQueue = 1
         pool = SimpleThreadPool(MAXThread, MAXQueue)
@@ -3423,7 +3443,8 @@ class CosS3Client(object):
 
         # 完成分片上传
         try:
-            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid, MultipartUpload={'Part': lst})
+            rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid,
+                                                MultipartUpload={'Part': lst})
         except Exception as e:
             abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
             raise e
@@ -3614,7 +3635,8 @@ class CosS3Client(object):
             '<Rule>',
             '</Rule>'
         ]
-        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration', lst=lst)
+        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration',
+                                lst=lst)
         headers = mapped(kwargs)
         params = {'encryption': ''}
         url = self._conf.uri(bucket=Bucket)
@@ -3704,9 +3726,11 @@ class CosS3Client(object):
                 }
             )
         """
-        url = '{scheme}://{region}.migration.myqcloud.com/{bucket}/'.format(scheme=self._conf._scheme, region=self._conf._region, bucket=Bucket)
+        url = '{scheme}://{region}.migration.myqcloud.com/{bucket}/'.format(scheme=self._conf._scheme,
+                                                                            region=self._conf._region, bucket=Bucket)
         if self._conf._domain is not None:
-            url = '{scheme}://{domain}/{bucket}/'.format(scheme=self._conf._scheme, domain=self._conf._domain, bucket=Bucket)
+            url = '{scheme}://{domain}/{bucket}/'.format(scheme=self._conf._scheme, domain=self._conf._domain,
+                                                         bucket=Bucket)
         headers = {'Content-Type': 'application/json'}
         signed_key = Bucket + '/'
         rt = self.send_request(
@@ -3739,9 +3763,12 @@ class CosS3Client(object):
                 TaskId='string'
             )
         """
-        url = '{scheme}://{region}.migration.myqcloud.com/{bucket}/{task_id}'.format(scheme=self._conf._scheme, region=self._conf._region, bucket=Bucket, task_id=TaskId)
+        url = '{scheme}://{region}.migration.myqcloud.com/{bucket}/{task_id}'.format(scheme=self._conf._scheme,
+                                                                                     region=self._conf._region,
+                                                                                     bucket=Bucket, task_id=TaskId)
         if self._conf._domain is not None:
-            url = '{scheme}://{domain}/{bucket}/{task_id}'.format(scheme=self._conf._scheme, domain=self._conf._domain, bucket=Bucket, task_id=TaskId)
+            url = '{scheme}://{domain}/{bucket}/{task_id}'.format(scheme=self._conf._scheme, domain=self._conf._domain,
+                                                                  bucket=Bucket, task_id=TaskId)
         headers = {'Content-Type': 'application/json'}
         signed_key = '{bucket}/{task_id}'.format(bucket=Bucket, task_id=TaskId)
         rt = self.send_request(
@@ -4089,7 +4116,243 @@ class CosS3Client(object):
             ])
         return data
 
+    def ci_put_object_from_local_file(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
+        """本地CI文件上传接口，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param LocalFilePath(string): 上传文件的本地路径.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到CI
+            response = client.ci_put_object_from_local_file(
+                Bucket='bucket-appid',
+                LocalFilePath='local.jpg',
+                Key='local.jpg'
+                PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"imageView2/format/png"}]}'
+            )
+            print(response['ProcessResults']['Object']['ETag'])
+        """
+        with open(LocalFilePath, 'rb') as fp:
+            return self.ci_put_object(Bucket, fp, Key, EnableMD5, **kwargs)
+
+    def ci_put_object(self, Bucket, Body, Key, EnableMD5=False, **kwargs):
+        """单文件CI上传接口，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param Body(file|string): 上传的文件内容，类型为文件流或字节流.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            with open('local.jpg', 'rb') as fp:
+                response = client.ci_put_object(
+                    Bucket='bucket',
+                    Body=fp,
+                    Key='local.jpg'
+                    PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.jpg","rule":"imageView2/format/png"}]}'
+                )
+                print(response['ProcessResults']['Object']['ETag'])
+        """
+        check_object_content_length(Body)
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_put_object, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        if EnableMD5:
+            md5_str = get_content_md5(Body)
+            if md5_str:
+                headers['Content-MD5'] = md5_str
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key),
+            data=Body,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
+
+    def ci_image_process(self, Bucket, Key, **kwargs):
+        """查询CI image process
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建分块上传
+            response = client.ci_image_process(
+                Bucket='bucket',
+                Key='local.jpg'
+                PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"imageView2/format/png"}]}'
+            )
+            print(response['ProcessResults']['Object']['ETag'])
+        """
+        headers = mapped(kwargs)
+        params = {'image_process': ''}
+        params = format_values(params)
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_image_process, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
+
+    def ci_download_compress_image(self, Bucket, Key, DestImagePath, CompressType, **kwargs):
+        """图片压缩接口
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param DestImagePath(string): 下载图片的目的路径.
+        :param CompressType(string): 压缩格式，目标缩略图的图片格式为 TPG 或 HEIF.
+        :param kwargs(dict): 设置下载的headers.
+        :return response(dict): 请求成功返回的header.
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'imageMogr2/format/' + CompressType: ''}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_download_compress_image, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        StreamBody(rt).get_stream_to_file(DestImagePath)
+        response = dict(**rt.headers)
+        return response
+
+    def ci_put_object_from_local_file_and_get_qrcode(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
+        """本地CI文件上传接口并返回二维码，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param LocalFilePath(string): 上传文件的本地路径.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict,dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到CI
+            response, data = client.ci_put_object_qrcode_from_local_file(
+                Bucket='bucket-appid',
+                LocalFilePath='local.jpg',
+                Key='local.jpg'
+                PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.jpg","rule":"QRcode/cover/0"}]}'
+            )
+            print(response,data)
+        """
+        with open(LocalFilePath, 'rb') as fp:
+            return self.ci_put_object(Bucket, fp, Key, EnableMD5, **kwargs)
+
+    def ci_get_object_qrcode(self, Bucket, Key, Cover, **kwargs):
+        """单文件CI下载接口，返回文件二维码信息
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Cover(int): 二维码覆盖功能.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict,dict): 操作返回的结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_object_qrcode(
+                Bucket='bucket',
+                Key='test.txt',
+                Cover=0
+            )
+            print(response,data)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = u"{url}?{ci}={cover}".format(
+            url=to_unicode(url),
+            ci=to_unicode('ci-process=QRcode&cover'),
+            cover=Cover
+        )
+
+        logger.info("get object, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
+
 
 if __name__ == "__main__":
     pass
-# This is a new line that ends the file.

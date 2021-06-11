@@ -73,7 +73,7 @@ class CosV5PythonSDKTest(object):
     def get_bucket_location(self, bucket_name):
         # 获取存储桶地域信息
         resp = self.client.get_bucket_location(Bucket=bucket_name + '-' +
-                                               self.appid)
+                                                      self.appid)
         return resp["LocationConstraint"]
 
     def list_objects(self, bucket_name):
@@ -136,7 +136,7 @@ class CosV5PythonSDKTest(object):
     def get_bucket_acl(self, bucket_name):
         # 获取存储桶访问控制权限
         resp = self.client.get_bucket_acl(Bucket=bucket_name + "-" +
-                                          self.appid)
+                                                 self.appid)
         return resp
 
     def put_bucket_cors(self, bucket_name, max_age_seconds=0):
@@ -179,7 +179,7 @@ class CosV5PythonSDKTest(object):
     def get_bucket_cors(self, bucket_name):
         # 获取存储桶跨域访问规则
         resp = self.client.get_bucket_cors(Bucket=bucket_name + '-' +
-                                           self.appid)
+                                                  self.appid)
         return resp
 
     def delete_bucket_cors(self, bucket_name):
@@ -367,7 +367,7 @@ class CosV5PythonSDKTest(object):
 
     def list_multipart_uploads(self, bucket_name):
         resp = self.client.list_multipart_uploads(Bucket=bucket_name + '-' +
-                                                  self.appid)
+                                                         self.appid)
         return resp
 
     def upload_file(self, bucket_name, obj_name, file_path):

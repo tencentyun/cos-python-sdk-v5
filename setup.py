@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 from platform import python_version_tuple
 import io
 
-def requirements():
 
+def requirements():
     with open('requirements.txt', 'r') as fileobj:
         requirements = [line.strip() for line in fileobj]
         return requirements
@@ -16,7 +16,7 @@ def long_description():
 
 setup(
     name='cos-python-sdk-v5',
-    version='1.9.6',
+    version='1.9.7',
     url='https://www.qcloud.com/',
     license='MIT',
     author='tiedu, lewzylu, channingliu',

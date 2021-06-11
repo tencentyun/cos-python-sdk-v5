@@ -8,11 +8,13 @@ from qcloud_cos.crypto import DataDecryptAdapter
 from .cos_exception import CosClientError
 from .cos_comm import *
 from .cos_auth import CosS3Auth
+
 logger = logging.getLogger(__name__)
 
 
 class CosEncryptionClient(CosS3Client):
     """cos支持加密的客户端，封装相应请求"""
+
     def __init__(self, conf, provider, retry=1, session=None):
         """初始化client对象
 
@@ -111,13 +113,13 @@ class CosEncryptionClient(CosS3Client):
             headers=headers,
             params=params))
         rt = self.send_request(
-                method='GET',
-                url=url,
-                bucket=Bucket,
-                stream=True,
-                auth=CosS3Auth(self._conf, Key, params=params),
-                params=params,
-                headers=headers)
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
 
         self.provider.init_data_cipter_by_user(encrypt_key, encrypt_start, real_start)
         response['Body'] = self.provider.make_data_decrypt_adapter(rt, offset)
@@ -175,5 +177,6 @@ class CosEncryptionClient(CosS3Client):
                 )
         """
         data = self.provider.make_data_encrypt_adapter(Body)
-        response = super(CosEncryptionClient, self).upload_part(Bucket, Key, data, PartNumber, UploadId, EnableMD5=False, **kwargs)
+        response = super(CosEncryptionClient, self).upload_part(Bucket, Key, data, PartNumber, UploadId,
+                                                                EnableMD5=False, **kwargs)
         return response

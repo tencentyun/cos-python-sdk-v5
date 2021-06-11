@@ -20,7 +20,8 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ["REGION"]
 APPID = '1251668577'
-test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(sys.version_info[1]) + '-' + REGION + '-' + APPID
+test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
+    sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
@@ -77,7 +78,7 @@ def get_raw_md5(data):
 
 def gen_file(path, size):
     _file = open(path, 'w')
-    _file.seek(1024*1024*size-3)
+    _file.seek(1024 * 1024 * size - 3)
     _file.write('cos')
     _file.close()
 
@@ -95,6 +96,7 @@ def print_error_msg(e):
 
 def percentage(consumed_bytes, total_bytes):
     """进度条回调函数，计算当前完成的百分比
+    
     :param consumed_bytes: 已经上传/下载的数据量
     :param total_bytes: 总数据量
     """
@@ -166,7 +168,7 @@ def test_put_object_speacil_names():
     """特殊字符文件上传"""
     response = client.put_object(
         Bucket=test_bucket,
-        Body='S'*1024,
+        Body='S' * 1024,
         Key=special_file_name,
         CacheControl='no-cache',
         ContentDisposition='download.txt'
@@ -196,7 +198,7 @@ def test_put_object_non_exist_bucket():
     try:
         response = client.put_object(
             Bucket='test0xx-' + APPID,
-            Body='T'*10,
+            Body='T' * 10,
             Key=test_object,
             CacheControl='no-cache',
             ContentDisposition='download.txt'
@@ -274,7 +276,7 @@ def test_create_complete_multipart_upload():
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=1,
-        Body='A'*1024*1024*2
+        Body='A' * 1024 * 1024 * 2
     )
 
     response = client.upload_part(
@@ -282,7 +284,7 @@ def test_create_complete_multipart_upload():
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=2,
-        Body='B'*1024*1024*2
+        Body='B' * 1024 * 1024 * 2
     )
     # list parts
     response = client.list_parts(
@@ -314,7 +316,7 @@ def test_upload_part_copy():
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=1,
-        Body='A'*1024*1024*2
+        Body='A' * 1024 * 1024 * 2
     )
 
     response = client.upload_part(
@@ -322,7 +324,7 @@ def test_upload_part_copy():
         Key='multipartfile.txt',
         UploadId=uploadid,
         PartNumber=2,
-        Body='B'*1024*1024*2
+        Body='B' * 1024 * 1024 * 2
     )
 
     # upload part copy
@@ -358,13 +360,13 @@ def test_delete_multiple_objects():
     response1 = client.put_object(
         Bucket=test_bucket,
         Key=file_name1,
-        Body='A'*1024*1024
+        Body='A' * 1024 * 1024
     )
     assert response1
     response2 = client.put_object(
         Bucket=test_bucket,
         Key=file_name2,
-        Body='B'*1024*1024*2
+        Body='B' * 1024 * 1024 * 2
     )
     assert response2
     objects = {
@@ -475,7 +477,7 @@ def test_put_get_delete_cors():
                 'ExposeHeader': ['x-cos-meta-test1'],
                 'MaxAgeSeconds': 500
             }
-         ]
+        ]
     }
     # put cors
     response = client.put_bucket_cors(
@@ -634,7 +636,7 @@ def test_put_get_delete_website():
                 'Redirect': {
                     'ReplaceKeyPrefixWith': 'ccc/'
                 }
-             }
+            }
         ]
     }
     response = client.put_bucket_website(
@@ -695,7 +697,7 @@ def test_list_multipart_uploads():
 
 def test_upload_file_from_buffer():
     import io
-    data = io.BytesIO(6*1024*1024*b'A')
+    data = io.BytesIO(6 * 1024 * 1024 * b'A')
     response = client.upload_file_from_buffer(
         Bucket=test_bucket,
         Key='test_upload_from_buffer',
@@ -1155,7 +1157,7 @@ def test_put_get_traffic_limit():
     response = client.put_object(
         Bucket=test_bucket,
         Key=traffic_test_key,
-        Body='A'*1024*1024,
+        Body='A' * 1024 * 1024,
         TrafficLimit='1048576'
     )
     # 限速的单位为bit/s 1048576bit/s代表1Mb/s
@@ -1184,7 +1186,7 @@ def test_select_object():
     response = client.put_object(
         Bucket=test_bucket,
         Key=select_obj,
-        Body=(json.dumps(json_body)+'\n')*100
+        Body=(json.dumps(json_body) + '\n') * 100
     )
     response = client.select_object_content(
         Bucket=test_bucket,
@@ -1308,7 +1310,7 @@ def test_bucket_encryption():
     # 测试获取存储桶默认加密配置
     ret = client.get_bucket_encryption(test_bucket)
     sse_algorithm = ret['Rule'][0]['ApplyServerSideEncryptionByDefault']['SSEAlgorithm']
-    assert(sse_algorithm == 'AES256')
+    assert (sse_algorithm == 'AES256')
 
     # 删除存储桶默认加密配置
     client.delete_bucket_encryption(test_bucket)
@@ -1356,7 +1358,7 @@ def test_aes_client():
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5((content+content).encode("utf-8"))
+    content_md5 = get_raw_md5((content + content).encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
@@ -1406,7 +1408,7 @@ def test_rsa_client():
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
-    content_md5 = get_raw_md5((content+content).encode("utf-8"))
+    content_md5 = get_raw_md5((content + content).encode("utf-8"))
     assert local_file_md5 and content_md5 and local_file_md5 == content_md5
     if os.path.exists('test_multi_upload_local'):
         os.remove('test_multi_upload_local')
@@ -1539,7 +1541,6 @@ def test_live_channel():
     response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
     assert (response)
 
-
 def test_get_object_url():
     """测试获取对象访问URL"""
     response = client.get_object_url(
@@ -1548,10 +1549,32 @@ def test_get_object_url():
     )
     print(response)
 
+def test_qrcode():
+    """二维码图片上传时识别"""
+    file_name = 'test_object_sdk_qrcode.file'
+    with open(file_name, 'rb') as fp:
+        # fp验证
+        opts = '{"is_pic_info":1,"rules":[{"fileid":"format.jpg","rule":"QRcode/cover/1"}]}'
+        response, data = client.ci_put_object_from_local_file_and_get_qrcode(
+            Bucket=test_bucket,
+            LocalFilePath=file_name,
+            Key=file_name,
+            EnableMD5=False,
+            PicOperations=opts
+        )
+        print(response, data)
+
+    """二维码图片下载时识别"""
+    response, data = client.ci_get_object_qrcode(
+        Bucket=test_bucket,
+        Key=file_name,
+        Cover=0
+    )
+    print(response, data)
+
 
 if __name__ == "__main__":
     setUp()
-    test_get_object_url()
     """
     test_put_object_enable_md5()
     test_upload_with_server_side_encryption()
@@ -1581,5 +1604,6 @@ if __name__ == "__main__":
     test_put_get_bucket_intelligenttiering()
     test_aes_client()
     test_rsa_client()
+    test_qrcode()
     """
     tearDown()
