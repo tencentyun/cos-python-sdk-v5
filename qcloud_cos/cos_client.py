@@ -4092,3 +4092,4 @@ class CosS3Client(object):
 
 if __name__ == "__main__":
     pass
+# This is a new line that ends the file.
