@@ -400,15 +400,12 @@ class CosS3Client(object):
 
         return response
 
-    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, Interval=None, MaxFrames=None, BizType=None, **kwargs):
+    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
-        :param Interval(int): 截帧频率，GIF图/长图检测专用，默认值为0，表示只会检测GIF图/长图的第一帧.
-        :param MaxFrames(int): 最大截帧数量，GIF图/长图检测专用，默认值为1，表示只取GIF的第1帧图片进行审核，或长图不做切分识别.
-        :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -416,7 +413,7 @@ class CosS3Client(object):
 
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
-            # 识别cos上的图片
+            # 下载cos上的文件到本地
             response = client.get_object_sensitive_content_recognition(
                 Bucket='bucket',
                 DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
@@ -455,12 +452,6 @@ class CosS3Client(object):
             detect_type += 'ads'
 
         params['detect-type'] = detect_type
-        if Interval:
-            params['interval'] = Interval
-        if MaxFrames:
-            params['max-frames'] = MaxFrames
-        if BizType:
-            params['biz-type'] = BizType
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -532,26 +523,6 @@ class CosS3Client(object):
             )
         """
         return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers)
-
-    def get_object_url(self, Bucket, Key):
-        """生成对象访问的url
-
-        :param Bucket(string): 存储桶名称.
-        :param Key(string): COS路径.
-        :return(string): 对象访问的URL.
-
-        .. code-block:: python
-
-            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
-            client = CosS3Client(config)
-            # 获取预签名链接
-            response = client.get_object_url(
-                Bucket='bucket',
-                Key='test.txt'
-            )
-        """
-        url = self._conf.uri(bucket=Bucket, path=Key)
-        return url
 
     def delete_object(self, Bucket, Key, **kwargs):
         """单文件删除接口
@@ -4097,6 +4068,243 @@ class CosS3Client(object):
                 ['LiveChannel', 'Name'],
             ])
         return data
+
+    def ci_put_object_from_local_file(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
+        """本地CI文件上传接口，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param LocalFilePath(string): 上传文件的本地路径.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到CI
+            response = client.ci_put_object_from_local_file(
+                Bucket='bucket-appid',
+                LocalFilePath='local.jpg',
+                Key='local.jpg'
+                PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"imageView2/format/png"}]}'
+            )
+            print(response['ProcessResults']['Object']['ETag'])
+        """
+        with open(LocalFilePath, 'rb') as fp:
+            return self.ci_put_object(Bucket, fp, Key, EnableMD5, **kwargs)
+
+    def ci_put_object(self, Bucket, Body, Key, EnableMD5=False, **kwargs):
+        """单文件CI上传接口，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param Body(file|string): 上传的文件内容，类型为文件流或字节流.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到cos
+            with open('local.jpg', 'rb') as fp:
+                response = client.ci_put_object(
+                    Bucket='bucket',
+                    Body=fp,
+                    Key='local.jpg'
+                    PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.jpg","rule":"imageView2/format/png"}]}'
+                )
+                print(response['ProcessResults']['Object']['ETag'])
+        """
+        check_object_content_length(Body)
+        headers = mapped(kwargs)
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_put_object, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        if EnableMD5:
+            md5_str = get_content_md5(Body)
+            if md5_str:
+                headers['Content-MD5'] = md5_str
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key),
+            data=Body,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
+
+    def ci_image_process(self, Bucket, Key, **kwargs):
+        """查询CI image process
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建分块上传
+            response = client.ci_image_process(
+                Bucket='bucket',
+                Key='local.jpg'
+                PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"imageView2/format/png"}]}'
+            )
+            print(response['ProcessResults']['Object']['ETag'])
+        """
+        headers = mapped(kwargs)
+        params = {'image_process': ''}
+        params = format_values(params)
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_image_process, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method ='POST',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
+
+    def ci_download_compress_image(self, Bucket, Key, DestImagePath, CompressType, **kwargs):
+        """图片压缩接口
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param DestImagePath(string): 下载图片的目的路径.
+        :param CompressType(string): 压缩格式，目标缩略图的图片格式为 TPG 或 HEIF.
+        :param kwargs(dict): 设置下载的headers.
+        :return response(dict): 请求成功返回的header.
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'imageMogr2/format/' + CompressType: ''}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_download_compress_image, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        StreamBody(rt).get_stream_to_file(DestImagePath)
+        response = dict(**rt.headers)
+        return response
+
+    def ci_put_object_from_local_file_and_get_qrcode(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
+        """本地CI文件上传接口并返回二维码，适用于小文件，最大不得超过5GB
+
+        :param Bucket(string): 存储桶名称.
+        :param LocalFilePath(string): 上传文件的本地路径.
+        :param Key(string): COS路径.
+        :param EnableMD5(bool): 是否需要SDK计算Content-MD5，打开此开关会增加上传耗时.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict,dict): 上传成功UploadResult结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 上传本地文件到CI
+            response, data = client.ci_put_object_qrcode_from_local_file(
+                Bucket='bucket-appid',
+                LocalFilePath='local.jpg',
+                Key='local.jpg'
+                PicOperations='{"is_pic_info":1,"rules":[{"fileid":"format.jpg","rule":"QRcode/cover/0"}]}'
+            )
+            print(response,data)
+        """
+        with open(LocalFilePath, 'rb') as fp:
+            return self.ci_put_object(Bucket, fp, Key, EnableMD5, **kwargs)
+
+    def ci_get_object_qrcode(self, Bucket, Key, Cover, **kwargs):
+        """单文件CI下载接口，返回文件二维码信息
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Cover(int): 二维码覆盖功能.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict,dict): 操作返回的结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_object_qrcode(
+                Bucket='bucket',
+                Key='test.txt',
+                Cover=0
+            )
+            print(response,data)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        url = u"{url}?{ci}={cover}".format(
+            url=to_unicode(url),
+            ci=to_unicode('ci-process=QRcode&cover'),
+            cover=Cover
+        )
+
+        logger.info("get object, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+                method='GET',
+                url=url,
+                bucket=Bucket,
+                stream=True,
+                auth=CosS3Auth(self._conf, Key, params=params),
+                params=params,
+                headers=headers)
+
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
 
 
 if __name__ == "__main__":
