@@ -96,7 +96,6 @@ def print_error_msg(e):
 
 def percentage(consumed_bytes, total_bytes):
     """进度条回调函数，计算当前完成的百分比
-    
     :param consumed_bytes: 已经上传/下载的数据量
     :param total_bytes: 总数据量
     """
@@ -1541,6 +1540,7 @@ def test_live_channel():
     response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
     assert (response)
 
+
 def test_get_object_url():
     """测试获取对象访问URL"""
     response = client.get_object_url(
@@ -1549,7 +1549,8 @@ def test_get_object_url():
     )
     print(response)
 
-def test_qrcode():
+
+def _test_qrcode():
     """二维码图片上传时识别"""
     file_name = 'test_object_sdk_qrcode.file'
     with open(file_name, 'rb') as fp:
