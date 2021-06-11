@@ -1214,6 +1214,9 @@ def _test_get_object_sensitive_content_recognition():
     response = client.get_object_sensitive_content_recognition(
         Bucket=test_bucket,
         Key=test_object,
+        Interval=3,
+        MaxFrames=20,
+        # BizType='xxxx',
         DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS)
     )
     print(response)

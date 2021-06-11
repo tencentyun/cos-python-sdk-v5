@@ -261,8 +261,6 @@ add user-defined ua
 
 ## [v1.6.4](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.6.3...v1.6.4) - 2018-12-11
 
-Fix bugs of thread pool
-
 ### Merged
 
 - fix spelling error [`#80`](https://github.com/tencentyun/cos-python-sdk-v5/pull/80)
