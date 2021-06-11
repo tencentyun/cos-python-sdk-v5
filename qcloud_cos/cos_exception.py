@@ -41,12 +41,14 @@ def digest_xml(data):
 
 class CosClientError(CosException):
     """Client端错误，如timeout"""
+
     def __init__(self, message):
         CosException.__init__(self, message)
 
 
 class CosServiceError(CosException):
     """COS Server端错误，可以获取特定的错误信息"""
+
     def __init__(self, method, message, status_code):
         CosException.__init__(self, message)
         if isinstance(message, dict):

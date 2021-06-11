@@ -11,11 +11,13 @@ import crcmod
 from .cos_comm import *
 from .streambody import StreamBody
 from .cos_threadpool import SimpleThreadPool
+
 logger = logging.getLogger(__name__)
 
 
 class ResumableDownLoader(object):
-    def __init__(self, cos_client, bucket, key, dest_filename, object_info, part_size=20, max_thread=5, enable_crc=False, **kwargs):
+    def __init__(self, cos_client, bucket, key, dest_filename, object_info, part_size=20, max_thread=5,
+                 enable_crc=False, **kwargs):
         self.__cos_client = cos_client
         self.__bucket = bucket
         self.__key = key
@@ -135,7 +137,8 @@ class ResumableDownLoader(object):
     def __dump_record(self, record):
         with open(self.__record_filepath, 'w') as f:
             json.dump(record, f)
-            logger.debug('dump record to {0}, bucket: {1}, key: {2}'.format(self.__record_filepath, self.__bucket, self.__key))
+            logger.debug(
+                'dump record to {0}, bucket: {1}, key: {2}'.format(self.__record_filepath, self.__bucket, self.__key))
 
     def __load_record(self):
         record = None
@@ -156,7 +159,8 @@ class ResumableDownLoader(object):
                     self.__tmp_file = None
                     self.__del_record()
                 else:
-                    self.__finished_parts = list(PartInfo(p['part_id'], p['start'], p['length']) for p in record['parts'])
+                    self.__finished_parts = list(
+                        PartInfo(p['part_id'], p['start'], p['length']) for p in record['parts'])
                     logger.debug('load record: finished parts nums: {0}'.format(len(self.__finished_parts)))
                     self.__record = record
 
@@ -169,8 +173,8 @@ class ResumableDownLoader(object):
             self.__dump_record(record)
 
     def __check_record(self, record):
-        return record['etag'] == self.__object_info['ETag'] and\
-               record['mtime'] == self.__object_info['Last-Modified'] and\
+        return record['etag'] == self.__object_info['ETag'] and \
+               record['mtime'] == self.__object_info['Last-Modified'] and \
                record['file_size'] == self.__object_info['Content-Length']
 
     def __del_record(self):

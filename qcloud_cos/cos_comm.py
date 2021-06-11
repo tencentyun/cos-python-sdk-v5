@@ -17,49 +17,49 @@ from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
 
-SINGLE_UPLOAD_LENGTH = 5*1024*1024*1024  # 单次上传文件最大为5GB
-DEFAULT_CHUNK_SIZE = 1024*1024           # 计算MD5值时,文件单次读取的块大小为1MB
+SINGLE_UPLOAD_LENGTH = 5 * 1024 * 1024 * 1024  # 单次上传文件最大为5GB
+DEFAULT_CHUNK_SIZE = 1024 * 1024  # 计算MD5值时,文件单次读取的块大小为1MB
 # kwargs中params到http headers的映射
 maplist = {
-            'ContentLength': 'Content-Length',
-            'ContentMD5': 'Content-MD5',
-            'ContentType': 'Content-Type',
-            'CacheControl': 'Cache-Control',
-            'ContentDisposition': 'Content-Disposition',
-            'ContentEncoding': 'Content-Encoding',
-            'ContentLanguage': 'Content-Language',
-            'Expires': 'Expires',
-            'ResponseContentType': 'response-content-type',
-            'ResponseContentLanguage': 'response-content-language',
-            'ResponseExpires': 'response-expires',
-            'ResponseCacheControl': 'response-cache-control',
-            'ResponseContentDisposition': 'response-content-disposition',
-            'ResponseContentEncoding': 'response-content-encoding',
-            'Metadata': 'Metadata',
-            'ACL': 'x-cos-acl',
-            'GrantFullControl': 'x-cos-grant-full-control',
-            'GrantWrite': 'x-cos-grant-write',
-            'GrantRead': 'x-cos-grant-read',
-            'StorageClass': 'x-cos-storage-class',
-            'Range': 'Range',
-            'IfMatch': 'If-Match',
-            'IfNoneMatch': 'If-None-Match',
-            'IfModifiedSince': 'If-Modified-Since',
-            'IfUnmodifiedSince': 'If-Unmodified-Since',
-            'CopySourceIfMatch': 'x-cos-copy-source-If-Match',
-            'CopySourceIfNoneMatch': 'x-cos-copy-source-If-None-Match',
-            'CopySourceIfModifiedSince': 'x-cos-copy-source-If-Modified-Since',
-            'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
-            'VersionId': 'versionId',
-            'ServerSideEncryption': 'x-cos-server-side-encryption',
-            'SSECustomerAlgorithm': 'x-cos-server-side-encryption-customer-algorithm',
-            'SSECustomerKey': 'x-cos-server-side-encryption-customer-key',
-            'SSECustomerKeyMD5': 'x-cos-server-side-encryption-customer-key-MD5',
-            'SSEKMSKeyId': 'x-cos-server-side-encryption-cos-kms-key-id',
-            'Referer': 'Referer',
-            'PicOperations': 'Pic-Operations',
-            'TrafficLimit': 'x-cos-traffic-limit',
-           }
+    'ContentLength': 'Content-Length',
+    'ContentMD5': 'Content-MD5',
+    'ContentType': 'Content-Type',
+    'CacheControl': 'Cache-Control',
+    'ContentDisposition': 'Content-Disposition',
+    'ContentEncoding': 'Content-Encoding',
+    'ContentLanguage': 'Content-Language',
+    'Expires': 'Expires',
+    'ResponseContentType': 'response-content-type',
+    'ResponseContentLanguage': 'response-content-language',
+    'ResponseExpires': 'response-expires',
+    'ResponseCacheControl': 'response-cache-control',
+    'ResponseContentDisposition': 'response-content-disposition',
+    'ResponseContentEncoding': 'response-content-encoding',
+    'Metadata': 'Metadata',
+    'ACL': 'x-cos-acl',
+    'GrantFullControl': 'x-cos-grant-full-control',
+    'GrantWrite': 'x-cos-grant-write',
+    'GrantRead': 'x-cos-grant-read',
+    'StorageClass': 'x-cos-storage-class',
+    'Range': 'Range',
+    'IfMatch': 'If-Match',
+    'IfNoneMatch': 'If-None-Match',
+    'IfModifiedSince': 'If-Modified-Since',
+    'IfUnmodifiedSince': 'If-Unmodified-Since',
+    'CopySourceIfMatch': 'x-cos-copy-source-If-Match',
+    'CopySourceIfNoneMatch': 'x-cos-copy-source-If-None-Match',
+    'CopySourceIfModifiedSince': 'x-cos-copy-source-If-Modified-Since',
+    'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
+    'VersionId': 'versionId',
+    'ServerSideEncryption': 'x-cos-server-side-encryption',
+    'SSECustomerAlgorithm': 'x-cos-server-side-encryption-customer-algorithm',
+    'SSECustomerKey': 'x-cos-server-side-encryption-customer-key',
+    'SSECustomerKeyMD5': 'x-cos-server-side-encryption-customer-key-MD5',
+    'SSEKMSKeyId': 'x-cos-server-side-encryption-cos-kms-key-id',
+    'Referer': 'Referer',
+    'PicOperations': 'Pic-Operations',
+    'TrafficLimit': 'x-cos-traffic-limit',
+}
 
 
 def to_str(s):
@@ -205,7 +205,7 @@ def format_xml(data, root, lst=list(), parent_child=False):
     else:
         xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
     for i in lst:
-        xml_config = xml_config.replace(to_bytes(i+i), to_bytes(i))
+        xml_config = xml_config.replace(to_bytes(i + i), to_bytes(i))
     return xml_config
 
 
@@ -279,7 +279,7 @@ def format_bucket(bucket, appid):
     bucket = to_unicode(bucket)
     appid = to_unicode(appid)
     # appid不为空,检查是否以-appid结尾
-    if bucket.endswith(u"-"+appid):
+    if bucket.endswith(u"-" + appid):
         return bucket
     return bucket + u"-" + appid
 
@@ -334,19 +334,19 @@ def gen_copy_source_url(CopySource):
     if versionid != u'':
         path = path + u'?versionId=' + versionid
     url = u"{bucket}.{endpoint}/{path}".format(
-            bucket=bucket,
-            endpoint=endpoint,
-            path=path
-            )
+        bucket=bucket,
+        endpoint=endpoint,
+        path=path
+    )
     return url
 
 
 def gen_copy_source_range(begin_range, end_range):
     """拼接bytes=begin-end形式的字符串"""
     range = u"bytes={first}-{end}".format(
-            first=to_unicode(begin_range),
-            end=to_unicode(end_range)
-            )
+        first=to_unicode(begin_range),
+        end=to_unicode(end_range)
+    )
     return range
 
 
@@ -411,7 +411,7 @@ def decode_result(data, key_lst, multi_key_list):
 def get_date(yy, mm, dd):
     """获取lifecycle中Date字段"""
     date_str = datetime(yy, mm, dd).isoformat()
-    final_date_str = date_str+'+08:00'
+    final_date_str = date_str + '+08:00'
     return final_date_str
 
 
@@ -419,7 +419,8 @@ def parse_object_canned_acl(result_acl, rsp_headers):
     """根据ACL返回的body信息,以及default头部来判断CannedACL"""
     if "x-cos-acl" in rsp_headers and rsp_headers["x-cos-acl"] == "default":
         return "default"
-    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'READ'}
+    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'},
+                   'Permission': 'READ'}
     if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
         if public_read in result_acl['AccessControlList']['Grant']:
             return "public-read"
@@ -428,8 +429,10 @@ def parse_object_canned_acl(result_acl, rsp_headers):
 
 def parse_bucket_canned_acl(result_acl):
     """根据ACL返回的body信息来判断Bucket CannedACL"""
-    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'READ'}
-    public_write = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'}, 'Permission': 'WRITE'}
+    public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'},
+                   'Permission': 'READ'}
+    public_write = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'},
+                    'Permission': 'WRITE'}
     if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
         if public_read in result_acl['AccessControlList']['Grant']:
             if public_write in result_acl['AccessControlList']['Grant']:

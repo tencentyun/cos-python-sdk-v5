@@ -7,6 +7,7 @@ import hashlib
 import logging
 from requests.auth import AuthBase
 from .cos_comm import to_unicode, to_bytes, to_str
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,8 +56,10 @@ class CosS3Auth(AuthBase):
         uri_params = self._params
         headers = filter_headers(r.headers)
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
-        headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in headers.items()])  # headers中的key转换为小写，value进行encode
-        uri_params = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in uri_params.items()])
+        headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
+                        headers.items()])  # headers中的key转换为小写，value进行encode
+        uri_params = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
+                           uri_params.items()])
         format_str = u"{method}\n{host}\n{params}\n{headers}\n".format(
             method=r.method.lower(),
             host=path,
@@ -66,7 +69,7 @@ class CosS3Auth(AuthBase):
         logger.debug("format str: " + format_str)
 
         start_sign_time = int(time.time())
-        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time-60, ed_time=start_sign_time+self._expire)
+        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time - 60, ed_time=start_sign_time + self._expire)
         sha1 = hashlib.sha1()
         sha1.update(to_bytes(format_str))
 
@@ -120,14 +123,14 @@ class CosRtmpAuth(AuthBase):
         sha1.update(to_bytes(rtmp_str))
         # get time
         sign_time = int(time.time())
-        sign_time_str = "{start_time};{end_time}".format(start_time=sign_time-60, end_time=sign_time+self._expire)
+        sign_time_str = "{start_time};{end_time}".format(start_time=sign_time - 60, end_time=sign_time + self._expire)
         str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time_str, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
         # get sinature
         signature = hmac.new(to_bytes(self._secret_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
         logger.debug('signature: ' + str(signature))
         rtmp_sign = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-signature={sign}".format(
-                ak=self._secret_id, sign_time=sign_time_str, key_time=sign_time_str, sign=signature)
+            ak=self._secret_id, sign_time=sign_time_str, key_time=sign_time_str, sign=signature)
         if canonicalized_param != '':
             return rtmp_sign + "&{params}".format(params=canonicalized_param)
         else:

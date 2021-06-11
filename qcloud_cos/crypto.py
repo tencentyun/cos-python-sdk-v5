@@ -15,6 +15,7 @@ from Crypto.Cipher import PKCS1_OAEP, PKCS1_v1_5
 from .cos_exception import CosClientError
 from .streambody import StreamBody
 from abc import ABCMeta, abstractmethod
+
 logger = logging.getLogger(__name__)
 
 _AES_CTR_COUNTER_BITS_LENGTH = 8 * 16
@@ -38,6 +39,7 @@ def iv_to_big_int(iv):
 
 class AESCTRCipher(object):
     """数据加密类，用于加密用户数据"""
+
     def __init__(self):
         """初始化"""
         self.__block_size_len = AES.block_size
@@ -111,6 +113,7 @@ class AESCTRCipher(object):
 
 class RSAKeyPair:
     """封装有公钥和私钥"""
+
     def __init__(self, public_key, private_key):
         self.publick_key = public_key
         self.private_key = private_key
@@ -118,6 +121,7 @@ class RSAKeyPair:
 
 class RSAKeyPairPath:
     """封装有公钥和私钥的路径"""
+
     def __init__(self, public_key_path, private_key_path):
         self.public_key_path = public_key_path
         self.private_key_path = private_key_path
@@ -125,6 +129,7 @@ class RSAKeyPairPath:
 
 class BaseProvider(object):
     """客户端主密钥加密基类"""
+
     def __init__(self, cipher):
         """初始化
         :param cipher(an AES object): 数据加解密类
@@ -170,6 +175,7 @@ class BaseProvider(object):
 
 class RSAProvider(BaseProvider):
     """客户端非对称主密钥加密类"""
+
     def __init__(self, key_pair_info=None, cipher=AESCTRCipher(), passphrase=None):
         """初始化"""
         super(RSAProvider, self).__init__(cipher=cipher)
@@ -186,11 +192,13 @@ class RSAProvider(BaseProvider):
             self.__encrypt_obj = PKCS1_v1_5.new(RSA.importKey(key_pair_info.publick_key, passphrase=passphrase))
             self.__decrypt_obj = PKCS1_v1_5.new(RSA.importKey(key_pair_info.private_key, passphrase=passphrase))
         elif isinstance(key_pair_info, RSAKeyPairPath):
-            self.__encrypt_obj, self.__decrypt_obj = self.__get_key_by_path(key_pair_info.public_key_path, key_pair_info.private_key_path, passphrase)
+            self.__encrypt_obj, self.__decrypt_obj = self.__get_key_by_path(key_pair_info.public_key_path,
+                                                                            key_pair_info.private_key_path, passphrase)
         else:
             logger.info('key_pair_info is None, try to get key from default path')
             if os.path.exists(default_private_key_path) and os.path.exists(default_public_key_path):
-                self.__encrypt_obj, self.__decrypt_obj = self.__get_key_by_path(default_public_key_path, default_private_key_path, passphrase)
+                self.__encrypt_obj, self.__decrypt_obj = self.__get_key_by_path(default_public_key_path,
+                                                                                default_private_key_path, passphrase)
 
         # 为用户自动创建rsa
         if self.__encrypt_obj is None and self.__decrypt_obj is None:
@@ -262,6 +270,7 @@ class RSAProvider(BaseProvider):
 
 class AESProvider(BaseProvider):
     """客户端对称主密钥加密类"""
+
     def __init__(self, aes_key=None, aes_key_path=None, cipher=AESCTRCipher()):
         """初始化"""
         super(AESProvider, self).__init__(cipher=cipher)
@@ -328,6 +337,7 @@ class AESProvider(BaseProvider):
 
 class MetaHandle(object):
     """用于获取/生成加密的元信息"""
+
     def __init__(self, encrypt_key=None, encrypt_iv=None):
         """初始化
 
@@ -355,6 +365,7 @@ class MetaHandle(object):
 
 class DataEncryptAdapter(object):
     """用于读取经过加密后的的数据"""
+
     def __init__(self, data, content_len, data_cipher):
         self._data = to_bytes(data)
         self._data_cipher = data_cipher
@@ -376,7 +387,7 @@ class DataEncryptAdapter(object):
             bytes_to_read = min(length, self._content_len - self._read_len)
 
         if isinstance(self._data, bytes):
-            content = self._data[self._read_len:self._read_len+bytes_to_read]
+            content = self._data[self._read_len:self._read_len + bytes_to_read]
         else:
             content = self._data.read(bytes_to_read)
 
@@ -387,6 +398,7 @@ class DataEncryptAdapter(object):
 
 class DataDecryptAdapter(StreamBody):
     """用于读取经过解密后的数据"""
+
     def __init__(self, rt, data_cipher, offset=0):
         """初始化
         :param rt(request object): request请求返回的对象
