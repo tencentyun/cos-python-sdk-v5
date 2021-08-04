@@ -39,7 +39,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10):
+                 PoolMaxSize=10, AllowRedirects=False):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -63,6 +63,7 @@ class CosConfig(object):
         :param ServiceDomain(string):  使用自定义的域名来访问cos service
         :param PoolConnections(int):  连接池个数
         :param PoolMaxSize(int):      连接池中最大连接数
+        :param AllowRedirects(bool):  是否重定向
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -78,6 +79,7 @@ class CosConfig(object):
         self._service_domain = ServiceDomain
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
+        self._allow_redirects = AllowRedirects
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
@@ -255,6 +257,8 @@ class CosS3Client(object):
             kwargs['data'] = to_bytes(kwargs['data'])
         if self._conf._ip is not None and self._conf._scheme == 'https':
             kwargs['verify'] = False
+        if self._conf._allow_redirects is not None:
+            kwargs['allow_redirects'] = self._conf._allow_redirects
         for j in range(self._retry + 1):
             try:
                 if j != 0:
