@@ -39,7 +39,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=True):
+                 PoolMaxSize=10, AllowRedirects=False):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
