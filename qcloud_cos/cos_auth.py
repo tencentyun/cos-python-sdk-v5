@@ -40,6 +40,7 @@ class CosS3Auth(AuthBase):
         self._secret_id = conf._secret_id
         self._secret_key = conf._secret_key
         self._anonymous = conf._anonymous
+        self._host = conf._host
         self._expire = expire
         self._params = params
         if key:
@@ -55,6 +56,10 @@ class CosS3Auth(AuthBase):
         path = self._path
         uri_params = self._params
         headers = filter_headers(r.headers)
+
+        if self._host is not None:
+            headers["host"] = self._host # host加入签名计算，避免别篡改
+
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
                         headers.items()])  # headers中的key转换为小写，value进行encode

@@ -118,12 +118,14 @@ class CosConfig(object):
             domain = self._domain
         if domain is not None:
             url = domain
+            self._host = domain
         else:
             bucket = format_bucket(bucket, self._appid)
             if endpoint is None:
                 endpoint = self._endpoint
 
             url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
+            self._host = url
         if self._ip is not None:
             url = self._ip
             if self._port is not None:
