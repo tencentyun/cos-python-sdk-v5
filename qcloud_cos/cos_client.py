@@ -80,6 +80,7 @@ class CosConfig(object):
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
+        self._host = None # 给一个默认值，避免使用时报成员不存在
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
@@ -3008,9 +3009,12 @@ class CosS3Client(object):
             response = client.list_buckets()
         """
         headers = mapped(kwargs)
-        url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
+        host = u'service.cos.myqcloud.com'
+        self._conf._host = host
+        url = '{scheme}://{host}/'.format(scheme=self._conf._scheme, host=host)
         if self._conf._service_domain is not None:
             url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
+            self._conf._host = self._conf._service_domain
         rt = self.send_request(
             method='GET',
             url=url,
@@ -3270,8 +3274,10 @@ class CosS3Client(object):
         params = {}
         if versionid != '':
             params['versionId'] = versionid
-        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket,
-                                                              endpoint=endpoint, path=quote(to_bytes(path), '/-_.~'))
+        host = u'{bucket}.{endpoint}'.format(bucket=bucket, endpoint=endpoint)
+        self._conf._host = host
+        url = u"{scheme}://{host}/{path}".format(scheme=self._conf._scheme, host=host,
+                                                 path=quote(to_bytes(path), '/-_.~'))
         rt = self.send_request(
             method='HEAD',
             url=url,
