@@ -80,6 +80,7 @@ class CosConfig(object):
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
+        self._host = None # 给一个默认值，避免使用时报成员不存在
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
