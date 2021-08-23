@@ -39,7 +39,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -64,6 +64,7 @@ class CosConfig(object):
         :param PoolConnections(int):  连接池个数
         :param PoolMaxSize(int):      连接池中最大连接数
         :param AllowRedirects(bool):  是否重定向
+        :param SignHost(bool):  是否将host算入签名
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -80,7 +81,7 @@ class CosConfig(object):
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
-        self._host = None # 给一个默认值，避免使用时报成员不存在
+        self._sign_host = SignHost 
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
@@ -119,14 +120,12 @@ class CosConfig(object):
             domain = self._domain
         if domain is not None:
             url = domain
-            self._host = domain
         else:
             bucket = format_bucket(bucket, self._appid)
             if endpoint is None:
                 endpoint = self._endpoint
 
             url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
-            self._host = url
         if self._ip is not None:
             url = self._ip
             if self._port is not None:
@@ -204,13 +203,14 @@ class CosS3Client(object):
         """获取配置"""
         return self._conf
 
-    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}):
+    def get_auth(self, Method, Bucket, Key, Expired=300, SignHost=None, Headers={}, Params={}):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
         :param Bucket(string): 存储桶名称.
         :param Key(string): 请求COS的路径.
         :param Expired(int): 签名有效时间,单位为s.
+        :param SignHost(bool): 是否将host算入签名.
         :param headers(dict): 签名中的http headers.
         :param params(dict): 签名中的http params.
         :return (string): 计算出的V5签名.
@@ -232,7 +232,7 @@ class CosS3Client(object):
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
-        auth = CosS3Auth(self._conf, Key, Params, Expired)
+        auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
         return auth(r).headers['Authorization']
 
     def send_request(self, method, url, bucket, timeout=30, cos_request=True, **kwargs):
@@ -494,13 +494,14 @@ class CosS3Client(object):
 
         return data
 
-    def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}):
+    def get_presigned_url(self, Bucket, Key, Method, Expired=300, SignHost=None, Params={}, Headers={}):
         """生成预签名的url
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Method(string): HTTP请求的方法, 'PUT'|'POST'|'GET'|'DELETE'|'HEAD'
         :param Expired(int): 签名过期时间.
+        :param SignHost(bool): 是否将host算入签名.
         :param Params(dict): 签入签名的参数
         :param Headers(dict): 签入签名的头部
         :return(string): 预先签名的URL.
@@ -517,19 +518,20 @@ class CosS3Client(object):
             )
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
-        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params)
+        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, SignHost=SignHost, Headers=Headers, Params=Params)
         sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
         url = url + '?' + sign
         if Params:
             url = url + '&' + urlencode(Params)
         return url
 
-    def get_presigned_download_url(self, Bucket, Key, Expired=300, Params={}, Headers={}):
+    def get_presigned_download_url(self, Bucket, Key, Expired=300, SignHost=None, Params={}, Headers={}):
         """生成预签名的下载url
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Expired(int): 签名过期时间.
+        :param SignHost(bool): 是否将host算入签名.
         :param Params(dict): 签入签名的参数
         :param Headers(dict): 签入签名的头部
         :return(string): 预先签名的下载URL.
@@ -544,7 +546,7 @@ class CosS3Client(object):
                 Key='test.txt'
             )
         """
-        return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers)
+        return self.get_presigned_url(Bucket, Key, 'GET', Expired, SignHost, Params, Headers)
 
     def get_object_url(self, Bucket, Key):
         """生成对象访问的url
@@ -3009,12 +3011,9 @@ class CosS3Client(object):
             response = client.list_buckets()
         """
         headers = mapped(kwargs)
-        host = u'service.cos.myqcloud.com'
-        self._conf._host = host
-        url = '{scheme}://{host}/'.format(scheme=self._conf._scheme, host=host)
+        url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
         if self._conf._service_domain is not None:
             url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
-            self._conf._host = self._conf._service_domain
         rt = self.send_request(
             method='GET',
             url=url,
@@ -3274,10 +3273,8 @@ class CosS3Client(object):
         params = {}
         if versionid != '':
             params['versionId'] = versionid
-        host = u'{bucket}.{endpoint}'.format(bucket=bucket, endpoint=endpoint)
-        self._conf._host = host
-        url = u"{scheme}://{host}/{path}".format(scheme=self._conf._scheme, host=host,
-                                                 path=quote(to_bytes(path), '/-_.~'))
+        url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket, 
+                                                              endpoint=endpoint, path=quote(to_bytes(path), '/-_.~'))
         rt = self.send_request(
             method='HEAD',
             url=url,

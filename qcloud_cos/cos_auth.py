@@ -36,13 +36,19 @@ def filter_headers(data):
 
 class CosS3Auth(AuthBase):
 
-    def __init__(self, conf, key=None, params={}, expire=10000):
+    def __init__(self, conf, key=None, params={}, expire=10000, sign_host=None):
         self._secret_id = conf._secret_id
         self._secret_key = conf._secret_key
         self._anonymous = conf._anonymous
-        self._host = conf._host
         self._expire = expire
         self._params = params
+
+        # 如果API指定了是否签名host，则以具体API为准，如果未指定则以配置为准
+        if sign_host is True or sign_host is False:
+            self._sign_host = sign_host
+        else:
+            self._sign_host = conf._sign_host
+
         if key:
             key = to_unicode(key)
             if key[0] == u'/':
@@ -57,8 +63,26 @@ class CosS3Auth(AuthBase):
         uri_params = self._params
         headers = filter_headers(r.headers)
 
-        if self._host is not None:
-            headers["host"] = self._host # host加入签名计算，避免被篡改
+        # 如果headers中不包含host头域，则从url中提取host，并且加入签名计算
+        if self._sign_host:
+
+            # 判断headers中是否包含host头域
+            contain_host = False
+            for i in headers:
+                if str.lower(i) == 'host':
+                    contain_host = True
+                    break    
+
+            # 从url中提取host
+            if contain_host is False:
+                host_str = r.url
+                host_begin = host_str.find('//') + 2
+                if host_begin >= 2 and host_begin < len(host_str):
+                    host_str = r.url[host_begin:]
+                    host_end = host_str.find('/')
+                    if host_end > 0:
+                        host_str = host_str[:host_end]
+                    headers["host"] = host_str 
 
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
