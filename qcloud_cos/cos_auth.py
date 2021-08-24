@@ -75,14 +75,9 @@ class CosS3Auth(AuthBase):
 
             # 从url中提取host
             if contain_host is False:
-                host_str = r.url
-                host_begin = host_str.find('//') + 2
-                if host_begin >= 2 and host_begin < len(host_str):
-                    host_str = r.url[host_begin:]
-                    host_end = host_str.find('/')
-                    if host_end > 0:
-                        host_str = host_str[:host_end]
-                    headers["host"] = host_str 
+                url_parsed = urlparse(r.url)
+                if url_parsed.hostname is not None:
+                    headers["host"] = url_parsed.hostname 
 
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
