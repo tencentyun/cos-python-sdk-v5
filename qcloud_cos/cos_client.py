@@ -39,7 +39,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -64,6 +64,7 @@ class CosConfig(object):
         :param PoolConnections(int):  连接池个数
         :param PoolMaxSize(int):      连接池中最大连接数
         :param AllowRedirects(bool):  是否重定向
+        :param SignHost(bool):  是否将host算入签名
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -80,6 +81,7 @@ class CosConfig(object):
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
+        self._sign_host = SignHost 
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
@@ -201,7 +203,7 @@ class CosS3Client(object):
         """获取配置"""
         return self._conf
 
-    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}):
+    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}, SignHost=None):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
@@ -210,6 +212,7 @@ class CosS3Client(object):
         :param Expired(int): 签名有效时间,单位为s.
         :param headers(dict): 签名中的http headers.
         :param params(dict): 签名中的http params.
+        :param SignHost(bool): 是否将host算入签名.
         :return (string): 计算出的V5签名.
 
         .. code-block:: python
@@ -229,7 +232,7 @@ class CosS3Client(object):
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
-        auth = CosS3Auth(self._conf, Key, Params, Expired)
+        auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
         return auth(r).headers['Authorization']
 
     def send_request(self, method, url, bucket, timeout=30, cos_request=True, **kwargs):
@@ -491,7 +494,7 @@ class CosS3Client(object):
 
         return data
 
-    def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}):
+    def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}, SignHost=None):
         """生成预签名的url
 
         :param Bucket(string): 存储桶名称.
@@ -500,6 +503,7 @@ class CosS3Client(object):
         :param Expired(int): 签名过期时间.
         :param Params(dict): 签入签名的参数
         :param Headers(dict): 签入签名的头部
+        :param SignHost(bool): 是否将host算入签名.
         :return(string): 预先签名的URL.
 
         .. code-block:: python
@@ -514,14 +518,14 @@ class CosS3Client(object):
             )
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
-        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params)
+        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params, SignHost=SignHost)
         sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
         url = url + '?' + sign
         if Params:
             url = url + '&' + urlencode(Params)
         return url
 
-    def get_presigned_download_url(self, Bucket, Key, Expired=300, Params={}, Headers={}):
+    def get_presigned_download_url(self, Bucket, Key, Expired=300, Params={}, Headers={}, SignHost=None):
         """生成预签名的下载url
 
         :param Bucket(string): 存储桶名称.
@@ -529,6 +533,7 @@ class CosS3Client(object):
         :param Expired(int): 签名过期时间.
         :param Params(dict): 签入签名的参数
         :param Headers(dict): 签入签名的头部
+        :param SignHost(bool): 是否将host算入签名.
         :return(string): 预先签名的下载URL.
 
         .. code-block:: python
@@ -541,7 +546,7 @@ class CosS3Client(object):
                 Key='test.txt'
             )
         """
-        return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers)
+        return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers, SignHost)
 
     def get_object_url(self, Bucket, Key):
         """生成对象访问的url

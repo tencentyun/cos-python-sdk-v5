@@ -36,12 +36,19 @@ def filter_headers(data):
 
 class CosS3Auth(AuthBase):
 
-    def __init__(self, conf, key=None, params={}, expire=10000):
+    def __init__(self, conf, key=None, params={}, expire=10000, sign_host=None):
         self._secret_id = conf._secret_id
         self._secret_key = conf._secret_key
         self._anonymous = conf._anonymous
         self._expire = expire
         self._params = params
+
+        # 如果API指定了是否签名host，则以具体API为准，如果未指定则以配置为准
+        if sign_host is not None:
+            self._sign_host = bool(sign_host)
+        else:
+            self._sign_host = conf._sign_host
+
         if key:
             key = to_unicode(key)
             if key[0] == u'/':
@@ -55,6 +62,23 @@ class CosS3Auth(AuthBase):
         path = self._path
         uri_params = self._params
         headers = filter_headers(r.headers)
+
+        # 如果headers中不包含host头域，则从url中提取host，并且加入签名计算
+        if self._sign_host:
+
+            # 判断headers中是否包含host头域
+            contain_host = False
+            for i in headers:
+                if str.lower(i) == "host": # 兼容host/Host/HOST等
+                    contain_host = True
+                    break    
+
+            # 从url中提取host
+            if not contain_host:
+                url_parsed = urlparse(r.url)
+                if url_parsed.hostname is not None:
+                    headers["host"] = url_parsed.hostname 
+
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
                         headers.items()])  # headers中的key转换为小写，value进行encode
