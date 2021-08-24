@@ -203,16 +203,16 @@ class CosS3Client(object):
         """获取配置"""
         return self._conf
 
-    def get_auth(self, Method, Bucket, Key, Expired=300, SignHost=None, Headers={}, Params={}):
+    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}, SignHost=None):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
         :param Bucket(string): 存储桶名称.
         :param Key(string): 请求COS的路径.
         :param Expired(int): 签名有效时间,单位为s.
-        :param SignHost(bool): 是否将host算入签名.
         :param headers(dict): 签名中的http headers.
         :param params(dict): 签名中的http params.
+        :param SignHost(bool): 是否将host算入签名.
         :return (string): 计算出的V5签名.
 
         .. code-block:: python
@@ -494,16 +494,16 @@ class CosS3Client(object):
 
         return data
 
-    def get_presigned_url(self, Bucket, Key, Method, Expired=300, SignHost=None, Params={}, Headers={}):
+    def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}, SignHost=None):
         """生成预签名的url
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Method(string): HTTP请求的方法, 'PUT'|'POST'|'GET'|'DELETE'|'HEAD'
         :param Expired(int): 签名过期时间.
-        :param SignHost(bool): 是否将host算入签名.
         :param Params(dict): 签入签名的参数
         :param Headers(dict): 签入签名的头部
+        :param SignHost(bool): 是否将host算入签名.
         :return(string): 预先签名的URL.
 
         .. code-block:: python
@@ -518,22 +518,22 @@ class CosS3Client(object):
             )
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
-        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, SignHost=SignHost, Headers=Headers, Params=Params)
+        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params, SignHost=SignHost)
         sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
         url = url + '?' + sign
         if Params:
             url = url + '&' + urlencode(Params)
         return url
 
-    def get_presigned_download_url(self, Bucket, Key, Expired=300, SignHost=None, Params={}, Headers={}):
+    def get_presigned_download_url(self, Bucket, Key, Expired=300, Params={}, Headers={}, SignHost=None):
         """生成预签名的下载url
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Expired(int): 签名过期时间.
-        :param SignHost(bool): 是否将host算入签名.
         :param Params(dict): 签入签名的参数
         :param Headers(dict): 签入签名的头部
+        :param SignHost(bool): 是否将host算入签名.
         :return(string): 预先签名的下载URL.
 
         .. code-block:: python
@@ -546,7 +546,7 @@ class CosS3Client(object):
                 Key='test.txt'
             )
         """
-        return self.get_presigned_url(Bucket, Key, 'GET', Expired, SignHost, Params, Headers)
+        return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers, SignHost)
 
     def get_object_url(self, Bucket, Key):
         """生成对象访问的url

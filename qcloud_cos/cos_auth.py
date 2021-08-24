@@ -44,8 +44,8 @@ class CosS3Auth(AuthBase):
         self._params = params
 
         # 如果API指定了是否签名host，则以具体API为准，如果未指定则以配置为准
-        if sign_host is True or sign_host is False:
-            self._sign_host = sign_host
+        if sign_host is not None:
+            self._sign_host = bool(sign_host)
         else:
             self._sign_host = conf._sign_host
 
@@ -69,12 +69,12 @@ class CosS3Auth(AuthBase):
             # 判断headers中是否包含host头域
             contain_host = False
             for i in headers:
-                if str.lower(i) == 'host':
+                if str.lower(i) == "host": # 兼容host/Host/HOST等
                     contain_host = True
                     break    
 
             # 从url中提取host
-            if contain_host is False:
+            if not contain_host:
                 url_parsed = urlparse(r.url)
                 if url_parsed.hostname is not None:
                     headers["host"] = url_parsed.hostname 
