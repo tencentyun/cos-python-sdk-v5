@@ -69,15 +69,15 @@ class CosS3Auth(AuthBase):
             # 判断headers中是否包含host头域
             contain_host = False
             for i in headers:
-                if str.lower(i) == "host": # 兼容host/Host/HOST等
+                if str.lower(i) == "host":  # 兼容host/Host/HOST等
                     contain_host = True
-                    break    
+                    break
 
             # 从url中提取host
             if not contain_host:
                 url_parsed = urlparse(r.url)
                 if url_parsed.hostname is not None:
-                    headers["host"] = url_parsed.hostname 
+                    headers["host"] = url_parsed.hostname
 
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
