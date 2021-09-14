@@ -4382,6 +4382,7 @@ class CosS3Client(object):
         :param Type(string): 审核类型，video:视频，text：文本，audio：音频，docment：文档。
         :param Url(string): Url, 支持非cos上的文件
         :param Conf(dic): 审核的个性化配置
+        :param Input(dic): Input的个性化配置，dict类型，可跟restful api对应查询
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 下载成功返回的结果,dict类型.
