@@ -65,6 +65,7 @@ class CosConfig(object):
         :param PoolMaxSize(int):      连接池中最大连接数
         :param AllowRedirects(bool):  是否重定向
         :param SignHost(bool):  是否将host算入签名
+        :param EndpointCi(string):  ci的endpoint
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -92,7 +93,8 @@ class CosConfig(object):
         if (Scheme != u'http' and Scheme != u'https'):
             raise CosClientError('Scheme can be only set to http/https')
         self._scheme = Scheme
-        self._endpoint_ci = format_endpoint(Endpoint, Region, u'ci.')
+        # 格式化ci的endpoint 不支持自定义域名的
+        self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
