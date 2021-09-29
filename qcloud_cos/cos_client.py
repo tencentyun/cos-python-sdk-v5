@@ -4699,7 +4699,7 @@ class CosS3Client(object):
         if Key:
             Input['Object'] = Key
         if Content:
-            Input['Content'] = base64.b64encode(Content).decode('UTF-8')
+            Input['Content'] = base64.b64encode(Content)
 
         conf = {
         }
