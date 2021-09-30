@@ -216,18 +216,18 @@ def format_values(data):
     return data
 
 
-def format_endpoint(endpoint, region):
+def format_endpoint(endpoint, region, module=u'cos.'):
     """格式化终端域名"""
     if not endpoint and not region:
         raise CosClientError("Region or Endpoint is required not empty!")
     if not endpoint:
-        region = format_region(region)
+        region = format_region(region, module)
         return u"{region}.myqcloud.com".format(region=region)
     else:
         return to_unicode(endpoint)
 
 
-def format_region(region):
+def format_region(region, module=u'cos.'):
     """格式化地域"""
     if not isinstance(region, string_types):
         raise CosClientError("region is not string type")
@@ -236,7 +236,7 @@ def format_region(region):
     region = to_unicode(region)
     if not re.match(r'^[A-Za-z0-9][A-Za-z0-9.\-]*[A-Za-z0-9]$', region):
         raise CosClientError("region format is illegal, only digit, letter and - is allowed!")
-    if region.find(u'cos.') != -1:
+    if region.find(module) != -1:
         return region  # 传入cos.ap-beijing-1这样显示加上cos.的region
     if region == u'cn-north' or region == u'cn-south' or region == u'cn-east' or region == u'cn-south-2' or region == u'cn-southwest' or region == u'sg':
         return region  # 老域名不能加cos.
@@ -260,7 +260,7 @@ def format_region(region):
     if region == u'cosger':
         return u'cos.eu-frankfurt'
 
-    return u'cos.' + region  # 新域名加上cos.
+    return module + region  # 新域名加上cos.
 
 
 def format_bucket(bucket, appid):
@@ -463,6 +463,27 @@ class CiDetectType():
     TERRORIST = 2
     POLITICS = 4
     ADS = 8
+
+    @staticmethod
+    def get_detect_type_str(DetectType):
+        """获取审核的文字描述，这里只支持ci域名的入参，cos的跟这个还不一样"""
+        detect_type = ''
+        if DetectType & CiDetectType.PORN > 0:
+            detect_type += 'Porn'
+        if DetectType & CiDetectType.TERRORIST > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Terrorism'
+        if DetectType & CiDetectType.POLITICS > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Politics'
+        if DetectType & CiDetectType.ADS > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Ads'
+
+        return detect_type
 
 
 class ProgressCallback():
