@@ -4862,7 +4862,7 @@ class CosS3Client(object):
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
         format_dict(data, ['QueueList'])
-        return data    
+        return data
 
     def ci_create_media_jobs(self, Bucket, Jobs={}, Lst={}, **kwargs):
         """ 创建任务接口 https://cloud.tencent.com/document/product/436/54013
@@ -4961,7 +4961,6 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
             headers=headers)
-        
         logger.debug("ci_get_media_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -5020,11 +5019,10 @@ class CosS3Client(object):
             Size=to_unicode('size='+str(Size)),
             NextToken=to_unicode('nextToken='+NextToken)
         )
-        if StartCreationTime != None:
+        if StartCreationTime is not None:
             url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
-        if EndCreationTime != None:
+        if EndCreationTime is not None:
             url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
-        
         logger.info("list_media_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -5036,15 +5034,14 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
             headers=headers)
-        
         logger.debug("list_media_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
-        
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
         format_dict(data, ['JobsDetail'])
         return data
+
 
 if __name__ == "__main__":
     pass
