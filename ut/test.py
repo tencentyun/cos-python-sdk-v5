@@ -36,6 +36,8 @@ client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
 client_for_aes = CosEncryptionClient(conf, aes_provider)
 
+ci_bucket_name = 'ci-qta-gz-1251668577'
+ci_region = 'ap-guangzhou'
 
 def _create_test_bucket(test_bucket, create_region=None):
     try:
@@ -1574,6 +1576,125 @@ def _test_qrcode():
     print(response, data)
 
 
+def test_ci_get_media_queue():
+    # 查询媒体队列信息
+    response = client.ci_get_media_queue(
+                    Bucket=ci_bucket_name
+                )
+    print(response)
+    assert (response['QueueList'])
+
+def test_ci_create_media_transcode_watermark_jobs():
+    # 创建转码任务
+    response = client.ci_get_media_queue(
+                    Bucket=ci_bucket_name
+                )
+    QueueId = response['QueueList'][0]['QueueId']
+
+    body = {
+        'Input':{
+            'Object':'117374C.mp4'
+        },
+        'QueueId': QueueId,
+        'Tag': 'Transcode',
+        'Operation': {
+        'Output':{'Bucket':ci_bucket_name, 'Region':ci_region, 'Object':'117374C_output.mp4'},
+        'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5',
+        # "WatermarkTemplateId": ["", ""],
+        'Watermark': [
+            {
+                'Type':'Text',
+                'Pos':'TopRight',
+                'LocMode':'Absolute',
+                'Dx':'64',
+                'Dy': '64',
+                'StartTime':'0',
+                'EndTime':'1000.5',
+                'Text': {
+                    'Text': '水印内容',
+                    'FontSize': '90',
+                    'FontType': 'simfang.ttf',
+                    'FontColor': '0xFFEEFF',
+                    'Transparency': '100',
+                },
+            },
+            {
+                'Type':'Image',
+                'Pos':'TopLeft',
+                'LocMode':'Absolute',
+                'Dx':'100',
+                'Dy': '100',
+                'StartTime':'0',
+                'EndTime':'1000.5',
+                'Image': {
+                    'Url': 'http://'+ci_bucket_name+".cos."+ci_region+".myqcloud.com/1215shuiyin.jpg",
+                    'Mode': 'Fixed',
+                    'Width': '128',
+                    'Height': '128',
+                    'Transparency': '100',
+                },
+            }
+        ]
+        }
+    }
+    # dict中数组类型的标签，都需要特殊处理
+    lst = [
+        '<Watermark>',
+        '<WatermarkTemplateId>',
+        '</WatermarkTemplateId>',
+        '</Watermark>'
+    ]
+    response = client.ci_create_media_jobs(
+                    Bucket=ci_bucket_name,
+                    Jobs=body,
+                    Lst=lst,
+                    ContentType='application/xml'
+                )
+    print(response)
+    assert (response['JobsDetail'])  
+
+def test_ci_create_media_transcode_jobs():
+    # 创建转码任务
+    response = client.ci_get_media_queue(
+                    Bucket=ci_bucket_name
+                )
+    QueueId = response['QueueList'][0]['QueueId']
+    body = {
+        'Input':{
+            'Object':'117374C.mp4'
+        },
+        'QueueId': QueueId,
+        'Tag': 'Transcode',
+        'Operation': {
+        'Output':{'Bucket':ci_bucket_name, 'Region':ci_region, 'Object':'117374C_output.mp4'},
+        'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+        }
+    }
+    response = client.ci_create_media_jobs(
+                    Bucket=ci_bucket_name,
+                    Jobs=body,
+                    Lst={},
+                    ContentType='application/xml'
+                )
+    print(response)
+    assert (response['JobsDetail'])
+
+def test_ci_list_media_transcode_jobs():
+    # 转码任务
+    response = client.ci_get_media_queue(
+                    Bucket=ci_bucket_name
+                )
+    QueueId = response['QueueList'][0]['QueueId']
+    response = client.ci_list_media_jobs(
+                    Bucket=ci_bucket_name,
+                    QueueId=QueueId,
+                    Tag='Transcode',
+                    Size=2,
+                    ContentType='application/xml'
+                )
+    print(response)
+    assert (response['JobsDetail'])
+
 if __name__ == "__main__":
     setUp()
     """
@@ -1606,5 +1727,9 @@ if __name__ == "__main__":
     test_aes_client()
     test_rsa_client()
     test_qrcode()
+    test_ci_get_media_queue()
+    test_ci_create_media_transcode_watermark_jobs()
+    test_ci_create_media_transcode_jobs()
+    test_ci_list_media_transcode_jobs()
     """
     tearDown()

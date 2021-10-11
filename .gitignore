@@ -1,4 +1,1 @@
 *.pyc
-build/*
-cos_python_sdk_v5.egg-info/*
-dist/*
