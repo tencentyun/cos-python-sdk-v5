@@ -4,7 +4,7 @@ Qcloud COSv5 SDK
 .. image:: https://img.shields.io/pypi/v/cos-python-sdk-v5.svg
    :target: https://pypi.org/search/?q=cos-python-sdk-v5
    :alt: Pypi
-.. image:: https://app.travis-ci.com/github/tencentyun/cos-python-sdk-v5.svg?branch=master
+.. image:: https://api.travis-ci.com/tencentyun/cos-python-sdk-v5.svg?branch=master
    :target: https://app.travis-ci.com/github/tencentyun/cos-python-sdk-v5
    :alt: Travis CI 
 
