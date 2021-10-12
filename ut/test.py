@@ -463,7 +463,7 @@ def test_get_bucket_location():
 
 
 def test_get_service():
-    return # TODO: 测试账号的桶太多了导致列举超时，暂时屏蔽掉
+    return  # TODO: 测试账号的桶太多了导致列举超时，暂时屏蔽掉
 
     """列出账号下所有的bucket信息"""
     response = client.list_buckets()
