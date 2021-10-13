@@ -227,8 +227,6 @@ MD5 check support both unicode and bytes
 
 ## [v1.6.7](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.6.5...v1.6.7) - 2019-04-24
 
-standardized signature format
-
 ### Merged
 
 - standardized singature format [`#84`](https://github.com/tencentyun/cos-python-sdk-v5/pull/84)
