@@ -420,7 +420,7 @@ class CosS3Client(object):
 
         return response
 
-    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, Interval=None, MaxFrames=None, BizType=None, **kwargs):
+    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
@@ -429,6 +429,8 @@ class CosS3Client(object):
         :param Interval(int): 截帧频率，GIF图/长图检测专用，默认值为0，表示只会检测GIF图/长图的第一帧.
         :param MaxFrames(int): 最大截帧数量，GIF图/长图检测专用，默认值为1，表示只取GIF的第1帧图片进行审核，或长图不做切分识别.
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param DetectUrl(string): 您可以通过填写detect-url审核任意公网可访问的图片链接。不填写detect-url时，后台会默认审核ObjectKey
+            填写了detect-url时，后台会审核detect-url链接，无需再填写ObjectKey。 detect-url示例：http://www.example.com/abc.jpg.
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -481,6 +483,8 @@ class CosS3Client(object):
             params['max-frames'] = MaxFrames
         if BizType:
             params['biz-type'] = BizType
+        if DetectUrl:
+            params['detect-url'] = DetectUrl
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
