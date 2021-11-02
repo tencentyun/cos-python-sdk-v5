@@ -6,6 +6,7 @@ import hashlib
 import os
 import requests
 import json
+import base64
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
@@ -13,7 +14,7 @@ from qcloud_cos import get_date
 from qcloud_cos.cos_encryption_client import CosEncryptionClient
 from qcloud_cos.crypto import AESProvider
 from qcloud_cos.crypto import RSAProvider
-from qcloud_cos.cos_comm import CiDetectType
+from qcloud_cos.cos_comm import CiDetectType, get_md5, to_bytes
 
 SECRET_ID = os.environ["SECRET_ID"]
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -1722,6 +1723,89 @@ def test_ci_list_media_transcode_jobs():
     print(response)
     assert (response['JobsDetail'])
 
+def test_sse_c_file():
+    bucket = test_bucket
+    ssec_key = base64.standard_b64encode(to_bytes('01234567890123456789012345678901'))
+    ssec_key_md5 = get_md5('01234567890123456789012345678901')
+    file_name = 'sdk-sse-c'
+
+    # 测试普通上传
+    response = client.put_object(Bucket=bucket, Key=file_name, Body="00000", 
+        SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
+    print(response)
+    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+
+    # 测试普通下载
+    response = client.get_object(Bucket=bucket, Key=file_name, 
+        SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
+    print(response)
+    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+
+    # 测试小文件高级下载
+    response = client.download_file(Bucket=bucket, Key=file_name, DestFilePath='sdk-sse-c.local',
+        SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
+    print(response)
+    if not os.path.exists('sdk-sse-c.local'):
+        assert False
+    else:
+        os.remove('sdk-sse-c.local')
+    
+    # 测试普通拷贝
+    # 故意构造源和目标的密钥不同
+    dest_ssec_key = base64.standard_b64encode(to_bytes('01234567890123456789012345678902'))
+    dest_ssec_key_md5 = get_md5('01234567890123456789012345678902')
+    copy_source = {'Bucket': bucket, 'Key': file_name, 'Region': REGION}
+    response = client.copy_object(
+        Bucket=bucket, Key='sdk-sse-c-copy', CopySource=copy_source,
+        SSECustomerAlgorithm='AES256', SSECustomerKey=dest_ssec_key, SSECustomerKeyMD5=dest_ssec_key_md5,
+        CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5
+    )
+    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+
+    # 测试高级拷贝
+    response = client.copy(Bucket=bucket, Key='sdk-sse-c-copy', CopySource=copy_source, MAXThread=2,
+        SSECustomerAlgorithm='AES256', SSECustomerKey=dest_ssec_key, SSECustomerKeyMD5=dest_ssec_key_md5,
+        CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5)
+    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+
+    # 测试取回
+    response = client.put_object(Bucket=bucket, Key=file_name, Body="00000", 
+        SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5, StorageClass='ARCHIVE')
+    response = client.restore_object(Bucket=bucket, Key=file_name, RestoreRequest={
+        'Days': 1,
+        'CASJobParameters': {
+            'Tier': 'Expedited'
+        }
+    }, SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
+    print(response)
+    assert(response.status_code == 202)
+
+    # 测试大文件高级上传，走多段
+    gen_file('sdk-sse-c-big.local', 21)
+
+    file_name = 'sdk-sse-c-big'
+    response = client.upload_file(Bucket=bucket, Key=file_name, LocalFilePath="sdk-sse-c-big.local", 
+        SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
+    print(response)
+    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+    os.remove('sdk-sse-c-big.local')
+
+    # 测试大文件高级下载，走多段
+    response = client.download_file(Bucket=bucket, Key=file_name, DestFilePath='sdk-sse-c-1.local',
+        SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5, EnableCRC=True)
+    print(response)
+    if not os.path.exists('sdk-sse-c-1.local'):
+        assert False
+    else:
+        os.remove('sdk-sse-c-1.local')
+
+    # 测试大文件高级拷贝，走拷贝段
+    copy_source = {'Bucket': bucket, 'Key': file_name, 'Region': REGION}
+    conf.set_copy_part_threshold_size(20 * 1024 * 1024)
+    response = client.copy(Bucket=bucket, Key='sdk-sse-c-big-copy', CopySource=copy_source, MAXThread=2,
+        SSECustomerAlgorithm='AES256', SSECustomerKey=dest_ssec_key, SSECustomerKeyMD5=dest_ssec_key_md5, StorageClass='STANDARD_IA',
+        CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5)
+    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
 
 if __name__ == "__main__":
     setUp()
@@ -1759,5 +1843,6 @@ if __name__ == "__main__":
     test_ci_create_media_transcode_watermark_jobs()
     test_ci_create_media_transcode_jobs()
     test_ci_list_media_transcode_jobs()
+    test_sse_c_file()
     """
     tearDown()
