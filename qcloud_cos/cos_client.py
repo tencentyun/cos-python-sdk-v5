@@ -189,6 +189,7 @@ class CosConfig(object):
         if size > 0:
             self._copy_part_threshold_size = size
 
+
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
 
@@ -3174,7 +3175,7 @@ class CosS3Client(object):
 
         head_headers = dict()
         # SSE-C对象在head时也要求传入加密头域
-        if 'SSECustomerAlgorithm' in Kwargs: 
+        if 'SSECustomerAlgorithm' in Kwargs:
             head_headers['SSECustomerAlgorithm'] = Kwargs['SSECustomerAlgorithm']
             head_headers['SSECustomerKey'] = Kwargs['SSECustomerKey']
             head_headers['SSECustomerKeyMD5'] = Kwargs['SSECustomerKeyMD5']
@@ -3261,11 +3262,11 @@ class CosS3Client(object):
             if 'TrafficLimit' in kwargs:
                 part_headers['TrafficLimit'] = kwargs['TrafficLimit']
             # SSE-C对象在上传段时也要求传入加密头域
-            if 'SSECustomerAlgorithm' in kwargs: 
+            if 'SSECustomerAlgorithm' in kwargs:
                 part_headers['SSECustomerAlgorithm'] = kwargs['SSECustomerAlgorithm']
                 part_headers['SSECustomerKey'] = kwargs['SSECustomerKey']
                 part_headers['SSECustomerKeyMD5'] = kwargs['SSECustomerKeyMD5']
-            
+
             offset = 0  # 记录文件偏移量
             lst = list()  # 记录分块信息
             pool = SimpleThreadPool(MAXThread)
@@ -3303,12 +3304,12 @@ class CosS3Client(object):
 
         headers = dict()
         # SSE-C对象在head源对象时也要求传入加密头域
-        if 'CopySourceSSECustomerAlgorithm' in kwargs: 
+        if 'CopySourceSSECustomerAlgorithm' in kwargs:
             headers['SSECustomerAlgorithm'] = kwargs['CopySourceSSECustomerAlgorithm']
             headers['SSECustomerKey'] = kwargs['CopySourceSSECustomerKey']
             headers['SSECustomerKeyMD5'] = kwargs['CopySourceSSECustomerKeyMD5']
         headers = mapped(headers)
-                                                    
+
         rt = self.send_request(
             method='HEAD',
             url=url,
@@ -3409,12 +3410,12 @@ class CosS3Client(object):
 
         part_headers = dict()
         # 目标对象是SSE-C需要增加加密头域
-        if 'SSECustomerAlgorithm' in kwargs: 
+        if 'SSECustomerAlgorithm' in kwargs:
             part_headers['SSECustomerAlgorithm'] = kwargs['SSECustomerAlgorithm']
             part_headers['SSECustomerKey'] = kwargs['SSECustomerKey']
             part_headers['SSECustomerKeyMD5'] = kwargs['SSECustomerKeyMD5']
         # 源对象是SSE-C需要增加加密头域
-        if 'CopySourceSSECustomerAlgorithm' in kwargs: 
+        if 'CopySourceSSECustomerAlgorithm' in kwargs:
             part_headers['CopySourceSSECustomerAlgorithm'] = kwargs['CopySourceSSECustomerAlgorithm']
             part_headers['CopySourceSSECustomerKey'] = kwargs['CopySourceSSECustomerKey']
             part_headers['CopySourceSSECustomerKeyMD5'] = kwargs['CopySourceSSECustomerKeyMD5']
