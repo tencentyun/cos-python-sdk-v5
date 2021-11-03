@@ -802,6 +802,12 @@ def test_upload_with_server_side_encryption():
     )
     assert response['x-cos-server-side-encryption'] == 'AES256'
 
+    response = client.get_object(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert response['x-cos-server-side-encryption'] == 'AES256'
+
 
 def test_put_get_bucket_logging():
     """测试bucket的logging服务"""

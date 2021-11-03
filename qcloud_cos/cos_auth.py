@@ -22,14 +22,29 @@ def filter_headers(data):
         "content-disposition",
         "content-encoding",
         "content-type",
-        "expires",
         "content-md5",
         "content-length",
-        "host"
+        "expect",
+        "expires",
+        "host",
+        "if-match",
+        "if-modified-since",
+        "if-none-match",
+        "if-unmodified-since",
+        "origin",
+        "range",
+        "response-cache-control",
+        "response-content-disposition",
+        "response-content-encoding",
+        "response-content-language",
+        "response-content-type",
+        "response-expires",
+        "transfer-encoding",
+        "versionid",
     ]
     headers = {}
     for i in data:
-        if str.lower(i) in valid_headers or str.lower(i[0]) == "x":
+        if str.lower(i) in valid_headers or str.lower(i).startswith("x-cos-"):
             headers[i] = data[i]
     return headers
 
