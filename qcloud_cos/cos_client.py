@@ -1128,7 +1128,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, Key, params=params),
             headers=headers,
             params=params)
-        return rt
+        return None
 
     def select_object_content(self, Bucket, Key, Expression, ExpressionType, InputSerialization, OutputSerialization,
                               RequestProgress=None, **kwargs):
@@ -2400,7 +2400,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
             params=params)
-        return rt
+        return None
 
     def get_bucket_domain(self, Bucket, **kwargs):
         """获取bucket 自定义域名配置
