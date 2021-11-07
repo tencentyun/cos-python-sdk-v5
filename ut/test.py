@@ -35,6 +35,7 @@ conf = CosConfig(
     Region=REGION,
     SecretId=SECRET_ID,
     SecretKey=SECRET_KEY,
+    EndpointCi='',
 )
 client = CosS3Client(conf, retry=3)
 rsa_provider = RSAProvider()
@@ -1737,7 +1738,6 @@ def test_ci_list_media_transcode_jobs():
 def test_get_media_info():
     if TEST_CI != 'true':
         return
-    
     # 获取媒体信息
     response = client.get_media_info(
         Bucket=ci_bucket_name,
@@ -1750,7 +1750,6 @@ def test_get_media_info():
 def test_get_snapshot():
     if TEST_CI != 'true':
         return
-    
     # 产生同步截图
     response = client.get_snapshot(
         Bucket=ci_bucket_name,
@@ -1761,6 +1760,8 @@ def test_get_snapshot():
     )
     print(response)
     assert (response)
+
+
 def test_sse_c_file():
     """测试SSE-C的各种接口"""
     bucket = test_bucket
