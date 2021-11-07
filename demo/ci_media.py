@@ -145,7 +145,30 @@ def ci_get_media_transcode_jobs():
     print(response)
     return response 
 
+def get_media_info():
+    # 获取媒体信息
+    response = client.get_media_info(
+        Bucket=bucket_name,
+        Key='demo.mp4'
+    )
+    print(response)
+
+def get_snapshot():
+    # 产生同步截图
+    response = client.get_snapshot(
+        Bucket=bucket_name,
+        Key='demo.mp4',
+        Time='1.5',
+        Width='480',
+        Format='png'
+    )
+    print(response)
+    response['Body'].get_stream_to_file('snapshot.jpg')
+
+
 if __name__ == "__main__":
     #ci_get_media_queue()
-    ci_get_media_transcode_jobs()
+    #ci_get_media_transcode_jobs()
     #ci_create_media_transcode_jobs()
+    #get_media_info()
+    get_snapshot()
