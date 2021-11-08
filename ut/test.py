@@ -1817,8 +1817,6 @@ def test_sse_c_file():
             'Tier': 'Expedited'
         }
     }, SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
-    print(response)
-    assert(response.status_code == 202)
 
     # 测试大文件高级上传，走多段
     gen_file('sdk-sse-c-big.local', 21)
