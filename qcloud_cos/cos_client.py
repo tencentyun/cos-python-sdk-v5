@@ -245,9 +245,9 @@ class CosS3Client(object):
         # request.headers=Headers，后续会用request.headers来保存Authorization值，在多线程并发时就会出现Authorization值被其它线程改写
         # 所以这里判断当Headers={}时重新生成实例，避免默认参数实例复用，导致多线程访问问题
         if not Headers:
-            Headers = dict()  
+            Headers = dict()
         if not Params:
-            Params = dict()  
+            Params = dict()
 
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
