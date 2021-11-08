@@ -6,9 +6,6 @@ import hashlib
 import os
 import requests
 import json
-
-from requests.models import Response
-
 import base64
 
 from qcloud_cos import CosS3Client

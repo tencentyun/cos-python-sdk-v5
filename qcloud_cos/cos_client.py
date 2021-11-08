@@ -240,6 +240,13 @@ class CosS3Client(object):
                 )
             print (auth_string)
         """
+
+        # python中默认参数只会初始化一次，这里重新生成可变对象实例避免多线程访问问题
+        if not Headers:
+            Headers = dict()
+        if not Params:
+            Params = dict()
+
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
