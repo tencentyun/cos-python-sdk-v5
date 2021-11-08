@@ -241,9 +241,7 @@ class CosS3Client(object):
             print (auth_string)
         """
 
-        # python中默认参数只会初始化一次，而Headers={}是一个字典会传址（非传值），那么多个线程的Headers指向同一个内存地址，
-        # request.headers=Headers，后续会用request.headers来保存Authorization值，在多线程并发时就会出现Authorization值被其它线程改写
-        # 所以这里判断当Headers={}时重新生成实例，避免默认参数实例复用，导致多线程访问问题
+        # python中默认参数只会初始化一次，这里重新生成可变对象实例避免多线程访问问题
         if not Headers:
             Headers = dict()
         if not Params:
