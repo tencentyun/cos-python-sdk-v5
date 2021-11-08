@@ -94,11 +94,9 @@ class CosConfig(object):
         if (Scheme != u'http' and Scheme != u'https'):
             raise CosClientError('Scheme can be only set to http/https')
         self._scheme = Scheme
-
-        # 客户使用全球加速域名时，只会传endpoint不会传region。此时这样endpointCi和region同时为None，就会报错。
-        if EndpointCi is not None:
-            # 格式化ci的endpoint 不支持自定义域名的
-            self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
+        
+        # 格式化ci的endpoint 不支持自定义域名的
+        self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
@@ -1132,7 +1130,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, Key, params=params),
             headers=headers,
             params=params)
-        return rt
+        return None
 
     def select_object_content(self, Bucket, Key, Expression, ExpressionType, InputSerialization, OutputSerialization,
                               RequestProgress=None, **kwargs):
@@ -2404,7 +2402,7 @@ class CosS3Client(object):
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
             params=params)
-        return rt
+        return None
 
     def get_bucket_domain(self, Bucket, **kwargs):
         """获取bucket 自定义域名配置
