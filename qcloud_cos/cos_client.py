@@ -240,6 +240,14 @@ class CosS3Client(object):
                 )
             print (auth_string)
         """
+
+        # 解决一个没有搞懂的问题：如果保持参数Headers={}，那么实测会发现两个线程的Headers指向同一个内存地址，
+        # request.headers=Headers，后续会用request.headers来保存Authorization值，在多线程并发时就会出现Authorization值被其它线程改写
+        if not Headers:
+            Headers = dict()  # 重新生成实例，避免Request通过{}复用内存
+        if not Params:
+            Params = dict()  # 重新生成实例，避免Request通过{}复用内存
+
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
