@@ -94,7 +94,7 @@ class CosConfig(object):
         if (Scheme != u'http' and Scheme != u'https'):
             raise CosClientError('Scheme can be only set to http/https')
         self._scheme = Scheme
-        
+
         # 格式化ci的endpoint 不支持自定义域名的
         self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
 
@@ -5146,7 +5146,7 @@ class CosS3Client(object):
         :param Height(string): 截图高.
         :param Format(string): jpg, png.
         :param Rotate(string): auto 自动根据媒体信息旋转, off 不旋转.
-        :param Mode(dict): 设置下载的headers.
+        :param Mode(string): 截帧方式 keyframe：截取指定时间点之前的最近的一个关键帧 exactframe：截取指定时间点的帧.
         :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
 
         .. code-block:: python

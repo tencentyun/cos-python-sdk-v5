@@ -35,7 +35,6 @@ conf = CosConfig(
     Region=REGION,
     SecretId=SECRET_ID,
     SecretKey=SECRET_KEY,
-    EndpointCi='',
 )
 client = CosS3Client(conf, retry=3)
 rsa_provider = RSAProvider()

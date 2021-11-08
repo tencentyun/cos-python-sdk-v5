@@ -23,7 +23,7 @@ region = 'ap-chongqing' # 替换为用户的 region，已创建桶归属的regio
 # COS支持的所有region列表参见https://www.qcloud.com/document/product/436/6224
 token = None # 如果使用永久密钥不需要填入token，如果使用临时密钥需要填入，临时密钥生成和使用指引参见https://cloud.tencent.com/document/product/436/14048
 
-config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token, Scheme='https', EndpointCi='') # 获取配置对象
+config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token, Scheme='https') # 获取配置对象
 client = CosS3Client(config)
 
 
