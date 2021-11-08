@@ -6,7 +6,11 @@ import hashlib
 import os
 import requests
 import json
+
+from requests.models import Response
+
 import base64
+
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
@@ -1730,6 +1734,33 @@ def test_ci_list_media_transcode_jobs():
     assert (response['JobsDetail'])
 
 
+def test_get_media_info():
+    if TEST_CI != 'true':
+        return
+    # 获取媒体信息
+    response = client.get_media_info(
+        Bucket=ci_bucket_name,
+        Key='demo.mp4'
+    )
+    print(response)
+    assert (response)
+
+
+def test_get_snapshot():
+    if TEST_CI != 'true':
+        return
+    # 产生同步截图
+    response = client.get_snapshot(
+        Bucket=ci_bucket_name,
+        Key='demo.mp4',
+        Time='1.5',
+        Width='480',
+        Format='png'
+    )
+    print(response)
+    assert (response)
+
+
 def test_sse_c_file():
     """测试SSE-C的各种接口"""
     bucket = test_bucket
@@ -1850,6 +1881,8 @@ if __name__ == "__main__":
     test_ci_create_media_transcode_watermark_jobs()
     test_ci_create_media_transcode_jobs()
     test_ci_list_media_transcode_jobs()
+    test_get_media_info()
+    test_get_snapshot()
     test_sse_c_file()
     """
     tearDown()

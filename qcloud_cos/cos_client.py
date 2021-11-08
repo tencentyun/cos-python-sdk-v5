@@ -94,7 +94,7 @@ class CosConfig(object):
         if (Scheme != u'http' and Scheme != u'https'):
             raise CosClientError('Scheme can be only set to http/https')
         self._scheme = Scheme
-        
+
         # 格式化ci的endpoint 不支持自定义域名的
         self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
 
@@ -5087,6 +5087,122 @@ class CosS3Client(object):
         # 单个元素时将dict转为list
         format_dict(data, ['JobsDetail'])
         return data
+
+    def get_media_info(self, Bucket, Key, **kwargs):
+        """用于查询媒体文件的信息 https://cloud.tencent.com/document/product/436/55672
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于查询COS上媒体文件的信息
+            response = client.get_media_info(
+                Bucket='bucket',
+                Key='test.mp4'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'videoinfo'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get_media_info, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['MediaInfo'])
+        return data
+
+    def get_snapshot(self, Bucket, Key, Time, Width=None, Height=None, Format='jpg', Rotate='auto', Mode='exactframe', **kwargs):
+        """获取媒体文件某个时间的截图 https://cloud.tencent.com/document/product/436/55671
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Time(string): 截图时间点.
+        :param Width(string):  截图宽.
+        :param Height(string): 截图高.
+        :param Format(string): jpg, png.
+        :param Rotate(string): auto 自动根据媒体信息旋转, off 不旋转.
+        :param Mode(string): 截帧方式 keyframe：截取指定时间点之前的最近的一个关键帧 exactframe：截取指定时间点的帧.
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于获取COS文件某个时间的截图
+            response = client.get_snapshot(
+                Bucket='bucket',
+                Key='test.mp4',
+                Time='1.5',
+                Witdh='480',
+                Format='jpg',
+                Rotate='auto',
+                Mode='exactframe'
+            )
+            response['Body'].get_stream_to_file('snapshot.jpg')
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'snapshot'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['time'] = Time
+        if Width is not None:
+            params['width'] = Width
+        if Height is not None:
+            params['height'] = Height
+        params['format'] = Format
+        params['rotate'] = Rotate
+        params['mode'] = Mode
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get_snapshot, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
 
 
 if __name__ == "__main__":
