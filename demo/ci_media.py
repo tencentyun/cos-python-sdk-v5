@@ -23,7 +23,7 @@ region = 'ap-chongqing' # 替换为用户的 region，已创建桶归属的regio
 # COS支持的所有region列表参见https://www.qcloud.com/document/product/436/6224
 token = None # 如果使用永久密钥不需要填入token，如果使用临时密钥需要填入，临时密钥生成和使用指引参见https://cloud.tencent.com/document/product/436/14048
 
-config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token, Scheme='https')  # 获取配置对象
+config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token, Scheme='https') # 获取配置对象
 client = CosS3Client(config)
 
 
@@ -145,7 +145,30 @@ def ci_get_media_transcode_jobs():
     print(response)
     return response 
 
+def get_media_info():
+    # 获取媒体信息
+    response = client.get_media_info(
+        Bucket=bucket_name,
+        Key='demo.mp4'
+    )
+    print(response)
+
+def get_snapshot():
+    # 产生同步截图
+    response = client.get_snapshot(
+        Bucket=bucket_name,
+        Key='demo.mp4',
+        Time='1.5',
+        Width='480',
+        Format='png'
+    )
+    print(response)
+    response['Body'].get_stream_to_file('snapshot.jpg')
+
+
 if __name__ == "__main__":
-    #ci_get_media_queue()
-    ci_get_media_transcode_jobs()
+    ci_get_media_queue()
+    #ci_get_media_transcode_jobs()
     #ci_create_media_transcode_jobs()
+    #get_media_info()
+    #get_snapshot()

@@ -52,10 +52,14 @@ maplist = {
     'CopySourceIfUnmodifiedSince': 'x-cos-copy-source-If-Unmodified-Since',
     'VersionId': 'versionId',
     'ServerSideEncryption': 'x-cos-server-side-encryption',
+    'SSEKMSKeyId': 'x-cos-server-side-encryption-cos-kms-key-id',
+    'SSEKMSContext': 'x-cos-server-side-encryption-context',
     'SSECustomerAlgorithm': 'x-cos-server-side-encryption-customer-algorithm',
     'SSECustomerKey': 'x-cos-server-side-encryption-customer-key',
     'SSECustomerKeyMD5': 'x-cos-server-side-encryption-customer-key-MD5',
-    'SSEKMSKeyId': 'x-cos-server-side-encryption-cos-kms-key-id',
+    'CopySourceSSECustomerAlgorithm': 'x-cos-copy-source-server-side-encryption-customer-algorithm',
+    'CopySourceSSECustomerKey': 'x-cos-copy-source-server-side-encryption-customer-key',
+    'CopySourceSSECustomerKeyMD5': 'x-cos-copy-source-server-side-encryption-customer-key-MD5',
     'Referer': 'Referer',
     'PicOperations': 'Pic-Operations',
     'TrafficLimit': 'x-cos-traffic-limit',
@@ -217,14 +221,18 @@ def format_values(data):
 
 
 def format_endpoint(endpoint, region, module=u'cos.'):
-    """格式化终端域名"""
-    if not endpoint and not region:
+    # 客户使用全球加速域名时，只会传endpoint不会传region。此时这样endpointCi和region同时为None，就会报错。
+    if not endpoint and not region and module == u'cos.':
         raise CosClientError("Region or Endpoint is required not empty!")
-    if not endpoint:
+
+    """格式化终端域名"""
+    if endpoint:
+        return to_unicode(endpoint)
+    elif region:
         region = format_region(region, module)
         return u"{region}.myqcloud.com".format(region=region)
     else:
-        return to_unicode(endpoint)
+        return None
 
 
 def format_region(region, module=u'cos.'):

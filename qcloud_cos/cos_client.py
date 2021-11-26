@@ -84,6 +84,7 @@ class CosConfig(object):
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
         self._sign_host = SignHost
+        self._copy_part_threshold_size = SINGLE_UPLOAD_LENGTH
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region)
@@ -94,10 +95,8 @@ class CosConfig(object):
             raise CosClientError('Scheme can be only set to http/https')
         self._scheme = Scheme
 
-        # 客户使用全球加速域名时，只会传endpoint不会传region。此时这样endpointCi和region同时为None，就会报错。
-        if EndpointCi is not None:
-            # 格式化ci的endpoint 不支持自定义域名的
-            self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
+        # 格式化ci的endpoint 不支持自定义域名的
+        self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
@@ -184,6 +183,10 @@ class CosConfig(object):
         self._secret_key = to_unicode(SecretKey)
         self._token = to_unicode(Token)
 
+    def set_copy_part_threshold_size(self, size):
+        if size > 0:
+            self._copy_part_threshold_size = size
+
 
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
@@ -237,6 +240,13 @@ class CosS3Client(object):
                 )
             print (auth_string)
         """
+
+        # python中默认参数只会初始化一次，这里重新生成可变对象实例避免多线程访问问题
+        if not Headers:
+            Headers = dict()
+        if not Params:
+            Params = dict()
+
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
@@ -3041,7 +3051,7 @@ class CosS3Client(object):
 
     # Advanced interface
     def _upload_part(self, bucket, key, local_path, offset, size, part_num, uploadid, md5_lst, resumable_flag,
-                     already_exist_parts, enable_md5, traffic_limit, progress_callback=None):
+                     already_exist_parts, enable_md5, progress_callback=None, **kwargs):
         """从本地文件中读取分块, 上传单个分块,将结果记录在md5——list中
 
         :param bucket(string): 存储桶名称.
@@ -3055,6 +3065,7 @@ class CosS3Client(object):
         :param resumable_flag(bool): 是否为断点续传.
         :param already_exist_parts(dict): 断点续传情况下,保存已经上传的块的序号和Etag.
         :param enable_md5(bool): 是否开启md5校验.
+        :param kwargs(dict): 设置请求headers.
         :return: None.
         """
         # 如果是断点续传且该分块已经上传了则不用实际上传
@@ -3064,7 +3075,7 @@ class CosS3Client(object):
             with open(local_path, 'rb') as fp:
                 fp.seek(offset, 0)
                 data = fp.read(size)
-            rt = self.upload_part(bucket, key, data, part_num, uploadid, enable_md5, TrafficLimit=traffic_limit)
+            rt = self.upload_part(bucket, key, data, part_num, uploadid, enable_md5, **kwargs)
             md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
         if progress_callback:
             progress_callback.report(size)
@@ -3171,7 +3182,16 @@ class CosS3Client(object):
         logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB,\
                      max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAXThread))
 
-        object_info = self.head_object(Bucket, Key)
+        head_headers = dict()
+        # SSE-C对象在head时也要求传入加密头域
+        if 'SSECustomerAlgorithm' in Kwargs:
+            head_headers['SSECustomerAlgorithm'] = Kwargs['SSECustomerAlgorithm']
+            head_headers['SSECustomerKey'] = Kwargs['SSECustomerKey']
+            head_headers['SSECustomerKeyMD5'] = Kwargs['SSECustomerKeyMD5']
+        # head时需要携带版本ID
+        if 'VersionId' in Kwargs:
+            head_headers['VersionId'] = Kwargs['VersionId']
+        object_info = self.head_object(Bucket, Key, **head_headers)
         file_size = int(object_info['Content-Length'])
         if file_size <= 1024 * 1024 * 20:
             response = self.get_object(Bucket, Key, **Kwargs)
@@ -3246,11 +3266,16 @@ class CosS3Client(object):
                 uploadid = rt['UploadId']
                 logger.info("create a new uploadid in upload_file, uploadid={uploadid}".format(uploadid=uploadid))
 
-            # 上传分块
             # 增加限速功能
-            traffic_limit = None
+            part_headers = dict()
             if 'TrafficLimit' in kwargs:
-                traffic_limit = kwargs['TrafficLimit']
+                part_headers['TrafficLimit'] = kwargs['TrafficLimit']
+            # SSE-C对象在上传段时也要求传入加密头域
+            if 'SSECustomerAlgorithm' in kwargs:
+                part_headers['SSECustomerAlgorithm'] = kwargs['SSECustomerAlgorithm']
+                part_headers['SSECustomerKey'] = kwargs['SSECustomerKey']
+                part_headers['SSECustomerKeyMD5'] = kwargs['SSECustomerKeyMD5']
+
             offset = 0  # 记录文件偏移量
             lst = list()  # 记录分块信息
             pool = SimpleThreadPool(MAXThread)
@@ -3260,11 +3285,10 @@ class CosS3Client(object):
             for i in range(1, parts_num + 1):
                 if i == parts_num:  # 最后一块
                     pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, file_size - offset, i,
-                                  uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, traffic_limit,
-                                  callback)
+                                  uploadid, lst, resumable_flag, already_exist_parts, EnableMD5, callback, **part_headers)
                 else:
                     pool.add_task(self._upload_part, Bucket, Key, LocalFilePath, offset, part_size, i, uploadid, lst,
-                                  resumable_flag, already_exist_parts, EnableMD5, traffic_limit, callback)
+                                  resumable_flag, already_exist_parts, EnableMD5, callback, **part_headers)
                     offset += part_size
 
             pool.wait_completion()
@@ -3278,7 +3302,7 @@ class CosS3Client(object):
                                                 MultipartUpload={'Part': lst})
             return rt
 
-    def _inner_head_object(self, CopySource):
+    def _head_object_when_copy(self, CopySource, **kwargs):
         """查询源文件的长度"""
         bucket, path, endpoint, versionid = get_copy_source_info(CopySource)
         params = {}
@@ -3286,19 +3310,28 @@ class CosS3Client(object):
             params['versionId'] = versionid
         url = u"{scheme}://{bucket}.{endpoint}/{path}".format(scheme=self._conf._scheme, bucket=bucket,
                                                               endpoint=endpoint, path=quote(to_bytes(path), '/-_.~'))
+
+        headers = dict()
+        # SSE-C对象在head源对象时也要求传入加密头域
+        if 'CopySourceSSECustomerAlgorithm' in kwargs:
+            headers['SSECustomerAlgorithm'] = kwargs['CopySourceSSECustomerAlgorithm']
+            headers['SSECustomerKey'] = kwargs['CopySourceSSECustomerKey']
+            headers['SSECustomerKeyMD5'] = kwargs['CopySourceSSECustomerKeyMD5']
+        headers = mapped(headers)
+
         rt = self.send_request(
             method='HEAD',
             url=url,
             bucket=bucket,
             auth=CosS3Auth(self._conf, path, params=params),
-            headers={},
+            headers=headers,
             params=params)
         storage_class = 'standard'
         if 'x-cos-storage-class' in rt.headers:
             storage_class = rt.headers['x-cos-storage-class'].lower()
         return int(rt.headers['Content-Length']), storage_class
 
-    def _upload_part_copy(self, bucket, key, part_number, upload_id, copy_source, copy_source_range, md5_lst):
+    def _upload_part_copy(self, bucket, key, part_number, upload_id, copy_source, copy_source_range, md5_lst, **kwargs):
         """拷贝指定文件至分块上传,记录结果到lst中去
 
         :param bucket(string): 存储桶名称.
@@ -3308,9 +3341,10 @@ class CosS3Client(object):
         :param copy_source(dict): 拷贝源,包含Appid,Bucket,Region,Key.
         :param copy_source_range(string): 拷贝源的字节范围,bytes=first-last。
         :param md5_lst(list): 保存上传成功分块的MD5和序号.
+        :param kwargs(dict): 设置请求headers.
         :return: None.
         """
-        rt = self.upload_part_copy(bucket, key, part_number, upload_id, copy_source, copy_source_range)
+        rt = self.upload_part_copy(bucket, key, part_number, upload_id, copy_source, copy_source_range, **kwargs)
         md5_lst.append({'PartNumber': part_number, 'ETag': rt['ETag']})
         return None
 
@@ -3346,7 +3380,7 @@ class CosS3Client(object):
             )
         """
         # 先查询下拷贝源object的content-length
-        file_size, src_storage_class = self._inner_head_object(CopySource)
+        file_size, src_storage_class = self._head_object_when_copy(CopySource, **kwargs)
 
         dst_storage_class = 'standard'
         if 'StorageClass' in kwargs:
@@ -3358,7 +3392,7 @@ class CosS3Client(object):
             return response
 
         # 如果源文件大小小于5G，则直接调用copy_object接口
-        if file_size < SINGLE_UPLOAD_LENGTH:
+        if file_size < self._conf._copy_part_threshold_size:
             response = self.copy_object(Bucket=Bucket, Key=Key, CopySource=CopySource, CopyStatus=CopyStatus, **kwargs)
             return response
 
@@ -3383,13 +3417,25 @@ class CosS3Client(object):
         lst = list()  # 记录分块信息
         pool = SimpleThreadPool(MAXThread)
 
+        part_headers = dict()
+        # 目标对象是SSE-C需要增加加密头域
+        if 'SSECustomerAlgorithm' in kwargs:
+            part_headers['SSECustomerAlgorithm'] = kwargs['SSECustomerAlgorithm']
+            part_headers['SSECustomerKey'] = kwargs['SSECustomerKey']
+            part_headers['SSECustomerKeyMD5'] = kwargs['SSECustomerKeyMD5']
+        # 源对象是SSE-C需要增加加密头域
+        if 'CopySourceSSECustomerAlgorithm' in kwargs:
+            part_headers['CopySourceSSECustomerAlgorithm'] = kwargs['CopySourceSSECustomerAlgorithm']
+            part_headers['CopySourceSSECustomerKey'] = kwargs['CopySourceSSECustomerKey']
+            part_headers['CopySourceSSECustomerKeyMD5'] = kwargs['CopySourceSSECustomerKeyMD5']
+
         for i in range(1, parts_num + 1):
             if i == parts_num:  # 最后一块
                 copy_range = gen_copy_source_range(offset, file_size - 1)
-                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
+                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst, **part_headers)
             else:
                 copy_range = gen_copy_source_range(offset, offset + part_size - 1)
-                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst)
+                pool.add_task(self._upload_part_copy, Bucket, Key, i, uploadid, CopySource, copy_range, lst, **part_headers)
                 offset += part_size
 
         pool.wait_completion()
@@ -3811,12 +3857,13 @@ class CosS3Client(object):
         data = rt.json()
         return data
 
-    def put_live_channel(self, Bucket, ChannelName, Expire=3600, LiveChannelConfiguration={}, **kwargs):
+    def put_live_channel(self, Bucket, ChannelName, Expire=3600, PreSignExpire=0, LiveChannelConfiguration={}, **kwargs):
         """创建直播通道
 
         :param Bucket(string): 存储桶名称.
         :param ChannelName(string): 直播通道名称.
         :param Expire(int): 推流url签名过期时间.
+        :param PreSignExpire(int): playlist中ts分片签名的过期时间,合法值[60,43200],默认为0,不开启该签名.
         :param LiveChannelConfiguration(dict): 直播通道配置.
         :param kwargs(dict): 设置请求headers.
         :return(dict): publish url and playurl.
@@ -3854,7 +3901,7 @@ class CosS3Client(object):
             params=params)
         data = xml_to_dict(rt.content)
         if data['PublishUrls']['Url'] is not None:
-            rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire)
+            rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire, presign_expire=PreSignExpire)
             url = data['PublishUrls']['Url']
             url += '?' + rtmpSign.get_rtmp_sign()
             data['PublishUrls']['Url'] = url
@@ -5048,6 +5095,122 @@ class CosS3Client(object):
         # 单个元素时将dict转为list
         format_dict(data, ['JobsDetail'])
         return data
+
+    def get_media_info(self, Bucket, Key, **kwargs):
+        """用于查询媒体文件的信息 https://cloud.tencent.com/document/product/436/55672
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于查询COS上媒体文件的信息
+            response = client.get_media_info(
+                Bucket='bucket',
+                Key='test.mp4'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'videoinfo'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get_media_info, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['MediaInfo'])
+        return data
+
+    def get_snapshot(self, Bucket, Key, Time, Width=None, Height=None, Format='jpg', Rotate='auto', Mode='exactframe', **kwargs):
+        """获取媒体文件某个时间的截图 https://cloud.tencent.com/document/product/436/55671
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Time(string): 截图时间点.
+        :param Width(string):  截图宽.
+        :param Height(string): 截图高.
+        :param Format(string): jpg, png.
+        :param Rotate(string): auto 自动根据媒体信息旋转, off 不旋转.
+        :param Mode(string): 截帧方式 keyframe：截取指定时间点之前的最近的一个关键帧 exactframe：截取指定时间点的帧.
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于获取COS文件某个时间的截图
+            response = client.get_snapshot(
+                Bucket='bucket',
+                Key='test.mp4',
+                Time='1.5',
+                Witdh='480',
+                Format='jpg',
+                Rotate='auto',
+                Mode='exactframe'
+            )
+            response['Body'].get_stream_to_file('snapshot.jpg')
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'snapshot'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['time'] = Time
+        if Width is not None:
+            params['width'] = Width
+        if Height is not None:
+            params['height'] = Height
+        params['format'] = Format
+        params['rotate'] = Rotate
+        params['mode'] = Mode
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get_snapshot, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
 
 
 if __name__ == "__main__":
