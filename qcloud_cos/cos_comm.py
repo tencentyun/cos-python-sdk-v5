@@ -12,7 +12,7 @@ import threading
 import xml.dom.minidom
 import xml.etree.ElementTree
 from datetime import datetime
-from dicttoxml import dicttoxml, unicode_me
+from dicttoxml import dicttoxml
 from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
