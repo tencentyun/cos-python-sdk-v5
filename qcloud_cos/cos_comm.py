@@ -12,7 +12,7 @@ import threading
 import xml.dom.minidom
 import xml.etree.ElementTree
 from datetime import datetime
-from dicttoxml import dicttoxml
+from dicttoxml import dicttoxml, unicode_me
 from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
@@ -396,10 +396,23 @@ def format_dict(data, key_lst):
         return data
     for key in key_lst:
         # 将dict转为list，保持一致
-        if key in data and (isinstance(data[key], dict) or isinstance(data[key], str)):
+        if key in data and (isinstance(data[key], dict) or isinstance(data[key], string_types)):
             lst = []
             lst.append(data[key])
             data[key] = lst
+    return data
+
+
+def format_dict_or_list(data, key_lst):
+    """转换返回dict或list中的可重复字段为list"""
+    if not ((isinstance(data, list) or isinstance(data, dict)) and isinstance(key_lst, list)):
+        return data
+    if isinstance(data, dict):
+        return format_dict(data, key_lst)
+
+    for data_item in data:
+        format_dict(data_item, key_lst)
+
     return data
 
 
