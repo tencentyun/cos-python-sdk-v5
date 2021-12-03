@@ -396,10 +396,23 @@ def format_dict(data, key_lst):
         return data
     for key in key_lst:
         # 将dict转为list，保持一致
-        if key in data and (isinstance(data[key], dict) or isinstance(data[key], str)):
+        if key in data and (isinstance(data[key], dict) or isinstance(data[key], string_types)):
             lst = []
             lst.append(data[key])
             data[key] = lst
+    return data
+
+
+def format_dict_or_list(data, key_lst):
+    """转换返回dict或list中的可重复字段为list"""
+    if not ((isinstance(data, list) or isinstance(data, dict)) and isinstance(key_lst, list)):
+        return data
+    if isinstance(data, dict):
+        return format_dict(data, key_lst)
+
+    for data_item in data:
+        format_dict(data_item, key_lst)
+
     return data
 
 
@@ -471,6 +484,8 @@ class CiDetectType():
     TERRORIST = 2
     POLITICS = 4
     ADS = 8
+    ILLEGAL = 16
+    ABUSE = 32
 
     @staticmethod
     def get_detect_type_str(DetectType):
@@ -490,6 +505,14 @@ class CiDetectType():
             if len(detect_type) > 0:
                 detect_type += ','
             detect_type += 'Ads'
+        if DetectType & CiDetectType.ILLEGAL > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Illegal'
+        if DetectType & CiDetectType.ABUSE > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Abuse'
 
         return detect_type
 
