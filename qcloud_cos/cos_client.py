@@ -4452,7 +4452,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads, 16: Ileegal, 32:Abuse
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads, 16: Illegal, 32:Abuse
         :param Type(string): 审核类型，video:视频，text：文本，audio：音频，docment：文档。
         :param Url(string): Url, 支持非cos上的文件
         :param Conf(dic): 审核的个性化配置
