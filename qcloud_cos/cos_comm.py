@@ -484,6 +484,8 @@ class CiDetectType():
     TERRORIST = 2
     POLITICS = 4
     ADS = 8
+    ILLEGAL = 16
+    ABUSE = 32
 
     @staticmethod
     def get_detect_type_str(DetectType):
@@ -503,6 +505,14 @@ class CiDetectType():
             if len(detect_type) > 0:
                 detect_type += ','
             detect_type += 'Ads'
+        if DetectType & CiDetectType.ILLEGAL > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Illegal'
+        if DetectType & CiDetectType.ABUSE > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Abuse'
 
         return detect_type
 
