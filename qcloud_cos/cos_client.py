@@ -100,14 +100,14 @@ class CosConfig(object):
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
-            self._secret_id = to_unicode(SecretId)
-            self._secret_key = to_unicode(SecretKey)
+            self._secret_id = self.convert_secret_value(SecretId)
+            self._secret_key = self.convert_secret_value(SecretKey)
         elif (Secret_id and Secret_key):
-            self._secret_id = to_unicode(Secret_id)
-            self._secret_key = to_unicode(Secret_key)
+            self._secret_id = self.convert_secret_value(Secret_id)
+            self._secret_key = self.convert_secret_value(Secret_key)
         elif (Access_id and Access_key):
-            self._secret_id = to_unicode(Access_id)
-            self._secret_key = to_unicode(Access_key)
+            self._secret_id = self.convert_secret_value(Access_id)
+            self._secret_key = self.convert_secret_value(Access_key)
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
@@ -179,13 +179,21 @@ class CosConfig(object):
         :param SecretKey(string): 秘钥SecretKey.
         :param Token(string): 临时秘钥使用的token.
         """
-        self._secret_id = to_unicode(SecretId)
-        self._secret_key = to_unicode(SecretKey)
-        self._token = to_unicode(Token)
+        self._secret_id = self.convert_secret_value(SecretId)
+        self._secret_key = self.convert_secret_value(SecretKey)
+        self._token = self.convert_secret_value(Token)
 
     def set_copy_part_threshold_size(self, size):
         if size > 0:
             self._copy_part_threshold_size = size
+
+    def convert_secret_value(self, value):
+        value = to_unicode(value)
+
+        if value.endswith(' ') or value.startswith(' '):
+            raise CosClientError('secret_id and secret_key cannot contain spaces at the beginning and end')
+
+        return value
 
 
 class CosS3Client(object):
