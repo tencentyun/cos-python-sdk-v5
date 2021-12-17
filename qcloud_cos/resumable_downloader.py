@@ -54,7 +54,7 @@ class ResumableDownLoader(object):
         # 已完成分块先设置下载进度
         if self.__progress_callback:
             for finished_part in self.__finished_parts:
-                self.__progress_callback.report(finished_part.length)       
+                self.__progress_callback.report(finished_part.length)
 
         parts_need_to_download = self.__get_parts_need_to_download()
         logger.debug('parts_need_to_download: {0}'.format(parts_need_to_download))
@@ -133,7 +133,7 @@ class ResumableDownLoader(object):
         self.__finish_part(part)
 
         if self.__progress_callback:
-            self.__progress_callback.report(part.length) 
+            self.__progress_callback.report(part.length)
 
     def __finish_part(self, part):
         logger.debug('download part finished,bucket: {0}, key: {1}, part_id: {2}'.
