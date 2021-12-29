@@ -212,8 +212,6 @@ release copy api
 
 ## [v1.6.8](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.6.7...v1.6.8) - 2019-05-14
 
-MD5 check support both unicode and bytes
-
 ### Merged
 
 - S3 [`#85`](https://github.com/tencentyun/cos-python-sdk-v5/pull/85)

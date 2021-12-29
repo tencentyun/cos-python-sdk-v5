@@ -100,14 +100,14 @@ class CosConfig(object):
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
-            self._secret_id = to_unicode(SecretId)
-            self._secret_key = to_unicode(SecretKey)
+            self._secret_id = self.convert_secret_value(SecretId)
+            self._secret_key = self.convert_secret_value(SecretKey)
         elif (Secret_id and Secret_key):
-            self._secret_id = to_unicode(Secret_id)
-            self._secret_key = to_unicode(Secret_key)
+            self._secret_id = self.convert_secret_value(Secret_id)
+            self._secret_key = self.convert_secret_value(Secret_key)
         elif (Access_id and Access_key):
-            self._secret_id = to_unicode(Access_id)
-            self._secret_key = to_unicode(Access_key)
+            self._secret_id = self.convert_secret_value(Access_id)
+            self._secret_key = self.convert_secret_value(Access_key)
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
@@ -179,13 +179,21 @@ class CosConfig(object):
         :param SecretKey(string): 秘钥SecretKey.
         :param Token(string): 临时秘钥使用的token.
         """
-        self._secret_id = to_unicode(SecretId)
-        self._secret_key = to_unicode(SecretKey)
-        self._token = to_unicode(Token)
+        self._secret_id = self.convert_secret_value(SecretId)
+        self._secret_key = self.convert_secret_value(SecretKey)
+        self._token = self.convert_secret_value(Token)
 
     def set_copy_part_threshold_size(self, size):
         if size > 0:
             self._copy_part_threshold_size = size
+
+    def convert_secret_value(self, value):
+        value = to_unicode(value)
+
+        if value.endswith(' ') or value.startswith(' '):
+            raise CosClientError('secret_id and secret_key cannot contain spaces at the beginning and end')
+
+        return value
 
 
 class CosS3Client(object):
@@ -240,6 +248,13 @@ class CosS3Client(object):
                 )
             print (auth_string)
         """
+
+        # python中默认参数只会初始化一次，这里重新生成可变对象实例避免多线程访问问题
+        if not Headers:
+            Headers = dict()
+        if not Params:
+            Params = dict()
+
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
@@ -504,7 +519,25 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
+        logging.debug("get object sensitive content recognition rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
+        # format res
+        if 'PornInfo' in data:
+            if 'OcrResults' in data['PornInfo']:
+                format_dict_or_list(data['PornInfo']['OcrResults'], ['Keywords'])
+            format_dict(data['PornInfo'], ['OcrResults', 'ObjectResults'])
+        if 'TerroristInfo' in data:
+            if 'OcrResults' in data['TerroristInfo']:
+                format_dict_or_list(data['TerroristInfo']['OcrResults'], ['Keywords'])
+            format_dict(data['TerroristInfo'], ['OcrResults', 'ObjectResults'])
+        if 'PoliticsInfo' in data:
+            if 'OcrResults' in data['PoliticsInfo']:
+                format_dict_or_list(data['PoliticsInfo']['OcrResults'], ['Keywords'])
+            format_dict(data['PoliticsInfo'], ['OcrResults', 'ObjectResults'])
+        if 'AdsInfo' in data:
+            if 'OcrResults' in data['AdsInfo']:
+                format_dict_or_list(data['AdsInfo']['OcrResults'], ['Keywords'])
+            format_dict(data['AdsInfo'], ['OcrResults', 'ObjectResults'])
 
         return data
 
@@ -3161,7 +3194,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -3191,8 +3224,13 @@ class CosS3Client(object):
             response['Body'].get_stream_to_file(DestFilePath)
             return
 
+        # 支持回调查看进度
+        callback = None
+        if progress_callback:
+            callback = ProgressCallback(file_size, progress_callback)
+
         downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC,
-                                         **Kwargs)
+                                         callback, **Kwargs)
         downloader.start()
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
@@ -3850,12 +3888,13 @@ class CosS3Client(object):
         data = rt.json()
         return data
 
-    def put_live_channel(self, Bucket, ChannelName, Expire=3600, LiveChannelConfiguration={}, **kwargs):
+    def put_live_channel(self, Bucket, ChannelName, Expire=3600, PreSignExpire=0, LiveChannelConfiguration={}, **kwargs):
         """创建直播通道
 
         :param Bucket(string): 存储桶名称.
         :param ChannelName(string): 直播通道名称.
         :param Expire(int): 推流url签名过期时间.
+        :param PreSignExpire(int): playlist中ts分片签名的过期时间,合法值[60,43200],默认为0,不开启该签名.
         :param LiveChannelConfiguration(dict): 直播通道配置.
         :param kwargs(dict): 设置请求headers.
         :return(dict): publish url and playurl.
@@ -3893,7 +3932,7 @@ class CosS3Client(object):
             params=params)
         data = xml_to_dict(rt.content)
         if data['PublishUrls']['Url'] is not None:
-            rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire)
+            rtmpSign = CosRtmpAuth(self._conf, bucket=Bucket, channel=ChannelName, expire=Expire, presign_expire=PreSignExpire)
             url = data['PublishUrls']['Url']
             url += '?' + rtmpSign.get_rtmp_sign()
             data['PublishUrls']['Url'] = url
@@ -4426,7 +4465,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads, 16: Illegal, 32:Abuse
         :param Type(string): 审核类型，video:视频，text：文本，audio：音频，docment：文档。
         :param Url(string): Url, 支持非cos上的文件
         :param Conf(dic): 审核的个性化配置
@@ -4497,6 +4536,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
+        logging.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -4549,6 +4589,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
+        logging.debug("query ci auditing:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -4633,12 +4674,49 @@ class CosS3Client(object):
             print response
         """
 
-        return self.ci_auditing_query_common(
+        data = self.ci_auditing_query_common(
             Bucket=Bucket,
             JobID=JobID,
             Type='video',
             **kwargs
         )
+
+        if 'JobsDetail' in data:
+            format_dict(data['JobsDetail'], ['Snapshot', 'AudioSection'])
+            if 'Snapshot' in data['JobsDetail']:
+                for snapshot in data['JobsDetail']['Snapshot']:
+                    if 'PornInfo' in snapshot:
+                        format_dict(snapshot['PornInfo'], ['OcrResults', 'ObjectResults'])
+                        if 'OcrResults' in snapshot['PornInfo']:
+                            for ocrResult in snapshot['PornInfo']['OcrResults']:
+                                format_dict(ocrResult, ['Keywords'])
+                    if 'TerrorismInfo' in snapshot:
+                        format_dict(snapshot['TerrorismInfo'], ['OcrResults', 'ObjectResults'])
+                        if 'OcrResults' in snapshot['TerrorismInfo']:
+                            for ocrResult in snapshot['TerrorismInfo']['OcrResults']:
+                                format_dict(ocrResult, ['Keywords'])
+                    if 'PoliticsInfo' in snapshot:
+                        format_dict(snapshot['PoliticsInfo'], ['OcrResults', 'ObjectResults'])
+                        if 'OcrResults' in snapshot['PoliticsInfo']:
+                            for ocrResult in snapshot['PoliticsInfo']['OcrResults']:
+                                format_dict(ocrResult, ['Keywords'])
+                    if 'AdsInfo' in snapshot:
+                        format_dict(snapshot['AdsInfo'], ['OcrResults', 'ObjectResults'])
+                        if 'OcrResults' in snapshot['AdsInfo']:
+                            for ocrResult in snapshot['AdsInfo']['OcrResults']:
+                                format_dict(ocrResult, ['Keywords'])
+            if 'AudioSection' in data['JobsDetail']:
+                for audioSection in data['JobsDetail']['AudioSection']:
+                    if 'PornInfo' in audioSection:
+                        format_dict(audioSection['PornInfo'], ['Keywords'])
+                    if 'TerrorismInfo' in audioSection:
+                        format_dict(audioSection['TerrorismInfo'], ['Keywords'])
+                    if 'PoliticsInfo' in audioSection:
+                        format_dict(audioSection['PoliticsInfo'], ['Keywords'])
+                    if 'AdsInfo' in audioSection:
+                        format_dict(audioSection['AdsInfo'], ['Keywords'])
+
+        return data
 
     def ci_auditing_audio_submit(self, Bucket, Key, DetectType, Url=None, Callback=None, CallbackVersion='Simple', BizType=None, **kwargs):
         """提交音频审核任务接口 https://cloud.tencent.com/document/product/460/53395
@@ -4706,12 +4784,26 @@ class CosS3Client(object):
             print response
         """
 
-        return self.ci_auditing_query_common(
+        data = self.ci_auditing_query_common(
             Bucket=Bucket,
             JobID=JobID,
             Type='audio',
             **kwargs
         )
+        if 'JobsDetail' in data:
+            format_dict(data['JobsDetail'], ['Section'])
+            if 'Section' in data['JobsDetail']:
+                for section in data['JobsDetail']['Section']:
+                    if 'PornInfo' in section:
+                        format_dict(section['PornInfo'], ['Keywords'])
+                    if 'TerrorismInfo' in section:
+                        format_dict(section['TerrorismInfo'], ['Keywords'])
+                    if 'PoliticsInfo' in section:
+                        format_dict(section['PoliticsInfo'], ['Keywords'])
+                    if 'AdsInfo' in section:
+                        format_dict(section['AdsInfo'], ['Keywords'])
+
+        return data
 
     def ci_auditing_text_submit(self, Bucket, Key, DetectType, Content=None, Callback=None,  BizType=None, **kwargs):
         """提交文本审核任务接口 https://cloud.tencent.com/document/product/460/56285
@@ -4750,7 +4842,7 @@ class CosS3Client(object):
         if Callback:
             conf['Callback'] = Callback
 
-        return self.ci_auditing_submit_common(
+        data = self.ci_auditing_submit_common(
             Bucket=Bucket,
             Key=Key,
             Type='text',
@@ -4760,6 +4852,11 @@ class CosS3Client(object):
             Input=Input,
             **kwargs
         )
+
+        if 'JobsDetail' in data:
+            format_dict(data['JobsDetail'], ['Section'])
+
+        return data
 
     def ci_auditing_text_query(self, Bucket, JobID, **kwargs):
         """查询文本审核任务接口 https://cloud.tencent.com/document/product/460/56284
@@ -4781,19 +4878,23 @@ class CosS3Client(object):
             print response
         """
 
-        return self.ci_auditing_query_common(
+        data = self.ci_auditing_query_common(
             Bucket=Bucket,
             JobID=JobID,
             Type='text',
             **kwargs
         )
+        if 'JobsDetail' in data:
+            format_dict(data['JobsDetail'], ['Section'])
+        return data
 
-    def ci_auditing_document_submit(self, Bucket, Url, DetectType, Type=None, Callback=None,  BizType=None, **kwargs):
+    def ci_auditing_document_submit(self, Bucket, Url, DetectType, Key=None, Type=None, Callback=None,  BizType=None, **kwargs):
         """提交文档审核任务接口 https://cloud.tencent.com/document/product/460/59380
 
         :param Bucket(string): 存储桶名称.
         :param Url(string): 文档文件的链接地址，例如 http://www.example.com/doctest.doc
         :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param Key(string): 存储在 COS 存储桶中的文件名称，例如在目录 test 中的文件test.doc，则文件名称为 test/test. Key 和 Url 只能选择其中一种。
         :param Type(string): 指定文档文件的类型，如未指定则默认以文件的后缀为类型。
                              如果文件没有后缀，该字段必须指定，否则会审核失败。例如：doc、docx、ppt、pptx 等
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
@@ -4814,7 +4915,11 @@ class CosS3Client(object):
             print response
         """
 
-        Input = {'Url': Url}
+        Input = {}
+        if Url is not None:
+            Input['Url'] = Url
+        if Key is not None:
+            Input['Object'] = Key
         if Type:
             Input['Type'] = Type
 
@@ -4855,12 +4960,34 @@ class CosS3Client(object):
             print response
         """
 
-        return self.ci_auditing_query_common(
+        data = self.ci_auditing_query_common(
             Bucket=Bucket,
             JobID=JobID,
             Type='document',
             **kwargs
         )
+
+        if 'JobsDetail' in data and 'PageSegment' in data['JobsDetail'] and 'Results' in data['JobsDetail']['PageSegment']:
+            format_dict(data['JobsDetail']['PageSegment'], ['Results'])
+            for resultsItem in data['JobsDetail']['PageSegment']['Results']:
+                if 'PornInfo' in resultsItem:
+                    format_dict(resultsItem['PornInfo'], ['OcrResults', 'ObjectResults'])
+                    if 'OcrResults' in resultsItem['PornInfo']:
+                        format_dict_or_list(resultsItem['PornInfo']['OcrResults'], ['Keywords'])
+                if 'TerrorismInfo' in resultsItem:
+                    format_dict(resultsItem['TerrorismInfo'], ['OcrResults', 'ObjectResults'])
+                    if 'OcrResults' in resultsItem['TerrorismInfo']:
+                        format_dict_or_list(resultsItem['TerrorismInfo']['OcrResults'], ['Keywords'])
+                if 'PoliticsInfo' in resultsItem:
+                    format_dict(resultsItem['PoliticsInfo'], ['OcrResults', 'ObjectResults'])
+                    if 'OcrResults' in resultsItem['PoliticsInfo']:
+                        format_dict_or_list(resultsItem['PoliticsInfo']['OcrResults'], ['Keywords'])
+                if 'AdsInfo' in resultsItem:
+                    format_dict(resultsItem['AdsInfo'], ['OcrResults', 'ObjectResults'])
+                    if 'OcrResults' in resultsItem['AdsInfo']:
+                        format_dict_or_list(resultsItem['AdsInfo']['OcrResults'], ['Keywords'])
+
+        return data
 
     def ci_get_media_queue(self, Bucket, **kwargs):
         """查询媒体处理队列接口 https://cloud.tencent.com/document/product/436/54045
