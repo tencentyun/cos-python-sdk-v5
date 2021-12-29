@@ -100,14 +100,14 @@ class CosConfig(object):
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
-            self._secret_id = to_unicode(SecretId)
-            self._secret_key = to_unicode(SecretKey)
+            self._secret_id = self.convert_secret_value(SecretId)
+            self._secret_key = self.convert_secret_value(SecretKey)
         elif (Secret_id and Secret_key):
-            self._secret_id = to_unicode(Secret_id)
-            self._secret_key = to_unicode(Secret_key)
+            self._secret_id = self.convert_secret_value(Secret_id)
+            self._secret_key = self.convert_secret_value(Secret_key)
         elif (Access_id and Access_key):
-            self._secret_id = to_unicode(Access_id)
-            self._secret_key = to_unicode(Access_key)
+            self._secret_id = self.convert_secret_value(Access_id)
+            self._secret_key = self.convert_secret_value(Access_key)
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
@@ -179,13 +179,21 @@ class CosConfig(object):
         :param SecretKey(string): 秘钥SecretKey.
         :param Token(string): 临时秘钥使用的token.
         """
-        self._secret_id = to_unicode(SecretId)
-        self._secret_key = to_unicode(SecretKey)
-        self._token = to_unicode(Token)
+        self._secret_id = self.convert_secret_value(SecretId)
+        self._secret_key = self.convert_secret_value(SecretKey)
+        self._token = self.convert_secret_value(Token)
 
     def set_copy_part_threshold_size(self, size):
         if size > 0:
             self._copy_part_threshold_size = size
+
+    def convert_secret_value(self, value):
+        value = to_unicode(value)
+
+        if value.endswith(' ') or value.startswith(' '):
+            raise CosClientError('secret_id and secret_key cannot contain spaces at the beginning and end')
+
+        return value
 
 
 class CosS3Client(object):
@@ -3186,7 +3194,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -3216,8 +3224,13 @@ class CosS3Client(object):
             response['Body'].get_stream_to_file(DestFilePath)
             return
 
+        # 支持回调查看进度
+        callback = None
+        if progress_callback:
+            callback = ProgressCallback(file_size, progress_callback)
+
         downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC,
-                                         **Kwargs)
+                                         callback, **Kwargs)
         downloader.start()
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ResumableDownLoader(object):
     def __init__(self, cos_client, bucket, key, dest_filename, object_info, part_size=20, max_thread=5,
-                 enable_crc=False, **kwargs):
+                 enable_crc=False, progress_callback=None, **kwargs):
         self.__cos_client = cos_client
         self.__bucket = bucket
         self.__key = key
@@ -25,6 +25,7 @@ class ResumableDownLoader(object):
         self.__object_info = object_info
         self.__max_thread = max_thread
         self.__enable_crc = enable_crc
+        self.__progress_callback = progress_callback
         self.__headers = kwargs
 
         self.__max_part_count = 100  # 取决于服务端是否对并发有限制
@@ -49,6 +50,11 @@ class ResumableDownLoader(object):
 
         assert self.__tmp_file
         open(self.__tmp_file, 'a').close()
+
+        # 已完成分块先设置下载进度
+        if self.__progress_callback:
+            for finished_part in self.__finished_parts:
+                self.__progress_callback.report(finished_part.length)
 
         parts_need_to_download = self.__get_parts_need_to_download()
         logger.debug('parts_need_to_download: {0}'.format(parts_need_to_download))
@@ -125,6 +131,9 @@ class ResumableDownLoader(object):
             result["Body"].pget_stream_to_file(f, part.start, part.length)
 
         self.__finish_part(part)
+
+        if self.__progress_callback:
+            self.__progress_callback.report(part.length)
 
     def __finish_part(self, part):
         logger.debug('download part finished,bucket: {0}, key: {1}, part_id: {2}'.
