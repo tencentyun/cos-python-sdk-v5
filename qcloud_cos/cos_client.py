@@ -537,7 +537,7 @@ class CosS3Client(object):
         if 'PoliticsInfo' in data:
             if 'OcrResults' in data['PoliticsInfo']:
                 format_dict_or_list(data['PoliticsInfo']['OcrResults'], ['Keywords'])
-            format_dict(data['PoliticsInfo'], ['OcrResults'])
+            format_dict(data['PoliticsInfo'], ['OcrResults', 'ObjectResults'])
         if 'AdsInfo' in data:
             if 'OcrResults' in data['AdsInfo']:
                 format_dict_or_list(data['AdsInfo']['OcrResults'], ['Keywords'])
@@ -5084,7 +5084,7 @@ class CosS3Client(object):
                     if 'OcrResults' in resultsItem['TerrorismInfo']:
                         format_dict_or_list(resultsItem['TerrorismInfo']['OcrResults'], ['Keywords'])
                 if 'PoliticsInfo' in resultsItem:
-                    format_dict(resultsItem['PoliticsInfo'], ['OcrResults'])
+                    format_dict(resultsItem['PoliticsInfo'], ['OcrResults', 'ObjectResults'])
                     if 'OcrResults' in resultsItem['PoliticsInfo']:
                         format_dict_or_list(resultsItem['PoliticsInfo']['OcrResults'], ['Keywords'])
                 if 'AdsInfo' in resultsItem:
@@ -5202,7 +5202,7 @@ class CosS3Client(object):
                     if 'OcrResults' in jobsDetail['TerrorismInfo']:
                         format_dict_or_list(jobsDetail['TerrorismInfo']['OcrResults'], ['Keywords'])
                 if 'PoliticsInfo' in jobsDetail:
-                    format_dict(jobsDetail['PoliticsInfo'], ['OcrResults'])
+                    format_dict(jobsDetail['PoliticsInfo'], ['OcrResults', 'ObjectResults'])
                     if 'OcrResults' in jobsDetail['PoliticsInfo']:
                         format_dict_or_list(jobsDetail['PoliticsInfo']['OcrResults'], ['Keywords'])
                 if 'AdsInfo' in jobsDetail:
@@ -5250,7 +5250,7 @@ class CosS3Client(object):
                 if 'OcrResults' in jobsDetail['TerrorismInfo']:
                     format_dict_or_list(jobsDetail['TerrorismInfo']['OcrResults'], ['Keywords'])
             if 'PoliticsInfo' in jobsDetail:
-                format_dict(jobsDetail['PoliticsInfo'], ['OcrResults'])
+                format_dict(jobsDetail['PoliticsInfo'], ['OcrResults', 'ObjectResults'])
                 if 'OcrResults' in jobsDetail['PoliticsInfo']:
                     format_dict_or_list(jobsDetail['PoliticsInfo']['OcrResults'], ['Keywords'])
             if 'AdsInfo' in jobsDetail:
