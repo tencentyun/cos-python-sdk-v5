@@ -809,7 +809,6 @@ def test_upload_with_server_side_encryption():
     )
     assert response['x-cos-server-side-encryption'] == 'AES256'
 
-
 def test_put_get_bucket_logging():
     """测试bucket的logging服务"""
     logging_bucket = 'logging-beijing-' + APPID
@@ -1112,6 +1111,7 @@ def test_put_get_delete_bucket_tagging():
     response = client.delete_bucket_tagging(
         Bucket=test_bucket
     )
+
 
 def test_put_get_delete_bucket_tagging():
     """测试设置获取删除object标签"""
