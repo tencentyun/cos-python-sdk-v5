@@ -1113,6 +1113,37 @@ def test_put_get_delete_bucket_tagging():
         Bucket=test_bucket
     )
 
+def test_put_get_delete_bucket_tagging():
+    """测试设置获取删除object标签"""
+    tagging_config = {
+        'TagSet': {
+            'Tag': [
+                {
+                    'Key': 'key0',
+                    'Value': 'value0'
+                }
+            ]
+        }
+    }
+    response = client.put_object_tagging(
+        Bucket=test_bucket,
+        Key=test_object,
+        Tagging=tagging_config
+    )
+    # wait for sync
+    # get tagging
+    time.sleep(1)
+    response = client.get_object_tagging(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert tagging_config == response
+    # delete tagging
+    response = client.delete_object_tagging(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+
 
 def _test_put_get_delete_bucket_origin():
     """测试设置获取删除bucket回源域名"""
