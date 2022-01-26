@@ -717,7 +717,7 @@ def test_upload_file_from_buffer():
 def test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
     file_name = "thread_1GB"
-    file_size = 1024
+    file_size = 128
     if TRAVIS_FLAG == 'true':
         file_size = 5  # set 5MB beacuse travis too slow
     gen_file(file_name, file_size)
@@ -738,7 +738,7 @@ def test_upload_file_multithreading():
 def test_upload_file_with_progress_callback():
     """带有进度条功能的并发上传"""
     file_name = "test_progress_callback"
-    file_size = 1024
+    file_size = 128
     if TRAVIS_FLAG == 'true':
         file_size = 5  # set 5MB beacuse travis too slow
     gen_file(file_name, file_size)
@@ -1012,8 +1012,7 @@ def test_put_get_delete_bucket_domain():
     response = client.get_bucket_domain(
         Bucket=test_bucket
     )
-    domain_config['x-cos-domain-txt-verification'] = response['x-cos-domain-txt-verification']
-    assert domain_config == response
+    assert domain_config["DomainRule"] == response["DomainRule"]
     # test domain request
     """
     domain_conf = CosConfig(
