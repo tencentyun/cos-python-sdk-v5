@@ -2746,13 +2746,12 @@ class CosS3Client(object):
             params=params)
         return None
 
-    def put_object_tagging(self, Bucket, Key, Tagging={}, VersionId=None, **kwargs):
+    def put_object_tagging(self, Bucket, Key, Tagging={}, **kwargs):
         """设置object的标签
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Tagging(dict): Object的标签集合
-        :param VersionId(string): 对象版本ID,可选.不指定时为Object的最新版本.
         :param kwargs(dict): 设置请求headers.
         :return: None.
 
@@ -2780,11 +2779,10 @@ class CosS3Client(object):
         lst = ['<Tag>', '</Tag>']  # 类型为list的标签
         xml_config = format_xml(data=Tagging, root='Tagging', lst=lst)
         headers = mapped(kwargs)
-        headers['Content-MD5'] = get_md5(xml_config)
-        headers['Content-Type'] = 'application/xml'
         params = {'tagging': ''}
-        if VersionId:
-            params['VersionId'] = VersionId
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("put object tagging, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -2799,12 +2797,11 @@ class CosS3Client(object):
             params=params)
         return None
 
-    def get_object_tagging(self, Bucket, Key, VersionId=None, **kwargs):
+    def get_object_tagging(self, Bucket, Key, **kwargs):
         """获取object标签
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
-        :param VersionId(string): 对象版本ID,可选.不指定时为Object的最新版本.
         :param kwargs(dict): 设置请求headers.
         :return(dict): Bucket对应的标签.
 
@@ -2820,8 +2817,9 @@ class CosS3Client(object):
         """
         headers = mapped(kwargs)
         params = {'tagging': ''}
-        if VersionId:
-            params['VersionId'] = VersionId
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("get object tagging, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -2838,12 +2836,11 @@ class CosS3Client(object):
             format_dict(data['TagSet'], ['Tag'])
         return data
 
-    def delete_object_tagging(self, Bucket, Key, VersionId=None, **kwargs):
+    def delete_object_tagging(self, Bucket, Key, **kwargs):
         """删除object标签
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
-        :param VersionId(string): 对象版本ID,可选.不指定时为Object的最新版本.
         :param kwargs(dict): 设置请求headers.
         :return(dict): None.
 
@@ -2859,8 +2856,9 @@ class CosS3Client(object):
         """
         headers = mapped(kwargs)
         params = {'tagging': ''}
-        if VersionId:
-            params['VersionId'] = VersionId
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("delete object tagging, url=:{url} ,headers=:{headers}".format(
             url=url,

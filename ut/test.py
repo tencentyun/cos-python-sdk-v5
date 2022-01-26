@@ -1114,7 +1114,7 @@ def test_put_get_delete_bucket_tagging():
     )
 
 
-def test_put_get_delete_bucket_tagging():
+def test_put_get_delete_object_tagging():
     """测试设置获取删除object标签"""
     tagging_config = {
         'TagSet': {
