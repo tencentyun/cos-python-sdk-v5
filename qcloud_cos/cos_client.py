@@ -108,6 +108,9 @@ class CosConfig(object):
         elif (Access_id and Access_key):
             self._secret_id = self.convert_secret_value(Access_id)
             self._secret_key = self.convert_secret_value(Access_key)
+        elif self._anonymous:
+            self._secret_id = None
+            self._secret_key = None
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
