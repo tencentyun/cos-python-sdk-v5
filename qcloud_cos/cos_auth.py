@@ -158,7 +158,7 @@ class CosRtmpAuth(AuthBase):
     def get_rtmp_sign(self):
         # get rtmp string
         canonicalized_param = ''
-        for k, v in self._params.iteritems():
+        for k, v in self._params.items():
             canonicalized_param += '{key}={value}&'.format(key=k, value=v)
         if self._presign_expire >= 60:
             canonicalized_param += 'presign={value}'.format(value=self._presign_expire)
