@@ -183,8 +183,6 @@ fix retry
 
 ## [v1.7.0](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.6.9...v1.7.0) - 2019-06-21
 
-release copy api
-
 ### Merged
 
 - Update demo.py [`#89`](https://github.com/tencentyun/cos-python-sdk-v5/pull/89)

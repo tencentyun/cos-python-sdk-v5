@@ -74,6 +74,13 @@ class CosS3Auth(AuthBase):
             self._path = u'/'
 
     def __call__(self, r):
+
+        # 匿名请求直接返回
+        if self._anonymous:
+            r.headers['Authorization'] = ""
+            logger.debug("anonymous reqeust")
+            return r
+
         path = self._path
         uri_params = self._params
         headers = filter_headers(r.headers)
@@ -128,8 +135,6 @@ class CosS3Auth(AuthBase):
             headers=';'.join(sorted(headers.keys())),
             sign=sign
         )
-        if self._anonymous:
-            r.headers['Authorization'] = ""
         logger.debug("sign_key" + str(sign_key))
         logger.debug(r.headers['Authorization'])
         logger.debug("request headers: " + str(r.headers))
@@ -153,7 +158,7 @@ class CosRtmpAuth(AuthBase):
     def get_rtmp_sign(self):
         # get rtmp string
         canonicalized_param = ''
-        for k, v in self._params.iteritems():
+        for k, v in self._params.items():
             canonicalized_param += '{key}={value}&'.format(key=k, value=v)
         if self._presign_expire >= 60:
             canonicalized_param += 'presign={value}'.format(value=self._presign_expire)

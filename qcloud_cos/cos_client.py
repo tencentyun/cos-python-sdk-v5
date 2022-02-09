@@ -108,6 +108,9 @@ class CosConfig(object):
         elif (Access_id and Access_key):
             self._secret_id = self.convert_secret_value(Access_id)
             self._secret_key = self.convert_secret_value(Access_key)
+        elif self._anonymous:
+            self._secret_id = None
+            self._secret_key = None
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
@@ -2743,6 +2746,132 @@ class CosS3Client(object):
             url=url,
             bucket=Bucket,
             auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def put_object_tagging(self, Bucket, Key, Tagging={}, **kwargs):
+        """设置object的标签
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Tagging(dict): Object的标签集合
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket标签
+            tagging_set = {
+                'TagSet': {
+                    'Tag': [
+                        {
+                            'Key': 'string',
+                            'Value': 'string'
+                        }
+                    ]
+                }
+            }
+            response = client.put_object_tagging(
+                Bucket='bucket',
+                Key='test.txt',
+                Tagging=tagging_set
+            )
+        """
+        lst = ['<Tag>', '</Tag>']  # 类型为list的标签
+        xml_config = format_xml(data=Tagging, root='Tagging', lst=lst)
+        headers = mapped(kwargs)
+        params = {'tagging': ''}
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("put object tagging, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_object_tagging(self, Bucket, Key, **kwargs):
+        """获取object标签
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的标签.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket标签
+            response = client.get_object_tagging(
+                Bucket='bucket',
+                Key='test.txt'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'tagging': ''}
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get object tagging, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        if 'TagSet' in data:
+            format_dict(data['TagSet'], ['Tag'])
+        return data
+
+    def delete_object_tagging(self, Bucket, Key, **kwargs):
+        """删除object标签
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket标签
+            response = client.delete_object_tagging(
+                Bucket='bucket',
+                Key='test.txt'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'tagging': ''}
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("delete object tagging, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
             headers=headers,
             params=params)
         return None
@@ -5614,6 +5743,187 @@ class CosS3Client(object):
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
         format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_trigger_workflow(self, Bucket, WorkflowId, Key, **kwargs):
+        """ 触发工作流接口 https://cloud.tencent.com/document/product/436/54641
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string):工作流ID.
+        :param Key(string): 对象key.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 触发工作流接口
+            response = client.ci_trigger_workflow(
+                Bucket='bucket'
+                WorkflowId='',
+                Key='a.mp4'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/triggerworkflow"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{WorkflowId}&{Key}".format(
+            url=to_unicode(url),
+            WorkflowId=to_unicode('workflowId='+WorkflowId),
+            Key=to_unicode('object='+Key)
+        )
+
+        logger.info("ci_trigger_workflow result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("ci_trigger_workflow result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_workflowexecution(self, Bucket, RunId, **kwargs):
+        """ 获取工作流实例详情 https://cloud.tencent.com/document/product/436/53992
+
+        :param Bucket(string): 存储桶名称.
+        :param RunId(string): 工作流实例ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取工作流实例详情
+            response = client.ci_get_workflowexecution(
+                Bucket='bucket'
+                RunId=''
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/workflowexecution/" + RunId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_get_workflowexecution result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("ci_get_workflowexecution result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['WorkflowExecution'])
+        return data
+
+    def ci_list_workflowexecution(self, Bucket, WorkflowId, Name='', StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+        """ 获取工作流实例列表 https://cloud.tencent.com/document/product/436/53993
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string): 工作流实例ID.
+        :param Name(string): 触发对象.
+        :param StartCreationTime(string): 开始时间.
+        :param EndCreationTime(string): 结束时间.
+        :param OrderByTime(string): 排序方式.
+        :param States(string): 任务状态.
+        :param Size(string): 任务个数.
+        :param NextToken(string): 请求的上下文，用于翻页.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_list_workflowexecution(
+                Bucket='bucket'
+                WorkflowId='',
+                Name='a.mp4'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/workflowexecution"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{WorkflowId}&{Name}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
+            url=to_unicode(url),
+            WorkflowId=to_unicode('workflowId='+WorkflowId),
+            Name=to_unicode('name='+Name),
+            OrderByTime=to_unicode('orderByTime='+OrderByTime),
+            States=to_unicode('states='+States),
+            Size=to_unicode('size='+str(Size)),
+            NextToken=to_unicode('nextToken='+NextToken)
+        )
+        if StartCreationTime is not None:
+            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+        if EndCreationTime is not None:
+            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+        logger.info("ci_list_workflowexecution result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("ci_list_workflowexecution result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['WorkflowExecution'])
         return data
 
     def get_media_info(self, Bucket, Key, **kwargs):

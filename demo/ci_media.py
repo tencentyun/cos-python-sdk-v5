@@ -165,10 +165,41 @@ def get_snapshot():
     print(response)
     response['Body'].get_stream_to_file('snapshot.jpg')
 
+def ci_trigger_workflow():
+    # 触发工作流接口
+    response = client.ci_trigger_workflow(
+                    Bucket=bucket_name,
+                    WorkflowId='w1b4ffd6900a343c3a2fe5b92b1fb7ff6',
+                    Key='117374C.mp4'
+                )
+    print(response)
+    return response
+
+def ci_get_workflowexecution():
+    # 查询工作流实例接口
+    response = client.ci_get_workflowexecution(
+                    Bucket=bucket_name,
+                    RunId='id1f94868688111eca793525400ca1839'
+                )
+    print(response)
+    return response
+
+def ci_list_workflowexecution():
+    # 查询工作流实例接口
+    response = client.ci_list_workflowexecution(
+                    Bucket=bucket_name,
+                    WorkflowId='w1b4ffd6900a343c3a2fe5b92b1fb7ff6'
+                )
+    print(response)
+    return response
+
 
 if __name__ == "__main__":
-    ci_get_media_queue()
+    #ci_get_media_queue()
     #ci_get_media_transcode_jobs()
     #ci_create_media_transcode_jobs()
     #get_media_info()
     #get_snapshot()
+    #ci_trigger_workflow()
+    #ci_list_workflowexecution()
+    ci_get_workflowexecution()
