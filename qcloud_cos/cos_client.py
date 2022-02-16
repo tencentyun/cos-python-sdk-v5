@@ -441,17 +441,19 @@ class CosS3Client(object):
 
         return response
 
-    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, **kwargs):
+    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param DetectType(int): 内容识别标志,位计算 1:porn,8:ads
         :param Interval(int): 截帧频率，GIF图/长图检测专用，默认值为0，表示只会检测GIF图/长图的第一帧.
         :param MaxFrames(int): 最大截帧数量，GIF图/长图检测专用，默认值为1，表示只取GIF的第1帧图片进行审核，或长图不做切分识别.
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param DetectUrl(string): 您可以通过填写detect-url审核任意公网可访问的图片链接。不填写detect-url时，后台会默认审核ObjectKey
             填写了detect-url时，后台会审核detect-url链接，无需再填写ObjectKey。 detect-url示例：http://www.example.com/abc.jpg.
+        :param LargeImageDetect(int): 对于超过大小限制的图片是否进行压缩后再审核，取值为： 0（不压缩），1（压缩）。默认为0。
+            注：压缩最大支持32M的图片，且会收取压缩费用。
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -481,27 +483,28 @@ class CosS3Client(object):
             params['versionId'] = headers['versionId']
             del headers['versionId']
         params['ci-process'] = 'sensitive-content-recognition'
-        detect_type = ''
-        if DetectType & CiDetectType.PORN > 0:
-            detect_type += 'porn'
-        if DetectType & CiDetectType.TERRORIST > 0:
-            if len(detect_type) > 0:
-                detect_type += ','
-            detect_type += 'terrorist'
-        if DetectType & CiDetectType.POLITICS > 0:
-            if len(detect_type) > 0:
-                detect_type += ','
-            detect_type += 'politics'
-        if DetectType & CiDetectType.ADS > 0:
-            if len(detect_type) > 0:
-                detect_type += ','
-            detect_type += 'ads'
-        if DetectType & CiDetectType.TEENAGER > 0:
-            if len(detect_type) > 0:
-                detect_type += ','
-            detect_type += 'teenager'
+        if DetectType is not None:
+            detect_type = ''
+            if DetectType & CiDetectType.PORN > 0:
+                detect_type += 'porn'
+            if DetectType & CiDetectType.TERRORIST > 0:
+                if len(detect_type) > 0:
+                    detect_type += ','
+                detect_type += 'terrorist'
+            if DetectType & CiDetectType.POLITICS > 0:
+                if len(detect_type) > 0:
+                    detect_type += ','
+                detect_type += 'politics'
+            if DetectType & CiDetectType.ADS > 0:
+                if len(detect_type) > 0:
+                    detect_type += ','
+                detect_type += 'ads'
+            if DetectType & CiDetectType.TEENAGER > 0:
+                if len(detect_type) > 0:
+                    detect_type += ','
+                detect_type += 'teenager'
 
-        params['detect-type'] = detect_type
+            params['detect-type'] = detect_type
         if Interval:
             params['interval'] = Interval
         if MaxFrames:
@@ -510,6 +513,8 @@ class CosS3Client(object):
             params['biz-type'] = BizType
         if DetectUrl:
             params['detect-url'] = DetectUrl
+        if LargeImageDetect:
+            params['large-image-detect'] = LargeImageDetect
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -4630,10 +4635,11 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
-        detect_type = CiDetectType.get_detect_type_str(DetectType)
         params = format_values(params)
 
-        Conf['DetectType'] = detect_type
+        if DetectType is not None:
+            detect_type = CiDetectType.get_detect_type_str(DetectType)
+            Conf['DetectType'] = detect_type
         request = {
             'Input': {},
             'Conf': Conf
@@ -4727,14 +4733,14 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_video_submit(self, Bucket, Key, DetectType, Url=None, Callback=None, CallbackVersion='Simple', DetectContent=0, Mode='Interval', Count=100, TimeInterval=1.0,
+    def ci_auditing_video_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', DetectContent=0, Mode='Interval', Count=100, TimeInterval=1.0,
                                  BizType=None, **kwargs):
         """提交video审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Url(string): 支持直接传非cos上url过来审核
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param CallbackVersion(string): 回调内容的结构，有效值：Simple（回调内容包含基本信息）、Detail（回调内容包含详细信息）。默认为 Simple。
         :param DetectContent(int): 用于指定是否审核视频声音，当值为0时：表示只审核视频画面截图；值为1时：表示同时审核视频画面截图和视频声音。默认值为0。
@@ -4755,7 +4761,8 @@ class CosS3Client(object):
             # 识别cos上的视频
             response = client.ci_auditing_video_submit(
                 Bucket='bucket',
-                DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
+                DetectType=CiDetectType.PORN,
+                BizType='xxxxx',
                 Key='test.mp4'
             )
             print response
@@ -4851,13 +4858,13 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_audio_submit(self, Bucket, Key, DetectType, Url=None, Callback=None, CallbackVersion='Simple', BizType=None, **kwargs):
+    def ci_auditing_audio_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', BizType=None, **kwargs):
         """提交音频审核任务接口 https://cloud.tencent.com/document/product/460/53395
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Url(string): 支持直接传非cos上url过来审核
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param CallbackVersion(string): 回调内容的结构，有效值：Simple（回调内容包含基本信息）、Detail（回调内容包含详细信息）。默认为 Simple。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
@@ -4938,14 +4945,14 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_text_submit(self, Bucket, Key, DetectType, Content=None, Callback=None,  BizType=None, Url=None, **kwargs):
+    def ci_auditing_text_submit(self, Bucket, Key, DetectType=None, Content=None, Callback=None,  BizType=None, Url=None, **kwargs):
         """提交文本审核任务接口 https://cloud.tencent.com/document/product/460/56285
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Url(string): 支持直接传非cos上url过来审核
         :param Content(string): 当传入的内容为纯文本信息，原文长度不能超过10000个 utf8 编码字符。若超出长度限制，接口将会报错。
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param kwargs(dict): 设置请求的headers.
@@ -4958,7 +4965,8 @@ class CosS3Client(object):
             # 识别cos上的文本
             response = client.ci_auditing_text_submit(
                 Bucket='bucket',
-                DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
+                DetectType=CiDetectType.PORN,
+                BizType='xxxx',
                 Key='test.txt'
             )
             print response
@@ -5024,12 +5032,12 @@ class CosS3Client(object):
             format_dict(data['JobsDetail'], ['Section'])
         return data
 
-    def ci_auditing_document_submit(self, Bucket, Url, DetectType, Key=None, Type=None, Callback=None,  BizType=None, **kwargs):
+    def ci_auditing_document_submit(self, Bucket, Url, DetectType=None, Key=None, Type=None, Callback=None,  BizType=None, **kwargs):
         """提交文档审核任务接口 https://cloud.tencent.com/document/product/460/59380
 
         :param Bucket(string): 存储桶名称.
         :param Url(string): 文档文件的链接地址，例如 http://www.example.com/doctest.doc
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param Key(string): 存储在 COS 存储桶中的文件名称，例如在目录 test 中的文件test.doc，则文件名称为 test/test. Key 和 Url 只能选择其中一种。
         :param Type(string): 指定文档文件的类型，如未指定则默认以文件的后缀为类型。
                              如果文件没有后缀，该字段必须指定，否则会审核失败。例如：doc、docx、ppt、pptx 等
@@ -5045,7 +5053,7 @@ class CosS3Client(object):
             # 识别cos上的文本
             response = client.ci_auditing_document_submit(
                 Bucket='bucket',
-                DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
+                DetectType=CiDetectType.PORN,
                 Url='http://www.example.com/doctest.doc'
             )
             print response
@@ -5125,12 +5133,12 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_html_submit(self, Bucket, Url, DetectType, ReturnHighlightHtml=False, Callback=None,  BizType=None, **kwargs):
+    def ci_auditing_html_submit(self, Bucket, Url, DetectType=None, ReturnHighlightHtml=False, Callback=None,  BizType=None, **kwargs):
         """提交网页审核任务接口 https://cloud.tencent.com/document/product/436/63958
 
         :param Bucket(string): 存储桶名称.
         :param Url(string): 文档文件的链接地址，例如 http://www.example.com/doctest.doc
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param ReturnHighlightHtml(bool): 指定是否需要高亮展示网页内的违规文本，查询及回调结果时会根据此参数决定是否返回高亮展示的
                                             html 内容。取值为 true 或者 false，默认为 false。
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
@@ -5145,7 +5153,7 @@ class CosS3Client(object):
             # 识别网页
             response = client.ci_auditing_html_submit(
                 Bucket='bucket',
-                DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
+                DetectType=CiDetectType.PORN,
                 Url='http://www.example.com/index.html'
             )
             print response
@@ -5226,7 +5234,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_image_batch(self, Bucket, DetectType, Input, BizType=None, **kwargs):
+    def ci_auditing_image_batch(self, Bucket, Input, DetectType=None, BizType=None, **kwargs):
         """图片同步批量审核接口 https://cloud.tencent.com/document/product/436/63593
 
         :param Bucket(string): 存储桶名称.
@@ -5238,7 +5246,9 @@ class CosS3Client(object):
                             Interval: 截帧频率，GIF 图检测专用，默认值为5，表示从第一帧（包含）开始每隔5帧截取一帧
                             MaxFrames: 最大截帧数量，GIF 图检测专用，默认值为5，表示只截取 GIF 的5帧图片进行审核，必须大于0
                             DataId: 图片标识，该字段在结果中返回原始内容，长度限制为512字节
-        :param DetectType(int): 内容识别标志,位计算 1:porn, 2:terrorist, 4:politics, 8:ads
+                            LargeImageDetect: 对于超过大小限制的图片是否进行压缩后再审核，取值为： 0（不压缩），1（压缩）。默认为0。
+                                注：压缩最大支持32M的图片，且会收取压缩费用。
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param kwargs(dict): 设置请求的headers.
         :return(dict):任务提交成功返回的结果,dict类型.
@@ -5250,7 +5260,7 @@ class CosS3Client(object):
             # 识别网页
             response = client.ci_auditing_image_batch(
                 Bucket='bucket',
-                DetectType=CiDetectType.PORN | CiDetectType.POLITICS,
+                DetectType=CiDetectType.PORN,
                 Input=[{
                     Url='http://www.example.com/test.jpg',
                 }]
@@ -5271,11 +5281,11 @@ class CosS3Client(object):
             else:
                 final_headers[key] = headers[key]
         headers = final_headers
-
-        detect_type = CiDetectType.get_detect_type_str(DetectType)
         params = format_values(params)
 
-        conf['DetectType'] = detect_type
+        if DetectType is not None:
+            detect_type = CiDetectType.get_detect_type_str(DetectType)
+            conf['DetectType'] = detect_type
         request = {
             'Input': Input,
             'Conf': conf
