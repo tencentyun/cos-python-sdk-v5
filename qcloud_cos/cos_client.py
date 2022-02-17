@@ -3332,7 +3332,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, **kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -3348,17 +3348,17 @@ class CosS3Client(object):
 
         head_headers = dict()
         # SSE-C对象在head时也要求传入加密头域
-        if 'SSECustomerAlgorithm' in Kwargs:
-            head_headers['SSECustomerAlgorithm'] = Kwargs['SSECustomerAlgorithm']
-            head_headers['SSECustomerKey'] = Kwargs['SSECustomerKey']
-            head_headers['SSECustomerKeyMD5'] = Kwargs['SSECustomerKeyMD5']
+        if 'SSECustomerAlgorithm' in kwargs:
+            head_headers['SSECustomerAlgorithm'] = kwargs['SSECustomerAlgorithm']
+            head_headers['SSECustomerKey'] = kwargs['SSECustomerKey']
+            head_headers['SSECustomerKeyMD5'] = kwargs['SSECustomerKeyMD5']
         # head时需要携带版本ID
-        if 'VersionId' in Kwargs:
-            head_headers['VersionId'] = Kwargs['VersionId']
+        if 'VersionId' in kwargs:
+            head_headers['VersionId'] = kwargs['VersionId']
         object_info = self.head_object(Bucket, Key, **head_headers)
         file_size = int(object_info['Content-Length'])
         if file_size <= 1024 * 1024 * 20:
-            response = self.get_object(Bucket, Key, **Kwargs)
+            response = self.get_object(Bucket, Key, **kwargs)
             response['Body'].get_stream_to_file(DestFilePath)
             return
 
@@ -3368,7 +3368,7 @@ class CosS3Client(object):
             callback = ProgressCallback(file_size, progress_callback)
 
         downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC,
-                                         callback, **Kwargs)
+                                         callback, **kwargs)
         downloader.start()
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
