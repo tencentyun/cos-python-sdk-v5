@@ -400,6 +400,9 @@ def format_dict(data, key_lst):
             lst = []
             lst.append(data[key])
             data[key] = lst
+        if key in data and data[key] is None:
+            lst = []
+            data[key] = lst
     return data
 
 
@@ -486,6 +489,7 @@ class CiDetectType():
     ADS = 8
     ILLEGAL = 16
     ABUSE = 32
+    TEENAGER = 64
 
     @staticmethod
     def get_detect_type_str(DetectType):
@@ -513,6 +517,10 @@ class CiDetectType():
             if len(detect_type) > 0:
                 detect_type += ','
             detect_type += 'Abuse'
+        if DetectType & CiDetectType.TEENAGER > 0:
+            if len(detect_type) > 0:
+                detect_type += ','
+            detect_type += 'Teenager'
 
         return detect_type
 
