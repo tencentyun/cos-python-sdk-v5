@@ -109,8 +109,10 @@ class CosConfig(object):
             self._secret_id = self.convert_secret_value(Access_id)
             self._secret_key = self.convert_secret_value(Access_key)
         elif self._anonymous:
-            self._secret_id = None
-            self._secret_key = None
+            # get_rtmp_sign() throw hmac.new Exception when _secret_key set None
+            # # get_presigned_url -> get_auth -> CosS3Auth -> hmac.new(to_bytes(self._secret_key) when _secret_key be None will except
+            self._secret_id = "a"
+            self._secret_key = "b"
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
