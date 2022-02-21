@@ -788,7 +788,10 @@ def test_use_get_auth():
         Key='test.txt',
         Params={'acl': '', 'unsed': '123'}
     )
-    url = 'http://' + test_bucket + '.cos.' + REGION + '.tencentcos.cn/test.txt?acl&unsed=123'
+    if conf._enable_old_domain:
+        url = 'http://' + test_bucket + '.cos.' + REGION + '.myqcloud.com/test.txt?acl&unsed=123'
+    else:
+        url = 'http://' + test_bucket + '.cos.' + REGION + '.tencentcos.cn/test.txt?acl&unsed=123'
     response = requests.get(url, headers={'Authorization': auth})
     assert response.status_code == 200
 

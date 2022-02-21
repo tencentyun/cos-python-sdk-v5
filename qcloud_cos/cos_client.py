@@ -39,7 +39,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EnableOldDomain=False, EnalbleInternalDomain=True):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EnableOldDomain=True, EnableInternalDomain=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -67,7 +67,7 @@ class CosConfig(object):
         :param SignHost(bool):  是否将host算入签名
         :param EndpointCi(string):  ci的endpoint
         :param EnableOldDomain(bool):  是否使用旧的myqcloud.com域名访问COS
-        :param EnalbleInternalDomain(bool):  是否使用内网域名访问COS
+        :param EnableInternalDomain(bool):  是否使用内网域名访问COS
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -88,10 +88,10 @@ class CosConfig(object):
         self._sign_host = SignHost
         self._copy_part_threshold_size = SINGLE_UPLOAD_LENGTH
         self._enable_old_domain = EnableOldDomain
-        self._enable_internal_domain = EnalbleInternalDomain
+        self._enable_internal_domain = EnableInternalDomain
 
         if self._domain is None:
-            self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnalbleInternalDomain)
+            self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnableInternalDomain)
         if Scheme is None:
             Scheme = u'https'
         Scheme = to_unicode(Scheme)
