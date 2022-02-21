@@ -39,7 +39,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EnableOldDomain=False, EnalbleInternalDomain=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -66,6 +66,8 @@ class CosConfig(object):
         :param AllowRedirects(bool):  是否重定向
         :param SignHost(bool):  是否将host算入签名
         :param EndpointCi(string):  ci的endpoint
+        :param EnableOldDomain(bool):  是否使用旧的myqcloud.com域名访问COS
+        :param EnalbleInternalDomain(bool):  是否使用内网域名访问COS
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -85,9 +87,11 @@ class CosConfig(object):
         self._allow_redirects = AllowRedirects
         self._sign_host = SignHost
         self._copy_part_threshold_size = SINGLE_UPLOAD_LENGTH
+        self._enable_old_domain = EnableOldDomain
+        self._enable_internal_domain = EnalbleInternalDomain
 
         if self._domain is None:
-            self._endpoint = format_endpoint(Endpoint, Region)
+            self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnalbleInternalDomain)
         if Scheme is None:
             Scheme = u'https'
         Scheme = to_unicode(Scheme)
@@ -96,7 +100,8 @@ class CosConfig(object):
         self._scheme = Scheme
 
         # 格式化ci的endpoint 不支持自定义域名的
-        self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
+        # ci暂不支持新域名
+        self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.', True, False)
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
@@ -775,7 +780,7 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource)
+        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         if CopyStatus != 'Copy' and CopyStatus != 'Replaced':
             raise CosClientError('CopyStatus must be Copy or Replaced')
         headers['x-cos-metadata-directive'] = CopyStatus
@@ -824,7 +829,7 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource)
+        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         headers['x-cos-copy-source-range'] = CopySourceRange
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
         params = format_values(params)
@@ -3196,7 +3201,12 @@ class CosS3Client(object):
             response = client.list_buckets()
         """
         headers = mapped(kwargs)
-        url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
+
+        if self._conf._enable_old_domain:
+            url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
+        else:
+            url = '{scheme}://service.cos.tencentcos.cn/'.format(scheme=self._conf._scheme)
+
         if self._conf._service_domain is not None:
             url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
         rt = self.send_request(
@@ -3473,7 +3483,7 @@ class CosS3Client(object):
 
     def _head_object_when_copy(self, CopySource, **kwargs):
         """查询源文件的长度"""
-        bucket, path, endpoint, versionid = get_copy_source_info(CopySource)
+        bucket, path, endpoint, versionid = get_copy_source_info(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         params = {}
         if versionid != '':
             params['versionId'] = versionid
@@ -3518,7 +3528,7 @@ class CosS3Client(object):
         return None
 
     def _check_same_region(self, dst_endpoint, CopySource):
-        src_endpoint = get_copy_source_info(CopySource)[2]
+        src_endpoint = get_copy_source_info(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)[2]
         if src_endpoint == dst_endpoint:
             return True
         return False
@@ -5241,7 +5251,7 @@ class CosS3Client(object):
         :param Input(dict array): 需要审核的图片信息,每个array元素为dict类型，支持的参数如下:
                             Object: 存储在 COS 存储桶中的图片文件名称，例如在目录 test 中的文件 image.jpg，则文件名称为 test/image.jpg。
                                 Object 和 Url 只能选择其中一种。
-                            Url: 图片文件的链接地址，例如 http://a-1250000.cos.ap-shanghai.myqcloud.com/image.jpg。
+                            Url: 图片文件的链接地址，例如 http://a-1250000.cos.ap-shanghai.tencentcos.cn/image.jpg。
                                 Object 和 Url 只能选择其中一种。
                             Interval: 截帧频率，GIF 图检测专用，默认值为5，表示从第一帧（包含）开始每隔5帧截取一帧
                             MaxFrames: 最大截帧数量，GIF 图检测专用，默认值为5，表示只截取 GIF 的5帧图片进行审核，必须大于0

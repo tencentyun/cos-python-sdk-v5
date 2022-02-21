@@ -38,7 +38,7 @@ if __name__ == "__main__":
     token = None               # 如果使用永久密钥不需要填入token，如果使用临时密钥需要填入，临时密钥生成和使用指引参见https://cloud.tencent.com/document/product/436/14048
     domain = None # domain可以不填，此时使用COS区域域名访问存储桶。domain也可以填写用户自定义域名，或者桶的全球加速域名
                   # 填写用户自定义域名，比如user-define.example.com，需要先开启桶的自定义域名，具体请参见https://cloud.tencent.com/document/product/436/36638
-                  # 填写桶的全球加速域名，比如examplebucket-1250000000.cos.accelerate.myqcloud.com，需要先开启桶的全球加速功能，请参见https://cloud.tencent.com/document/product/436/38864
+                  # 填写桶的全球加速域名，比如examplebucket-1250000000.cos.accelerate.tencentcos.cn，需要先开启桶的全球加速功能，请参见https://cloud.tencent.com/document/product/436/38864
     
     config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token, Domain=domain)  # 获取配置对象
     client = CosS3Client(config)

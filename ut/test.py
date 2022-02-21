@@ -788,7 +788,7 @@ def test_use_get_auth():
         Key='test.txt',
         Params={'acl': '', 'unsed': '123'}
     )
-    url = 'http://' + test_bucket + '.cos.' + REGION + '.myqcloud.com/test.txt?acl&unsed=123'
+    url = 'http://' + test_bucket + '.cos.' + REGION + '.tencentcos.cn/test.txt?acl&unsed=123'
     response = requests.get(url, headers={'Authorization': auth})
     assert response.status_code == 200
 
@@ -1681,7 +1681,7 @@ def test_ci_create_media_transcode_watermark_jobs():
                     'StartTime': '0',
                     'EndTime': '1000.5',
                     'Image': {
-                        'Url': 'http://'+ci_bucket_name+".cos."+ci_region+".myqcloud.com/1215shuiyin.jpg",
+                        'Url': 'http://'+ci_bucket_name+".cos."+ci_region+".tencentcos.cn/1215shuiyin.jpg",
                         'Mode': 'Fixed',
                         'Width': '128',
                         'Height': '128',
