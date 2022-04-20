@@ -6052,6 +6052,308 @@ class CosS3Client(object):
 
         return response
 
+    def ci_get_doc_queue(self, Bucket, **kwargs):
+        """查询文档转码处理队列接口 https://cloud.tencent.com/document/product/460/46946
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询文档转码处理队列接口
+            response = client.ci_get_doc_queue(
+                Bucket='bucket'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/docqueue"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("get_doc_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['QueueList'])
+        return data
+
+    def ci_create_doc_job(self, Bucket, QueueId, InputObject, OutputBucket, OutputRegion, OutputObject, SrcType=None, TgtType=None,
+                          StartPage=None, EndPage=None, SheetId=None, PaperDirection=None, PaperSize=None, DocPassword=None, Comments=None, PageRanges=None,
+                          ImageParams=None, Quality=None, Zoom=None, ImageDpi=None, PicPagination=None, **kwargs):
+        """ 创建任务接口 https://cloud.tencent.com/document/product/460/46942
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 任务所在的队列 ID.
+        :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param OutputBucket(string): 存储结果的存储桶.
+        :param OutputRegion(string): 存储结果的存储桶的地域.
+        :param OutputObject(string): 输出文件路径。
+            非表格文件输出文件名需包含 ${Number} 或 ${Page} 参数。多个输出文件，${Number} 表示序号从1开始，${Page} 表示序号与预览页码一致。
+            ${Number} 表示多个输出文件，序号从1开始，例如输入 abc_${Number}.jpg，预览某文件5 - 6页，则输出文件名为 abc_1.jpg，abc_2.jpg
+            ${Page} 表示多个输出文件，序号与预览页码一致，例如输入 abc_${Page}.jpg，预览某文件5-6页，则输出文件名为 abc_5.jpg，abc_6.jpg
+            表格文件输出路径需包含 ${SheetID} 占位符，输出文件名必须包含 ${Number} 参数。
+            例如 /${SheetID}/abc_${Number}.jpg，先根据 excel 转换的表格数，生成对应数量的文件夹，再在对应的文件夹下，生成对应数量的图片文件.
+        :param SrcType(string): 源数据的后缀类型，当前文档转换根据 cos 对象的后缀名来确定源数据类型，当 cos 对象没有后缀名时，可以设置该值.
+        :param TgtType(string): 	转换输出目标文件类型：
+            jpg，转成 jpg 格式的图片文件；如果传入的格式未能识别，默认使用 jpg 格式
+            png，转成 png 格式的图片文件
+            pdf，转成 pdf 格式文件（暂不支持指定页数）.
+        :param StartPage(int): 从第 X 页开始转换；在表格文件中，一张表可能分割为多页转换，生成多张图片。StartPage 表示从指定 SheetId 的第 X 页开始转换。默认为1.
+        :param EndPage(int): 转换至第 X 页；在表格文件中，一张表可能分割为多页转换，生成多张图片。EndPage 表示转换至指定 SheetId 的第 X 页。默认为-1，即转换全部页
+        :param SheetId(int): 表格文件参数，转换第 X 个表，默认为0；设置 SheetId 为0，即转换文档中全部表
+        :param PaperDirection(int): 表格文件转换纸张方向，0代表垂直方向，非0代表水平方向，默认为0
+        :param PaperSize(int): 设置纸张（画布）大小，对应信息为： 0 → A4 、 1 → A2 、 2 → A0 ，默认 A4 纸张
+        :param DocPassword(string): Office 文档的打开密码，如果需要转换有密码的文档，请设置该字段
+        :param Comments(int): 是否隐藏批注和应用修订，默认为 0；0：隐藏批注，应用修订；1：显示批注和修订
+        :param ImageParams(string): 转换后的图片处理参数，支持 基础图片处理 所有处理参数，多个处理参数可通过 管道操作符 分隔，从而实现在一次访问中按顺序对图片进行不同处理
+        :param Quality(int): 生成预览图的图片质量，取值范围 [1-100]，默认值100。 例：值为100，代表生成图片质量为100%
+        :param Zoom(int): 预览图片的缩放参数，取值范围[10-200]， 默认值100。 例：值为200，代表图片缩放比例为200% 即放大两倍
+        :param ImageDpi(int): 按指定 dpi 渲染图片，该参数与 Zoom 共同作用，取值范围 96-600 ，默认值为 96 。转码后的图片单边宽度需小于65500像素
+        :param PicPagination(int): 是否转换成单张长图，设置为 1 时，最多仅支持将 20 标准页面合成单张长图，超过可能会报错，分页范围可以通过 StartPage、EndPage 控制。默认值为 0 ，按页导出图片，TgtType="png"/"jpg" 时生效
+        :param PageRanges(string): 自定义需要转换的分页范围，例如： "1,2-4,7" ，则表示转换文档的 1、2、3、4、7 页面
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_create_doc_job(
+                Bucket='bucket'
+                QueueId='p532fdead78444e649e1a4467c1cd19d3',
+                InputObject='test.doc',
+                OutputBucket='outputbucket',
+                OutputRegion='outputregion',
+                OutputObject='/${SheetID}/abc_${Number}.jpg',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        body = {
+            'Input': {
+                'Object': InputObject,
+            },
+            'QueueId': QueueId,
+            'Tag': 'DocProcess',
+            'Operation': {
+                'Output': {'Bucket': OutputBucket, 'Region': OutputRegion, 'Object': OutputObject},
+                'DocProcess': {
+                }
+            }
+        }
+        if SrcType:
+            body['Operation']['DocProcess']['SrcType'] = SrcType
+        if TgtType:
+            body['Operation']['DocProcess']['TgtType'] = TgtType
+        if ImageParams:
+            body['Operation']['DocProcess']['ImageParams'] = ImageParams
+        if DocPassword:
+            body['Operation']['DocProcess']['DocPassword'] = DocPassword
+        if PageRanges:
+            body['Operation']['DocProcess']['PageRanges'] = PageRanges
+        if StartPage:
+            body['Operation']['DocProcess']['StartPage'] = StartPage
+        if EndPage:
+            body['Operation']['DocProcess']['EndPage'] = EndPage
+        if SheetId:
+            body['Operation']['DocProcess']['SheetId'] = SheetId
+        if PaperDirection:
+            body['Operation']['DocProcess']['PaperDirection'] = PaperDirection
+        if PaperSize:
+            body['Operation']['DocProcess']['PaperSize'] = PaperSize
+        if Quality:
+            body['Operation']['DocProcess']['Quality'] = Quality
+        if Zoom:
+            body['Operation']['DocProcess']['Zoom'] = Zoom
+        if PicPagination:
+            body['Operation']['DocProcess']['PicPagination'] = PicPagination
+        if ImageDpi:
+            body['Operation']['DocProcess']['ImageDpi'] = ImageDpi
+        if Comments:
+            body['Operation']['DocProcess']['Comments'] = Comments
+
+        xml_config = format_xml(data=body, root='Request')
+        path = "/doc_jobs"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("create_doc_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_doc_job(self, Bucket, JobID, **kwargs):
+        """ 查询任务接口 https://cloud.tencent.com/document/product/460/46943
+
+        :param Bucket(string): 存储桶名称.
+        :param JobID(string): 任务ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询任务接口
+            response = client.ci_get_doc_job(
+                Bucket='bucket'
+                JobID='jobid'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        path = "/doc_jobs/" + JobID
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("get_doc_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("ci_get_doc_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_list_doc_jobs(self, Bucket, QueueId, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+        """ 拉取文档预览任务列表接口 https://cloud.tencent.com/document/product/460/46944
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param StartCreationTime(string): 开始时间.
+        :param EndCreationTime(string): 结束时间.
+        :param OrderByTime(string): 排序方式.Desc 或者 Asc。默认为 Desc
+        :param States(string): 拉取该状态的任务，以,分割，支持多状态：All、Submitted、Running、Success、Failed、Pause、Cancel。默认为 All
+        :param Size(string): 拉取的最大任务数。默认为10。最大为100.
+        :param NextToken(string): 请求的上下文，用于翻页.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_list_doc_jobs(
+                Bucket='bucket'
+                QueueId='',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        path = "/doc_jobs"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{QueueId}&{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
+            url=to_unicode(url),
+            QueueId=to_unicode('queueId='+QueueId),
+            Tag=to_unicode('tag=DocProcess'),
+            OrderByTime=to_unicode('orderByTime='+OrderByTime),
+            States=to_unicode('states='+States),
+            Size=to_unicode('size='+str(Size)),
+            NextToken=to_unicode('nextToken='+NextToken)
+        )
+        if StartCreationTime is not None:
+            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+        if EndCreationTime is not None:
+            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+        logger.info("list_doc_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("list_doc_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
 
 if __name__ == "__main__":
     pass
