@@ -1643,7 +1643,7 @@ def test_ci_create_media_transcode_watermark_jobs():
 
     body = {
         'Input': {
-            'Object': '117374C.mp4'
+            'Object': 'workflow/input/video/test1.mp4'
         },
         'QueueId': QueueId,
         'Tag': 'Transcode',
@@ -1719,7 +1719,7 @@ def test_ci_create_media_transcode_jobs():
     QueueId = response['QueueList'][0]['QueueId']
     body = {
         'Input': {
-            'Object': '117374C.mp4'
+            'Object': 'workflow/input/video/test1.mp4'
         },
         'QueueId': QueueId,
         'Tag': 'Transcode',
@@ -1768,7 +1768,7 @@ def test_get_media_info():
     # 获取媒体信息
     response = client.get_media_info(
         Bucket=ci_bucket_name,
-        Key='demo.mp4'
+        Key='workflow/input/video/test1.mp4'
     )
     print(response)
     assert (response)
@@ -1780,13 +1780,65 @@ def test_get_snapshot():
     # 产生同步截图
     response = client.get_snapshot(
         Bucket=ci_bucket_name,
-        Key='demo.mp4',
+        Key='workflow/input/video/test1.mp4',
         Time='1.5',
         Width='480',
         Format='png'
     )
     print(response)
     assert (response)
+
+
+def test_ci_create_doc_transcode_jobs():
+    if TEST_CI != 'true':
+        return
+    response = client.ci_get_doc_queue(
+                    Bucket=ci_bucket_name
+                )
+    print(response)
+    assert (response['QueueList'][0]['QueueId'])
+    queueId = response['QueueList'][0]['QueueId']
+    response = client.ci_create_doc_job(
+                    Bucket=ci_bucket_name,
+                    QueueId=queueId,
+                    InputObject='normal.pptx',
+                    OutputBucket=ci_bucket_name,
+                    OutputRegion='ap-guangzhou',
+                    OutputObject='/test_doc/normal/abc_${Number}.jpg',
+                    # DocPassword='123',
+                    Quality=109,
+                    PageRanges='1,3',
+                )
+    print(response)
+    assert (response['JobsDetail']['JobId'])
+
+    # 测试转码查询任务
+    JobID = response['JobsDetail']['JobId']
+    response = client.ci_get_doc_job(
+                    Bucket=ci_bucket_name,
+                    JobID=JobID,
+                )
+    print(response)
+    assert (response['JobsDetail'])
+
+
+def test_ci_list_doc_transcode_jobs():
+    if TEST_CI != 'true':
+        return
+    # 查询任务列表
+    response = client.ci_get_doc_queue(
+                    Bucket=ci_bucket_name
+                )
+    print(response)
+    assert (response['QueueList'][0]['QueueId'])
+    queueId = response['QueueList'][0]['QueueId']
+    response = client.ci_list_doc_jobs(
+                    Bucket=ci_bucket_name,
+                    QueueId=queueId,
+                    Size=10,
+                )
+    print(response)
+    assert (response['JobsDetail'])
 
 
 def test_sse_c_file():
@@ -1909,6 +1961,8 @@ if __name__ == "__main__":
     test_ci_create_media_transcode_watermark_jobs()
     test_ci_create_media_transcode_jobs()
     test_ci_list_media_transcode_jobs()
+    test_ci_create_doc_transcode_jobs()
+    test_ci_list_doc_transcode_jobs()
     test_get_media_info()
     test_get_snapshot()
     test_sse_c_file()
