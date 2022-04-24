@@ -114,7 +114,7 @@ class CosConfig(object):
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
-    def uri(self, bucket, path=None, endpoint=None, domain=None):
+    def uri(self, bucket=None, path=None, endpoint=None, domain=None):
         """拼接url
 
         :param bucket(string): 存储桶名称.
@@ -130,11 +130,14 @@ class CosConfig(object):
         if domain is not None:
             url = domain
         else:
-            bucket = format_bucket(bucket, self._appid)
             if endpoint is None:
                 endpoint = self._endpoint
 
-            url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
+            if bucket is not None:
+                bucket = format_bucket(bucket, self._appid)
+                url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
+            else:
+                url = u"{endpoint}".format(endpoint=endpoint)
         if self._ip is not None:
             url = self._ip
             if self._port is not None:
@@ -5529,6 +5532,70 @@ class CosS3Client(object):
 
         return data
 
+    def ci_get_media_bucket(self, Regions ='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
+        """查询媒体处理开通状态接口 https://cloud.tencent.com/document/product/436/48988
+
+        :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
+        :param BucketName(string): 存储桶名称前缀，前缀搜索
+        :param BucketNames(string): 存储桶名称，以“,”分隔，支持多个存储桶，精确搜索
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询媒体处理队列接口
+            response = client.ci_get_media_bucket(
+                Regions='ap-chongqing,ap-shanghai',
+                BucketName='demo',
+                BucketNames='demo-1253960454,demo1-1253960454',
+                PageNumber='2'，
+                PageSize='3',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/mediabucket"
+        url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            regions=to_unicode('regions='+Regions),
+            bucketNames=to_unicode('bucketNames='+BucketNames),
+            bucketName=to_unicode('bucketName='+BucketName),
+            pageNumber=to_unicode('pageNumber='+PageNumber),
+            pageSize=to_unicode('pageSize='+PageSize),
+        )
+        logger.info("get_media_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=None,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['MediaBucketList'])
+        return data
+
     def ci_get_media_queue(self, Bucket, **kwargs):
         """查询媒体处理队列接口 https://cloud.tencent.com/document/product/436/54045
 
@@ -6035,6 +6102,59 @@ class CosS3Client(object):
 
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("get_snapshot, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
+
+    def get_pm3u8(self, Bucket, Key, Expires, **kwargs):
+        """获取私有 M3U8 ts 资源的下载授权 https://cloud.tencent.com/document/product/436/63740
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Expires(string): 私有 ts 资源 url 下载凭证的相对有效期.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于获取COS文件某个时间的截图
+            response = client.get_snapshot(
+                Bucket='bucket',
+                Key='test.mp4',
+                Expires='3600',
+            )
+            response['Body'].get_stream_to_file('pm3u8.m3u8')
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'pm3u8'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['expires'] = Expires
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get_pm3u8, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
             params=params))
