@@ -31,7 +31,7 @@ bucket_name = 'demo-1253960454'
 
 
 def ci_get_media_bucket():
-    # 查询媒体队列信息
+    # 查询媒体处理开通状态
     response = client.ci_get_media_bucket(
         Regions=region,
         BucketName='demo',
@@ -186,7 +186,7 @@ def get_snapshot():
 
 
 def get_pm3u8():
-    # 获取
+    # 获取私有 M3U8 ts 资源的下载授权
     response = client.get_pm3u8(
         Bucket=bucket_name,
         Key='demo.m3u8',

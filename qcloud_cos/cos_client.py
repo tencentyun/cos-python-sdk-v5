@@ -5532,7 +5532,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_get_media_bucket(self, Regions ='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
+    def ci_get_media_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
         """查询媒体处理开通状态接口 https://cloud.tencent.com/document/product/436/48988
 
         :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串

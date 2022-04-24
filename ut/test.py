@@ -1789,6 +1789,34 @@ def test_get_snapshot():
     assert (response)
 
 
+def test_get_pm3u8():
+    if TEST_CI != 'true':
+        return
+    # 获取私有 M3U8 ts 资源的下载授权
+    response = client.get_pm3u8(
+        Bucket=ci_bucket_name,
+        Key='/data/media/m3u8_no_end.m3u8',
+        Expires='3600'
+    )
+    print(response)
+    assert (response)
+
+
+def test_ci_get_media_bucket():
+    if TEST_CI != 'true':
+        return
+    # 获取私有 M3U8 ts 资源的下载授权
+    response = client.ci_get_media_bucket(
+        Regions=ci_region,
+        BucketNames=ci_bucket_name,
+        BucketName=ci_bucket_name,
+        PageNumber='1',
+        PageSize='2'
+    )
+    print(response)
+    assert (response)
+
+
 def test_ci_create_doc_transcode_jobs():
     if TEST_CI != 'true':
         return
@@ -1965,6 +1993,8 @@ if __name__ == "__main__":
     test_ci_list_doc_transcode_jobs()
     test_get_media_info()
     test_get_snapshot()
+    test_get_pm3u8()
+    test_ci_get_media_bucket()
     test_sse_c_file()
     """
     tearDown()
