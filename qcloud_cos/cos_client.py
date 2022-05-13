@@ -207,7 +207,7 @@ class CosConfig(object):
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
 
-    __built_in_sessions = None # 内置的静态连接池，多个Client间共享使用
+    __built_in_sessions = None  # 内置的静态连接池，多个Client间共享使用
 
     def __init__(self, conf, retry=1, session=None):
         """初始化client对象
@@ -221,7 +221,7 @@ class CosS3Client(object):
 
         if not CosS3Client.__built_in_sessions:
             with threading.Lock():
-                if not CosS3Client.__built_in_sessions: # 加锁后double check
+                if not CosS3Client.__built_in_sessions:  # 加锁后double check
                     CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
 
         if session is None:
@@ -235,7 +235,7 @@ class CosS3Client(object):
             return
 
         if CosS3Client.__built_in_sessions.get_adapter('http://')._pool_connections == PoolConnections \
-            and CosS3Client.__built_in_sessions.get_adapter('http://')._pool_maxsize == PoolMaxSize:
+           and CosS3Client.__built_in_sessions.get_adapter('http://')._pool_maxsize == PoolMaxSize:
             return
 
         # 判断之前是否绑定到内置连接池
