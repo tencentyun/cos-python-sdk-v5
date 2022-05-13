@@ -207,6 +207,8 @@ class CosConfig(object):
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
 
+    __built_in_sessions = None # 内置的静态连接池，多个Client间共享使用
+
     def __init__(self, conf, retry=1, session=None):
         """初始化client对象
 
@@ -216,14 +218,47 @@ class CosS3Client(object):
         """
         self._conf = conf
         self._retry = retry  # 重试的次数，分片上传时可适当增大
+
+        if not CosS3Client.__built_in_sessions:
+            with threading.Lock():
+                if not CosS3Client.__built_in_sessions: # 加锁后double check
+                    CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
+
         if session is None:
-            self._session = requests.session()
-            self._session.mount('http://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections,
-                                                                         pool_maxsize=self._conf._pool_maxsize))
-            self._session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections,
-                                                                          pool_maxsize=self._conf._pool_maxsize))
+            self._session = CosS3Client.__built_in_sessions
         else:
             self._session = session
+
+    def set_built_in_connection_pool_max_size(self, PoolConnections, PoolMaxSize):
+        """设置SDK内置的连接池的连接大小，并且重新绑定到client中"""
+        if not CosS3Client.__built_in_sessions:
+            return
+
+        if CosS3Client.__built_in_sessions.get_adapter('http://')._pool_connections == PoolConnections \
+            and CosS3Client.__built_in_sessions.get_adapter('http://')._pool_maxsize == PoolMaxSize:
+            return
+
+        # 判断之前是否绑定到内置连接池
+        rebound = False
+        if self._session and self._session is CosS3Client.__built_in_sessions:
+            rebound = True
+
+        # 重新生成内置连接池
+        CosS3Client.__built_in_sessions.close()
+        CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(PoolConnections, PoolMaxSize)
+
+        # 重新绑定到内置连接池
+        if rebound:
+            self._session = CosS3Client.__built_in_sessions
+            logger.warn("rebound built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+
+    def generate_built_in_connection_pool(self, PoolConnections, PoolMaxSize):
+        """生成SDK内置的连接池，此连接池是client间共用的"""
+        built_in_sessions = requests.session()
+        built_in_sessions.mount('http://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
+        built_in_sessions.mount('https://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
+        logger.warn("generate built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+        return built_in_sessions
 
     def get_conf(self):
         """获取配置"""
