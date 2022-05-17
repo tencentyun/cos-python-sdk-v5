@@ -90,7 +90,7 @@ def ci_create_media_transcode_watermark_jobs():
                 'StartTime':'0',
                 'EndTime':'1000.5',
                 'Image': {
-                    'Url': 'http://'+bucket_name+".cos."+region+".myqcloud.com/1215shuiyin.jpg",
+                    'Url': 'http://'+bucket_name+".cos."+region+".tencentcos.cn/1215shuiyin.jpg",
                     'Mode': 'Fixed',
                     'Width': '128',
                     'Height': '128',

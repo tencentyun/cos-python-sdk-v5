@@ -32,7 +32,12 @@ class WorkerThread(Thread):
             except Exception as e:
                 logger.warn(str(e))
                 self._fail_task_num += 1
-                self._ret.append(e)
+                if hasattr(e, '_message') and e._message:
+                    self._ret.append(e._message)
+                elif hasattr(e, 'message') and e.message:
+                    self._ret.append(e.message)
+                else:
+                    self._ret.append('meet some exception')
             finally:
                 self._task_queue.task_done()
 

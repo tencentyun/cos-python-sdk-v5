@@ -220,7 +220,7 @@ def format_values(data):
     return data
 
 
-def format_endpoint(endpoint, region, module=u'cos.'):
+def format_endpoint(endpoint, region, module, EnableOldDomain, EnableInternalDomain):
     # 客户使用全球加速域名时，只会传endpoint不会传region。此时这样endpointCi和region同时为None，就会报错。
     if not endpoint and not region and module == u'cos.':
         raise CosClientError("Region or Endpoint is required not empty!")
@@ -229,13 +229,16 @@ def format_endpoint(endpoint, region, module=u'cos.'):
     if endpoint:
         return to_unicode(endpoint)
     elif region:
-        region = format_region(region, module)
-        return u"{region}.myqcloud.com".format(region=region)
+        region = format_region(region, module, EnableOldDomain, EnableInternalDomain)
+        if EnableOldDomain:
+            return u"{region}.myqcloud.com".format(region=region)
+        else:
+            return u"{region}.tencentcos.cn".format(region=region)
     else:
         return None
 
 
-def format_region(region, module=u'cos.'):
+def format_region(region, module, EnableOldDomain, EnableInternalDomain):
     """格式化地域"""
     if not isinstance(region, string_types):
         raise CosClientError("region is not string type")
@@ -249,24 +252,29 @@ def format_region(region, module=u'cos.'):
     if region == u'cn-north' or region == u'cn-south' or region == u'cn-east' or region == u'cn-south-2' or region == u'cn-southwest' or region == u'sg':
         return region  # 老域名不能加cos.
     #  支持v4域名映射到v5
+
+    # 转换为内部域名 (只有新域名才支持内部域名)
+    if not EnableOldDomain and EnableInternalDomain and module == u'cos.':
+        module = u'cos-internal.'
+
     if region == u'cossh':
-        return u'cos.ap-shanghai'
+        return module + u'ap-shanghai'
     if region == u'cosgz':
-        return u'cos.ap-guangzhou'
+        return module + u'ap-guangzhou'
     if region == 'cosbj':
-        return u'cos.ap-beijing'
+        return module + u'ap-beijing'
     if region == 'costj':
-        return u'cos.ap-beijing-1'
+        return module + u'ap-beijing-1'
     if region == u'coscd':
-        return u'cos.ap-chengdu'
+        return module + u'ap-chengdu'
     if region == u'cossgp':
-        return u'cos.ap-singapore'
+        return module + u'ap-singapore'
     if region == u'coshk':
-        return u'cos.ap-hongkong'
+        return module + u'ap-hongkong'
     if region == u'cosca':
-        return u'cos.na-toronto'
+        return module + u'na-toronto'
     if region == u'cosger':
-        return u'cos.eu-frankfurt'
+        return module + u'eu-frankfurt'
 
     return module + region  # 新域名加上cos.
 
@@ -306,7 +314,7 @@ def format_path(path):
     return path
 
 
-def get_copy_source_info(CopySource):
+def get_copy_source_info(CopySource, EnableOldDomain, EnableInternalDomain):
     """获取拷贝源的所有信息"""
     appid = u""
     versionid = u""
@@ -323,7 +331,7 @@ def get_copy_source_info(CopySource):
         region = CopySource['Region']
     if 'Endpoint' in CopySource:
         endpoint = CopySource['Endpoint']
-    endpoint = format_endpoint(endpoint, region)
+    endpoint = format_endpoint(endpoint, region, u'cos.', EnableOldDomain, EnableInternalDomain)
     if 'Key' in CopySource:
         path = to_unicode(CopySource['Key'])
         if path and path[0] == '/':
@@ -335,9 +343,9 @@ def get_copy_source_info(CopySource):
     return bucket, path, endpoint, versionid
 
 
-def gen_copy_source_url(CopySource):
+def gen_copy_source_url(CopySource, EnableOldDomain, EnableInternalDomain):
     """拼接拷贝源url"""
-    bucket, path, endpoint, versionid = get_copy_source_info(CopySource)
+    bucket, path, endpoint, versionid = get_copy_source_info(CopySource, EnableOldDomain, EnableInternalDomain)
     path = format_path(path)
     if versionid != u'':
         path = path + u'?versionId=' + versionid
