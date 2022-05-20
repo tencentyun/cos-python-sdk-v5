@@ -30,6 +30,19 @@ client = CosS3Client(config)
 bucket_name = 'demo-1253960454'
 
 
+def ci_get_media_bucket():
+    # 查询媒体处理开通状态
+    response = client.ci_get_media_bucket(
+        Regions=region,
+        BucketName='demo',
+        BucketNames=bucket_name,
+        PageSize="1",
+        PageNumber="1"
+    )
+    print(response)
+    return response
+
+
 def ci_get_media_queue():
     # 查询媒体队列信息
     response = client.ci_get_media_queue(
@@ -37,6 +50,7 @@ def ci_get_media_queue():
                 )
     print(response)
     return response
+
 
 def ci_create_media_transcode_watermark_jobs():
     # 创建转码任务
@@ -76,7 +90,7 @@ def ci_create_media_transcode_watermark_jobs():
                 'StartTime':'0',
                 'EndTime':'1000.5',
                 'Image': {
-                    'Url': 'http://'+bucket_name+".cos."+region+".myqcloud.com/1215shuiyin.jpg",
+                    'Url': 'http://'+bucket_name+".cos."+region+".tencentcos.cn/1215shuiyin.jpg",
                     'Mode': 'Fixed',
                     'Width': '128',
                     'Height': '128',
@@ -102,6 +116,7 @@ def ci_create_media_transcode_watermark_jobs():
     print(response)
     return response    
 
+
 def ci_create_media_transcode_jobs():
     # 创建转码任务
     body = {
@@ -124,6 +139,7 @@ def ci_create_media_transcode_jobs():
     print(response)
     return response   
 
+
 def ci_list_media_transcode_jobs():
     # 转码任务
     response = client.ci_list_media_jobs(
@@ -135,6 +151,7 @@ def ci_list_media_transcode_jobs():
     print(response)
     return response 
 
+
 def ci_get_media_transcode_jobs():
     # 转码任务
     response = client.ci_get_media_jobs(
@@ -145,6 +162,7 @@ def ci_get_media_transcode_jobs():
     print(response)
     return response 
 
+
 def get_media_info():
     # 获取媒体信息
     response = client.get_media_info(
@@ -152,6 +170,7 @@ def get_media_info():
         Key='demo.mp4'
     )
     print(response)
+
 
 def get_snapshot():
     # 产生同步截图
@@ -165,6 +184,18 @@ def get_snapshot():
     print(response)
     response['Body'].get_stream_to_file('snapshot.jpg')
 
+
+def get_pm3u8():
+    # 获取私有 M3U8 ts 资源的下载授权
+    response = client.get_pm3u8(
+        Bucket=bucket_name,
+        Key='demo.m3u8',
+        Expires='3600',
+    )
+    print(response)
+    response['Body'].get_stream_to_file('pm3u8.m3u8')
+
+
 def ci_trigger_workflow():
     # 触发工作流接口
     response = client.ci_trigger_workflow(
@@ -175,6 +206,7 @@ def ci_trigger_workflow():
     print(response)
     return response
 
+
 def ci_get_workflowexecution():
     # 查询工作流实例接口
     response = client.ci_get_workflowexecution(
@@ -183,6 +215,7 @@ def ci_get_workflowexecution():
                 )
     print(response)
     return response
+
 
 def ci_list_workflowexecution():
     # 查询工作流实例接口
@@ -198,8 +231,10 @@ if __name__ == "__main__":
     #ci_get_media_queue()
     #ci_get_media_transcode_jobs()
     #ci_create_media_transcode_jobs()
-    #get_media_info()
-    #get_snapshot()
+    # get_media_info()
+    # get_snapshot()
     #ci_trigger_workflow()
     #ci_list_workflowexecution()
-    ci_get_workflowexecution()
+    # ci_get_workflowexecution()
+    # ci_get_media_bucket()
+    get_pm3u8()

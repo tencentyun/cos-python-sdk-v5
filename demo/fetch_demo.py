@@ -25,7 +25,7 @@ test_bucket = 'examplebucket-1250000000'
 response = client.put_async_fetch_task(
     Bucket=test_bucket,
     FetchTaskConfiguration={
-        'Url': 'http://examplebucket-1250000000.cos.ap-beijing.myqcloud.com/exampleobject',
+        'Url': 'http://examplebucket-1250000000.cos.ap-beijing.tencentcos.cn/exampleobject',
         'Key': 'exampleobject'
     }
 )

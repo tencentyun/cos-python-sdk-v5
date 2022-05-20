@@ -39,7 +39,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EnableOldDomain=True, EnableInternalDomain=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -66,6 +66,8 @@ class CosConfig(object):
         :param AllowRedirects(bool):  是否重定向
         :param SignHost(bool):  是否将host算入签名
         :param EndpointCi(string):  ci的endpoint
+        :param EnableOldDomain(bool):  是否使用旧的myqcloud.com域名访问COS
+        :param EnableInternalDomain(bool):  是否使用内网域名访问COS
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -85,9 +87,11 @@ class CosConfig(object):
         self._allow_redirects = AllowRedirects
         self._sign_host = SignHost
         self._copy_part_threshold_size = SINGLE_UPLOAD_LENGTH
+        self._enable_old_domain = EnableOldDomain
+        self._enable_internal_domain = EnableInternalDomain
 
         if self._domain is None:
-            self._endpoint = format_endpoint(Endpoint, Region)
+            self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnableInternalDomain)
         if Scheme is None:
             Scheme = u'https'
         Scheme = to_unicode(Scheme)
@@ -96,7 +100,8 @@ class CosConfig(object):
         self._scheme = Scheme
 
         # 格式化ci的endpoint 不支持自定义域名的
-        self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.')
+        # ci暂不支持新域名
+        self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.', True, False)
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
@@ -114,7 +119,7 @@ class CosConfig(object):
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
-    def uri(self, bucket, path=None, endpoint=None, domain=None):
+    def uri(self, bucket=None, path=None, endpoint=None, domain=None):
         """拼接url
 
         :param bucket(string): 存储桶名称.
@@ -130,11 +135,14 @@ class CosConfig(object):
         if domain is not None:
             url = domain
         else:
-            bucket = format_bucket(bucket, self._appid)
             if endpoint is None:
                 endpoint = self._endpoint
 
-            url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
+            if bucket is not None:
+                bucket = format_bucket(bucket, self._appid)
+                url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
+            else:
+                url = u"{endpoint}".format(endpoint=endpoint)
         if self._ip is not None:
             url = self._ip
             if self._port is not None:
@@ -202,6 +210,8 @@ class CosConfig(object):
 class CosS3Client(object):
     """cos客户端类，封装相应请求"""
 
+    __built_in_sessions = None  # 内置的静态连接池，多个Client间共享使用
+
     def __init__(self, conf, retry=1, session=None):
         """初始化client对象
 
@@ -211,14 +221,47 @@ class CosS3Client(object):
         """
         self._conf = conf
         self._retry = retry  # 重试的次数，分片上传时可适当增大
+
+        if not CosS3Client.__built_in_sessions:
+            with threading.Lock():
+                if not CosS3Client.__built_in_sessions:  # 加锁后double check
+                    CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
+
         if session is None:
-            self._session = requests.session()
-            self._session.mount('http://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections,
-                                                                         pool_maxsize=self._conf._pool_maxsize))
-            self._session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=self._conf._pool_connections,
-                                                                          pool_maxsize=self._conf._pool_maxsize))
+            self._session = CosS3Client.__built_in_sessions
         else:
             self._session = session
+
+    def set_built_in_connection_pool_max_size(self, PoolConnections, PoolMaxSize):
+        """设置SDK内置的连接池的连接大小，并且重新绑定到client中"""
+        if not CosS3Client.__built_in_sessions:
+            return
+
+        if CosS3Client.__built_in_sessions.get_adapter('http://')._pool_connections == PoolConnections \
+           and CosS3Client.__built_in_sessions.get_adapter('http://')._pool_maxsize == PoolMaxSize:
+            return
+
+        # 判断之前是否绑定到内置连接池
+        rebound = False
+        if self._session and self._session is CosS3Client.__built_in_sessions:
+            rebound = True
+
+        # 重新生成内置连接池
+        CosS3Client.__built_in_sessions.close()
+        CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(PoolConnections, PoolMaxSize)
+
+        # 重新绑定到内置连接池
+        if rebound:
+            self._session = CosS3Client.__built_in_sessions
+            logger.warn("rebound built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+
+    def generate_built_in_connection_pool(self, PoolConnections, PoolMaxSize):
+        """生成SDK内置的连接池，此连接池是client间共用的"""
+        built_in_sessions = requests.session()
+        built_in_sessions.mount('http://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
+        built_in_sessions.mount('https://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
+        logger.warn("generate built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+        return built_in_sessions
 
     def get_conf(self):
         """获取配置"""
@@ -775,7 +818,7 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource)
+        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         if CopyStatus != 'Copy' and CopyStatus != 'Replaced':
             raise CosClientError('CopyStatus must be Copy or Replaced')
         headers['x-cos-metadata-directive'] = CopyStatus
@@ -824,7 +867,7 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource)
+        headers['x-cos-copy-source'] = gen_copy_source_url(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         headers['x-cos-copy-source-range'] = CopySourceRange
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
         params = format_values(params)
@@ -3196,7 +3239,12 @@ class CosS3Client(object):
             response = client.list_buckets()
         """
         headers = mapped(kwargs)
-        url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
+
+        if self._conf._enable_old_domain:
+            url = '{scheme}://service.cos.myqcloud.com/'.format(scheme=self._conf._scheme)
+        else:
+            url = '{scheme}://service.cos.tencentcos.cn/'.format(scheme=self._conf._scheme)
+
         if self._conf._service_domain is not None:
             url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
         rt = self.send_request(
@@ -3473,7 +3521,7 @@ class CosS3Client(object):
 
     def _head_object_when_copy(self, CopySource, **kwargs):
         """查询源文件的长度"""
-        bucket, path, endpoint, versionid = get_copy_source_info(CopySource)
+        bucket, path, endpoint, versionid = get_copy_source_info(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         params = {}
         if versionid != '':
             params['versionId'] = versionid
@@ -3518,7 +3566,7 @@ class CosS3Client(object):
         return None
 
     def _check_same_region(self, dst_endpoint, CopySource):
-        src_endpoint = get_copy_source_info(CopySource)[2]
+        src_endpoint = get_copy_source_info(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)[2]
         if src_endpoint == dst_endpoint:
             return True
         return False
@@ -5241,7 +5289,7 @@ class CosS3Client(object):
         :param Input(dict array): 需要审核的图片信息,每个array元素为dict类型，支持的参数如下:
                             Object: 存储在 COS 存储桶中的图片文件名称，例如在目录 test 中的文件 image.jpg，则文件名称为 test/image.jpg。
                                 Object 和 Url 只能选择其中一种。
-                            Url: 图片文件的链接地址，例如 http://a-1250000.cos.ap-shanghai.myqcloud.com/image.jpg。
+                            Url: 图片文件的链接地址，例如 http://a-1250000.cos.ap-shanghai.tencentcos.cn/image.jpg。
                                 Object 和 Url 只能选择其中一种。
                             Interval: 截帧频率，GIF 图检测专用，默认值为5，表示从第一帧（包含）开始每隔5帧截取一帧
                             MaxFrames: 最大截帧数量，GIF 图检测专用，默认值为5，表示只截取 GIF 的5帧图片进行审核，必须大于0
@@ -5527,6 +5575,70 @@ class CosS3Client(object):
                 if 'Result' in detectItem:
                     format_dict(detectItem, ['Result'])
 
+        return data
+
+    def ci_get_media_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
+        """查询媒体处理开通状态接口 https://cloud.tencent.com/document/product/436/48988
+
+        :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
+        :param BucketName(string): 存储桶名称前缀，前缀搜索
+        :param BucketNames(string): 存储桶名称，以“,”分隔，支持多个存储桶，精确搜索
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询媒体处理队列接口
+            response = client.ci_get_media_bucket(
+                Regions='ap-chongqing,ap-shanghai',
+                BucketName='demo',
+                BucketNames='demo-1253960454,demo1-1253960454',
+                PageNumber='2'，
+                PageSize='3',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/mediabucket"
+        url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            regions=to_unicode('regions='+Regions),
+            bucketNames=to_unicode('bucketNames='+BucketNames),
+            bucketName=to_unicode('bucketName='+BucketName),
+            pageNumber=to_unicode('pageNumber='+PageNumber),
+            pageSize=to_unicode('pageSize='+PageSize),
+        )
+        logger.info("get_media_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=None,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['MediaBucketList'])
         return data
 
     def ci_get_media_queue(self, Bucket, **kwargs):
@@ -6035,6 +6147,59 @@ class CosS3Client(object):
 
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("get_snapshot, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
+
+    def get_pm3u8(self, Bucket, Key, Expires, **kwargs):
+        """获取私有 M3U8 ts 资源的下载授权 https://cloud.tencent.com/document/product/436/63740
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Expires(string): 私有 ts 资源 url 下载凭证的相对有效期.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于获取COS文件某个时间的截图
+            response = client.get_snapshot(
+                Bucket='bucket',
+                Key='test.mp4',
+                Expires='3600',
+            )
+            response['Body'].get_stream_to_file('pm3u8.m3u8')
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'pm3u8'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['expires'] = Expires
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("get_pm3u8, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
             params=params))

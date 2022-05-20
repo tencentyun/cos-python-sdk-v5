@@ -24,7 +24,7 @@ client = CosS3Client(config)
 
 bucket_name = 'examplebucket-1250000000'
 # 添加盲水印
-watermark_url = 'http://{bucket}.cos.{region}.myqcloud.com/watermark.png'.format(bucket=bucket_name, region=region)
+watermark_url = 'http://{bucket}.cos.{region}.tencentcos.cn/watermark.png'.format(bucket=bucket_name, region=region)
 watermark_url_base64 = bytes.decode(base64.b64encode(str.encode(watermark_url)))
 print(watermark_url_base64)
 response, data = client.ci_put_object_from_local_file(
@@ -39,10 +39,10 @@ print(response['x-cos-request-id'])
 print(data['ProcessResults']['Object']['ETag'])
 
 # 下载时添加盲水印
-# download_url = http://examplebucket-1250000000.cos.ap-shanghai.myqcloud.com/sample.jpeg?watermark/3/type/3/text/watermark_url_base64
+# download_url = http://examplebucket-1250000000.cos.ap-shanghai.tencentcos.cn/sample.jpeg?watermark/3/type/3/text/watermark_url_base64
 
 # 提取盲水印
-sample_url = 'http://{bucket}.cos.{region}.myqcloud.com/sample.png'.format(bucket=bucket_name, region=region)
+sample_url = 'http://{bucket}.cos.{region}.tencentcos.cn/sample.png'.format(bucket=bucket_name, region=region)
 sample_url_base64 = bytes.decode(base64.b64encode(str.encode(sample_url)))
 response, data = client.ci_put_object_from_local_file(
     Bucket=bucket_name,

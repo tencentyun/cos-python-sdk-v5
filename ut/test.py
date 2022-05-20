@@ -788,7 +788,10 @@ def test_use_get_auth():
         Key='test.txt',
         Params={'acl': '', 'unsed': '123'}
     )
-    url = 'http://' + test_bucket + '.cos.' + REGION + '.myqcloud.com/test.txt?acl&unsed=123'
+    if conf._enable_old_domain:
+        url = 'http://' + test_bucket + '.cos.' + REGION + '.myqcloud.com/test.txt?acl&unsed=123'
+    else:
+        url = 'http://' + test_bucket + '.cos.' + REGION + '.tencentcos.cn/test.txt?acl&unsed=123'
     response = requests.get(url, headers={'Authorization': auth})
     assert response.status_code == 200
 
@@ -1681,7 +1684,7 @@ def test_ci_create_media_transcode_watermark_jobs():
                     'StartTime': '0',
                     'EndTime': '1000.5',
                     'Image': {
-                        'Url': 'http://'+ci_bucket_name+".cos."+ci_region+".myqcloud.com/1215shuiyin.jpg",
+                        'Url': 'http://'+ci_bucket_name+".cos."+ci_region+".tencentcos.cn/1215shuiyin.jpg",
                         'Mode': 'Fixed',
                         'Width': '128',
                         'Height': '128',
@@ -1784,6 +1787,34 @@ def test_get_snapshot():
         Time='1.5',
         Width='480',
         Format='png'
+    )
+    print(response)
+    assert (response)
+
+
+def test_get_pm3u8():
+    if TEST_CI != 'true':
+        return
+    # 获取私有 M3U8 ts 资源的下载授权
+    response = client.get_pm3u8(
+        Bucket=ci_bucket_name,
+        Key='/data/media/m3u8_no_end.m3u8',
+        Expires='3600'
+    )
+    print(response)
+    assert (response)
+
+
+def test_ci_get_media_bucket():
+    if TEST_CI != 'true':
+        return
+    # 获取私有 M3U8 ts 资源的下载授权
+    response = client.ci_get_media_bucket(
+        Regions=ci_region,
+        BucketNames=ci_bucket_name,
+        BucketName=ci_bucket_name,
+        PageNumber='1',
+        PageSize='2'
     )
     print(response)
     assert (response)
@@ -1965,6 +1996,8 @@ if __name__ == "__main__":
     test_ci_list_doc_transcode_jobs()
     test_get_media_info()
     test_get_snapshot()
+    test_get_pm3u8()
+    test_ci_get_media_bucket()
     test_sse_c_file()
     """
     tearDown()
