@@ -5596,10 +5596,14 @@ class CosS3Client(object):
         format_dict(data, ['MediaBucketList'])
         return data
 
-    def ci_get_media_queue(self, Bucket, **kwargs):
+    def ci_get_media_queue(self, Bucket, state, queueIds='', pageNumber='', pageSize='', path='/queue', **kwargs):
         """查询媒体处理队列接口 https://cloud.tencent.com/document/product/436/54045
 
         :param Bucket(string): 存储桶名称.
+        :param queueIds(string): 队列 ID，以“,”符号分割字符串.
+        :param state(string): 队列状态
+        :param pageNumber(string): 第几页
+        :param pageSize(string): 每页个数
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -5625,8 +5629,15 @@ class CosS3Client(object):
 
         params = format_values(params)
 
-        path = "/queue"
+        path = path
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{queueIds}&{state}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            queueIds=to_unicode('queueIds='+queueIds),
+            state=to_unicode('state='+state),
+            pageNumber=to_unicode('pageNumber='+pageNumber),
+            pageSize=to_unicode('pageSize='+pageSize),
+        )
         logger.info("get_media_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -5643,6 +5654,109 @@ class CosS3Client(object):
         # 单个元素时将dict转为list
         format_dict(data, ['QueueList'])
         return data
+
+    def ci_update_media_queue(self, Bucket, QueueId, Request={}, Path="/queue/", **kwargs):
+        """ 更新媒体处理队列接口 https://cloud.tencent.com/document/product/436/54046
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param Request(dict): 更新队列配置请求体.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_update_media_queue(
+                Bucket='bucket',
+                QueueId='',
+                Request={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        xml_config = format_xml(data=Request, root='Request')
+        path = Path + QueueId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("update_media_queue result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['Queue'])
+        return data
+
+    def ci_update_media_pic_queue(self, Bucket, QueueId, Request={}, **kwargs):
+        """ 更新图片处理队列接口
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param Request(dict): 更新队列配置请求体.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_update_media_pic_queue(
+                Bucket='bucket',
+                QueueId='',
+                Request={},
+            )
+            print response
+        """
+        return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
+                                          Request=Request, Path="/picqueue/", **kwargs)
+
+    def ci_get_media_pic_queue(self, Bucket, state, queueIds='', pageNumber='', pageSize='', **kwargs):
+        """查询图片处理队列接口
+
+        :param Bucket(string): 存储桶名称.
+        :param queueIds(string): 队列 ID，以“,”符号分割字符串.
+        :param state(string): 队列状态
+        :param pageNumber(string): 第几页
+        :param pageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询媒体处理队列接口
+            response = client.ci_get_media_pic_queue(
+                Bucket='bucket'
+            )
+            print response
+        """
+        return self.ci_get_media_queue(Bucket=Bucket, state=state, queueIds=queueIds,
+                                       pageNumber=pageNumber, pageSize=pageSize,
+                                       path="/picqueue", **kwargs)
 
     def ci_create_media_jobs(self, Bucket, Jobs={}, Lst={}, **kwargs):
         """ 创建任务接口 https://cloud.tencent.com/document/product/436/54013
@@ -5680,6 +5794,60 @@ class CosS3Client(object):
         path = "/jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         logger.info("create_media_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_create_media_pic_jobs(self, Bucket, Jobs={}, Lst={}, **kwargs):
+        """ 创建图片处理任务接口 https://cloud.tencent.com/document/product/436/67194
+
+        :param Bucket(string): 存储桶名称.
+        :param Jobs(dict): 创建任务的配置.
+        :param Lst(dict): 创建任务dict转xml时去除Key数组.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_create_media_pic_jobs(
+                Bucket='bucket'
+                Jobs={},
+                Lst={}
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        xml_config = format_xml(data=Jobs, root='Request', lst=Lst)
+        path = "/pic_jobs"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("create_media_pic_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
             url=url,
             headers=headers,
             params=params,
@@ -5750,7 +5918,92 @@ class CosS3Client(object):
         format_dict(data, ['JobsDetail'])
         return data
 
-    def ci_list_media_jobs(self, Bucket, QueueId, Tag, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+    def ci_get_media_pic_jobs(self, Bucket, JobIDs, **kwargs):
+        """ 查询图片处理任务接口 https://cloud.tencent.com/document/product/436/67197
+
+        :param Bucket(string): 存储桶名称.
+        :param JobIDs(string): 任务ID，以,分割多个任务ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_get_media_pic_jobs(
+                Bucket='bucket'
+                JobIDs={}
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/pic_jobs/" + JobIDs
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("get_media_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("ci_get_media_pic_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_list_media_pic_jobs(self, Bucket, QueueId, Tag, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+        """ 查询图片处理任务列表接口 https://cloud.tencent.com/document/product/436/67198
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param Tag(string): 任务类型.
+        :param StartCreationTime(string): 开始时间.
+        :param EndCreationTime(string): 结束时间.
+        :param OrderByTime(string): 排序方式.
+        :param States(string): 任务状态.
+        :param Size(string): 任务个数.
+        :param NextToken(string): 请求的上下文，用于翻页.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_get_media_pic_jobs(
+                Bucket='bucket'
+                QueueId='',
+                Tag='PicProcess'
+            )
+            print response
+        """
+        return self.ci_list_media_jobs(Bucket=Bucket, QueueId=QueueId, Tag=Tag,
+                                       StartCreationTime=StartCreationTime,
+                                       EndCreationTime=EndCreationTime,
+                                       OrderByTime=OrderByTime, States=States,
+                                       Size=Size, NextToken=NextToken, Path='/pic_jobs', **kwargs)
+
+    def ci_list_media_jobs(self, Bucket, QueueId, Tag, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', Path='/jobs', **kwargs):
         """ 查询任务接口 https://cloud.tencent.com/document/product/436/54011
 
         :param Bucket(string): 存储桶名称.
@@ -5788,7 +6041,7 @@ class CosS3Client(object):
         headers = final_headers
 
         params = format_values(params)
-        path = "/jobs"
+        path = Path
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         url = u"{url}?{QueueId}&{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
             url=to_unicode(url),
@@ -5800,9 +6053,11 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=url,
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=url,
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_media_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,

@@ -1631,6 +1631,18 @@ def test_ci_get_media_queue():
     assert (response['QueueList'])
 
 
+def test_ci_get_media_pic_queue():
+    if TEST_CI != 'true':
+        return
+
+    # 查询图片处理队列信息
+    response = client.ci_get_media_pic_queue(
+        Bucket=ci_bucket_name,
+    )
+    print(response)
+    assert (response['QueueList'])
+
+
 def test_ci_create_media_transcode_watermark_jobs():
     if TEST_CI != 'true':
         return
@@ -1738,6 +1750,64 @@ def test_ci_create_media_transcode_jobs():
                     Lst={},
                     ContentType='application/xml'
                 )
+    print(response)
+    assert (response['JobsDetail'])
+
+
+def test_ci_create_media_pic_jobs():
+    if TEST_CI != 'true':
+        return
+
+    response = client.ci_get_media_pic_queue(
+        Bucket=ci_bucket_name
+    )
+    QueueId = response['QueueList'][0]['QueueId']
+    # 创建图片处理任务
+    body = {
+        'Input': {
+            'Object': '1.png'
+        },
+        'QueueId': QueueId,
+        'Tag': 'PicProcess',
+        'Operation': {
+            "PicProcess": {
+                "IsPicInfo": "true",
+                "ProcessRule": "imageMogr2/rotate/90",
+            },
+            'Output': {
+                'Bucket': ci_bucket_name,
+                'Region': ci_region,
+                'Object': 'pic-process-result.png'
+            },
+        }
+    }
+    response = client.ci_create_media_pic_jobs(
+        Bucket=ci_bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    assert (response['JobsDetail'])
+
+
+def test_ci_list_media_pic_jobs():
+    if TEST_CI != 'true':
+        return
+
+    # 图片处理任务列表
+    response = client.ci_get_media_pic_queue(
+        Bucket=ci_bucket_name
+    )
+    QueueId = response['QueueList'][0]['QueueId']
+
+    response = client.ci_list_media_pic_jobs(
+        Bucket=ci_bucket_name,
+        QueueId=QueueId,
+        Tag='PicProcess',
+        ContentType='application/xml',
+        States='Success'
+    )
     print(response)
     assert (response['JobsDetail'])
 
@@ -1996,5 +2066,8 @@ if __name__ == "__main__":
     test_get_pm3u8()
     test_ci_get_media_bucket()
     test_sse_c_file()
+    test_ci_list_media_pic_jobs()
+    test_ci_create_media_pic_jobs()
+    test_ci_get_media_pic_queue()
     """
     tearDown()
