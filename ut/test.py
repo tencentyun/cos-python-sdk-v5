@@ -1625,7 +1625,8 @@ def test_ci_get_media_queue():
 
     # 查询媒体队列信息
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name
+                    Bucket=ci_bucket_name,
+                    state="Active",
                 )
     print(response)
     assert (response['QueueList'])
@@ -1638,6 +1639,7 @@ def test_ci_get_media_pic_queue():
     # 查询图片处理队列信息
     response = client.ci_get_media_pic_queue(
         Bucket=ci_bucket_name,
+        state="Active",
     )
     print(response)
     assert (response['QueueList'])
@@ -1649,8 +1651,9 @@ def test_ci_create_media_transcode_watermark_jobs():
 
     # 创建转码任务
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name
-                )
+                    Bucket=ci_bucket_name,
+                    state="Active",
+    )
     QueueId = response['QueueList'][0]['QueueId']
 
     body = {
@@ -1726,8 +1729,9 @@ def test_ci_create_media_transcode_jobs():
 
     # 创建转码任务
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name
-                )
+                    Bucket=ci_bucket_name,
+                    state="Active",
+    )
     QueueId = response['QueueList'][0]['QueueId']
     body = {
         'Input': {
@@ -1759,7 +1763,8 @@ def test_ci_create_media_pic_jobs():
         return
 
     response = client.ci_get_media_pic_queue(
-        Bucket=ci_bucket_name
+        Bucket=ci_bucket_name,
+        state="Active",
     )
     QueueId = response['QueueList'][0]['QueueId']
     # 创建图片处理任务
@@ -1797,7 +1802,8 @@ def test_ci_list_media_pic_jobs():
 
     # 图片处理任务列表
     response = client.ci_get_media_pic_queue(
-        Bucket=ci_bucket_name
+        Bucket=ci_bucket_name,
+        state="Active",
     )
     QueueId = response['QueueList'][0]['QueueId']
 
@@ -1818,8 +1824,9 @@ def test_ci_list_media_transcode_jobs():
 
     # 转码任务
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name
-                )
+                    Bucket=ci_bucket_name,
+                    state="Active",
+    )
     QueueId = response['QueueList'][0]['QueueId']
     response = client.ci_list_media_jobs(
                     Bucket=ci_bucket_name,
