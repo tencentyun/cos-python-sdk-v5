@@ -155,8 +155,6 @@ optimize object download
 
 ## [v1.7.2](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.7.1...v1.7.2) - 2019-07-25
 
-fix retry
-
 ### Merged
 
 - S3 [`#92`](https://github.com/tencentyun/cos-python-sdk-v5/pull/92)
