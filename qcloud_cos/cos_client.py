@@ -5596,7 +5596,7 @@ class CosS3Client(object):
         format_dict(data, ['MediaBucketList'])
         return data
 
-    def ci_get_media_queue(self, Bucket, state, queueIds='', pageNumber='', pageSize='', path='/queue', **kwargs):
+    def ci_get_media_queue(self, Bucket, state='All', queueIds='', pageNumber='', pageSize='', path='/queue', **kwargs):
         """查询媒体处理队列接口 https://cloud.tencent.com/document/product/436/54045
 
         :param Bucket(string): 存储桶名称.
@@ -5733,7 +5733,7 @@ class CosS3Client(object):
         return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
                                           Request=Request, Path="/picqueue/", **kwargs)
 
-    def ci_get_media_pic_queue(self, Bucket, state, queueIds='', pageNumber='', pageSize='', **kwargs):
+    def ci_get_media_pic_queue(self, Bucket, state='All', queueIds='', pageNumber='', pageSize='', **kwargs):
         """查询图片处理队列接口
 
         :param Bucket(string): 存储桶名称.

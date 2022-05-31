@@ -47,10 +47,6 @@ def ci_get_media_queue():
     # 查询媒体队列信息
     response = client.ci_get_media_queue(
                     Bucket=bucket_name,
-                    state='Active',
-                    queueIds='p5135bcxxxxxxxxxxxxxbf047454',
-                    pageNumber='1',
-                    pageSize='1'
                 )
     print(response)
     return response
@@ -60,10 +56,6 @@ def ci_get_media_pic_queue():
     # 查询媒体队列信息
     response = client.ci_get_media_pic_queue(
         Bucket=bucket_name,
-        state='Active',
-        queueIds='peb83bxxxxxxxxxxxxxxx21c7d68',
-        pageNumber='1',
-        pageSize='1'
     )
     print(response)
     return response
@@ -1012,7 +1004,7 @@ def ci_list_workflowexecution():
 
 
 if __name__ == "__main__":
-    # ci_get_media_queue()
+    ci_get_media_queue()
     # ci_get_media_transcode_jobs()
     # ci_create_media_transcode_jobs()
     # get_media_info()
@@ -1044,6 +1036,6 @@ if __name__ == "__main__":
     # ci_create_media_transcode_with_digital_watermark_jobs()
     # ci_create_media_hls_transcode_jobs()
     # ci_list_media_transcode_jobs()
-    ci_list_media_pic_jobs()
+    # ci_list_media_pic_jobs()
     # ci_get_media_pic_queue()
     # ci_put_media_pic_queue()
