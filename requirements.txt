@@ -1,3 +1,4 @@
+certifi<=2021.10.8;python_version<'3.0' # certifi新版本不支持python2，这里需要使用低版本
 requests>=2.8
 dicttoxml
 six
