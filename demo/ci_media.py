@@ -53,7 +53,7 @@ def ci_get_media_queue():
 
 
 def ci_get_media_pic_queue():
-    # 查询媒体队列信息
+    # 查询图片处理队列信息
     response = client.ci_get_media_pic_queue(
         Bucket=bucket_name,
     )
@@ -62,7 +62,7 @@ def ci_get_media_pic_queue():
 
 
 def ci_put_media_queue():
-    # 查询媒体队列信息
+    # 更新媒体队列信息
     body = {
         'Name': 'media-queue',
         'QueueID': 'p5135bc6xxxxxxxxxxxxxxxxf047454',
@@ -86,7 +86,7 @@ def ci_put_media_queue():
 
 
 def ci_put_media_pic_queue():
-    # 查询媒体队列信息
+    # 更新图片处理队列信息
     body = {
         'Name': 'media-pic-queue',
         'QueueID': 'peb83bdxxxxxxxxxxxxxxxxa21c7d68',
@@ -110,7 +110,7 @@ def ci_put_media_pic_queue():
 
 
 def ci_create_media_transcode_with_digital_watermark_jobs():
-    # 创建转码任务
+    # 创建带数字水印的转码任务
     body = {
         'Input': {
             'Object': 'demo.mp4'
@@ -143,7 +143,7 @@ def ci_create_media_transcode_with_digital_watermark_jobs():
 
 
 def ci_create_media_transcode_with_watermark_jobs():
-    # 创建转码任务
+    # 创建带水印的转码任务
     body = {
         'Input': {
             'Object': 'demo.mp4'
@@ -535,7 +535,7 @@ def ci_create_media_video_process_jobs():
 
 
 def ci_create_media_video_montage_jobs():
-    # 创建截图任务
+    # 创建精彩集锦任务
     body = {
         'Input': {
             'Object': 'demo.mp4'
@@ -685,7 +685,7 @@ def ci_create_media_digital_watermark_jobs():
 def ci_create_media_extract_digital_watermark_jobs():
     # 创建提取数字水印任务
     body = {
-        'Input':{
+        'Input': {
             'Object': 'digital.mp4'
         },
         'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
@@ -793,7 +793,7 @@ def ci_create_media_segment_jobs():
 
 
 def ci_create_multi_jobs():
-    # 创建截图任务
+    # 创建多任务
     body = {
         'Input': {
             'Object': '117374C.mp4'
@@ -838,7 +838,7 @@ def ci_create_multi_jobs():
 
 
 def ci_create_get_media_info_jobs():
-    # 创建转封装任务
+    # 创建获取媒体信息任务
     body = {
         'Input': {
             'Object': 'demo.mp4'
@@ -887,7 +887,7 @@ def ci_create_media_pic_jobs():
 
 
 def ci_list_media_transcode_jobs():
-    # 转码任务
+    # 转码任务列表
     response = client.ci_list_media_jobs(
                     Bucket=bucket_name,
                     QueueId='p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
@@ -902,7 +902,7 @@ def ci_list_media_transcode_jobs():
 
 
 def ci_get_media_transcode_jobs():
-    # 转码任务
+    # 转码任务详情
     response = client.ci_get_media_jobs(
                     Bucket=bucket_name,
                     JobIDs='j318302b8e0bc11ec97444b29c7b914d9',
@@ -913,7 +913,7 @@ def ci_get_media_transcode_jobs():
 
 
 def ci_list_media_pic_jobs():
-    # 转码任务
+    # 图片处理任务列表
     response = client.ci_list_media_pic_jobs(
         Bucket=bucket_name,
         QueueId='peb83bdbxxxxxxxxxxxxxxxxxxxa21c7d68',
@@ -928,7 +928,7 @@ def ci_list_media_pic_jobs():
 
 
 def ci_get_media_pic_jobs():
-    # 转码任务
+    # 图片处理任务详情
     response = client.ci_get_media_jobs(
         Bucket=bucket_name,
         JobIDs='c01742xxxxxxxxxxxxxxxxxx7438e39',
