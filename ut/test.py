@@ -1872,6 +1872,35 @@ def test_ci_list_doc_transcode_jobs():
     assert (response['JobsDetail'])
 
 
+def test_ci_live_video_auditing():
+    if TEST_CI != 'true':
+        return
+    # 查询任务列表
+    response = client.ci_auditing_live_video_submit(
+                    Bucket=ci_bucket_name,
+                    Url='rtmp://example.com/live/123',
+                    Callback='http://callback.com/',
+                    DataId='testdataid-111111',
+                    UserInfo={
+                        'TokenId': 'token',
+                        'Nickname': 'test',
+                        'DeviceId': 'DeviceId-test',
+                        'AppId': 'AppId-test',
+                        'Room': 'Room-test',
+                        'IP': 'IP-test',
+                        'Type': 'Type-test',
+                    },
+                )
+    assert (response['JobsDetail']['JobId'])
+    jobId = response['JobsDetail']['JobId']
+    response = client.ci_auditing_live_video_cancle(
+                    Bucket=ci_bucket_name,
+                    JobID=jobId,
+                )
+    print(response)
+    assert (response['JobsDetail'])
+
+
 def test_sse_c_file():
     """测试SSE-C的各种接口"""
     bucket = test_bucket
@@ -1994,6 +2023,7 @@ if __name__ == "__main__":
     test_ci_list_media_transcode_jobs()
     test_ci_create_doc_transcode_jobs()
     test_ci_list_doc_transcode_jobs()
+    test_ci_live_video_auditing()
     test_get_media_info()
     test_get_snapshot()
     test_get_pm3u8()
