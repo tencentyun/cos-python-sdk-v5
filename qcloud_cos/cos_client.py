@@ -484,7 +484,8 @@ class CosS3Client(object):
 
         return response
 
-    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None, **kwargs):
+    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None,
+                                                 DataId=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
@@ -497,6 +498,7 @@ class CosS3Client(object):
             填写了detect-url时，后台会审核detect-url链接，无需再填写ObjectKey。 detect-url示例：http://www.example.com/abc.jpg.
         :param LargeImageDetect(int): 对于超过大小限制的图片是否进行压缩后再审核，取值为： 0（不压缩），1（压缩）。默认为0。
             注：压缩最大支持32M的图片，且会收取压缩费用。
+        :param DataId(string): 图片标识，该字段在结果中返回原始内容，长度限制为512字节.
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -558,6 +560,8 @@ class CosS3Client(object):
             params['detect-url'] = DetectUrl
         if LargeImageDetect:
             params['large-image-detect'] = LargeImageDetect
+        if DataId:
+            params['dataid'] = DataId
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -574,7 +578,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("get object sensitive content recognition rsp:%s", rt.content)
+        logger.debug("get object sensitive content recognition rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
         # format res
         if 'PornInfo' in data:
@@ -4646,7 +4650,7 @@ class CosS3Client(object):
         data = xml_to_dict(rt.content)
         return response, data
 
-    def ci_auditing_submit_common(self, Bucket, Key, DetectType, Type, Url=None, BizType=None, Conf={}, Input=None, **kwargs):
+    def ci_auditing_submit_common(self, Bucket, Key, DetectType, Type, Url=None, BizType=None, Conf={}, Input=None, UserInfo=None, DataId=None, RequestType=None, **kwargs):
         """通用提交审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
@@ -4657,6 +4661,8 @@ class CosS3Client(object):
         :param Conf(dic): 审核的个性化配置
         :param Input(dic): Input的个性化配置，dict类型，可跟restful api对应查询
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param UserInfo(dict): 用户业务字段.
+        :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -4702,17 +4708,24 @@ class CosS3Client(object):
 
         if Input:
             request['Input'] = Input
+        if UserInfo:
+            request['Input']['UserInfo'] = UserInfo
+        if DataId:
+            request['Input']['DataId'] = DataId
+        if RequestType:
+            request['Type'] = RequestType
 
         xml_request = format_xml(data=request, root='Request')
         headers['Content-Type'] = 'application/xml'
 
         path = Type + '/auditing'
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        logger.info("ci auditing {type} job submit, url=:{url} ,headers=:{headers}, params=:{params}, ci_endpoint=:{ci_endpoint}".format(
+        logger.debug("ci auditing {type} job submit, url=:{url} ,headers=:{headers}, params=:{params}, request=:{request}, ci_endpoint=:{ci_endpoint}".format(
             type=Type,
             url=url,
             headers=headers,
             params=params,
+            request=request,
             ci_endpoint=self._conf._endpoint_ci))
         rt = self.send_request(
             method='POST',
@@ -4723,7 +4736,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("ci auditing rsp:%s", rt.content)
+        logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -4776,13 +4789,13 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("query ci auditing:%s", rt.content)
+        logger.debug("query ci auditing:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
 
     def ci_auditing_video_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', DetectContent=0, Mode='Interval', Count=100, TimeInterval=1.0,
-                                 BizType=None, **kwargs):
+                                 BizType=None, DataId=None, UserInfo=None, **kwargs):
         """提交video审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
@@ -4799,6 +4812,8 @@ class CosS3Client(object):
         :param Count(int): 视频截帧数量，范围为(0, 10000]。
         :param TimeInterval(int): 视频截帧频率，范围为(0, 60]，单位为秒，支持 float 格式，执行精度精确到毫秒。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param UserInfo(dict): 用户业务字段.
+        :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -4839,6 +4854,8 @@ class CosS3Client(object):
             Conf=conf,
             Url=Url,
             DetectType=DetectType,
+            UserInfo=UserInfo,
+            DataId=DataId,
             **kwargs
         )
 
@@ -4906,7 +4923,8 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_audio_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', BizType=None, **kwargs):
+    def ci_auditing_audio_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', BizType=None, UserInfo=None,
+                                 DataId=None, **kwargs):
         """提交音频审核任务接口 https://cloud.tencent.com/document/product/460/53395
 
         :param Bucket(string): 存储桶名称.
@@ -4916,6 +4934,8 @@ class CosS3Client(object):
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param CallbackVersion(string): 回调内容的结构，有效值：Simple（回调内容包含基本信息）、Detail（回调内容包含详细信息）。默认为 Simple。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param UserInfo(dict): 用户业务字段.
+        :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -4949,6 +4969,8 @@ class CosS3Client(object):
             Conf=conf,
             Url=Url,
             DetectType=DetectType,
+            UserInfo=UserInfo,
+            DataId=DataId,
             **kwargs
         )
 
@@ -4993,7 +5015,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_text_submit(self, Bucket, Key, DetectType=None, Content=None, Callback=None,  BizType=None, Url=None, **kwargs):
+    def ci_auditing_text_submit(self, Bucket, Key, DetectType=None, Content=None, Callback=None,  BizType=None, Url=None, UserInfo=None, DataId=None, **kwargs):
         """提交文本审核任务接口 https://cloud.tencent.com/document/product/460/56285
 
         :param Bucket(string): 存储桶名称.
@@ -5003,6 +5025,8 @@ class CosS3Client(object):
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param UserInfo(dict): 用户业务字段.
+        :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -5042,6 +5066,8 @@ class CosS3Client(object):
             Conf=conf,
             DetectType=DetectType,
             Input=Input,
+            UserInfo=UserInfo,
+            DataId=DataId,
             **kwargs
         )
 
@@ -5080,7 +5106,7 @@ class CosS3Client(object):
             format_dict(data['JobsDetail'], ['Section'])
         return data
 
-    def ci_auditing_document_submit(self, Bucket, Url, DetectType=None, Key=None, Type=None, Callback=None,  BizType=None, **kwargs):
+    def ci_auditing_document_submit(self, Bucket, Url, DetectType=None, Key=None, Type=None, Callback=None,  BizType=None, UserInfo=None, DataId=None, **kwargs):
         """提交文档审核任务接口 https://cloud.tencent.com/document/product/460/59380
 
         :param Bucket(string): 存储桶名称.
@@ -5091,6 +5117,8 @@ class CosS3Client(object):
                              如果文件没有后缀，该字段必须指定，否则会审核失败。例如：doc、docx、ppt、pptx 等
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param UserInfo(dict): 用户业务字段.
+        :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
         :param kwargs(dict): 设置请求的headers.
         :return(dict):任务提交成功返回的结果,dict类型.
 
@@ -5129,6 +5157,8 @@ class CosS3Client(object):
             Conf=conf,
             DetectType=DetectType,
             Input=Input,
+            UserInfo=UserInfo,
+            DataId=DataId,
             **kwargs
         )
 
@@ -5181,7 +5211,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_html_submit(self, Bucket, Url, DetectType=None, ReturnHighlightHtml=False, Callback=None,  BizType=None, **kwargs):
+    def ci_auditing_html_submit(self, Bucket, Url, DetectType=None, ReturnHighlightHtml=False, Callback=None,  BizType=None, UserInfo=None, DataId=None, **kwargs):
         """提交网页审核任务接口 https://cloud.tencent.com/document/product/436/63958
 
         :param Bucket(string): 存储桶名称.
@@ -5191,6 +5221,8 @@ class CosS3Client(object):
                                             html 内容。取值为 true 或者 false，默认为 false。
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param UserInfo(dict): 用户业务字段.
+        :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
         :param kwargs(dict): 设置请求的headers.
         :return(dict):任务提交成功返回的结果,dict类型.
 
@@ -5227,6 +5259,8 @@ class CosS3Client(object):
             Conf=conf,
             DetectType=DetectType,
             Input=Input,
+            UserInfo=UserInfo,
+            DataId=DataId,
             **kwargs
         )
 
@@ -5296,6 +5330,8 @@ class CosS3Client(object):
                             DataId: 图片标识，该字段在结果中返回原始内容，长度限制为512字节
                             LargeImageDetect: 对于超过大小限制的图片是否进行压缩后再审核，取值为： 0（不压缩），1（压缩）。默认为0。
                                 注：压缩最大支持32M的图片，且会收取压缩费用。
+                            DataId: 图片标识，该字段在结果中返回原始内容，长度限制为512字节
+                            UserInfo: 用户业务字段。
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param kwargs(dict): 设置请求的headers.
@@ -5374,7 +5410,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("ci auditing rsp:%s", rt.content)
+        logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         if 'JobsDetail' in data:
@@ -5447,6 +5483,109 @@ class CosS3Client(object):
 
         return data
 
+    def ci_auditing_live_video_submit(self, Bucket, BizType, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
+                                      UserInfo=None, **kwargs):
+        """提交直播流审核任务接口 https://cloud.tencent.com/document/product/460/46427
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Url(string): 支持直接传非cos上url过来审核
+        :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
+        :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param Callback(string): 回调地址，以http://或者https://开头的地址。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部截帧和音频片段）、2（回调违规截帧和音频片段）。默认为 1。
+        :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param UserInfo(dict): 用户业务字段.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 任务提交成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 识别cos上的视频
+            response = client.ci_auditing_live_video_submit(
+                Bucket='bucket',
+                DetectType=CiDetectType.PORN,
+                BizType='xxxxx',
+                Url='test.mp4'
+            )
+            print response
+        """
+
+        conf = {
+        }
+
+        if Callback:
+            conf['Callback'] = Callback
+
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+
+        return self.ci_auditing_submit_common(
+            Bucket=Bucket,
+            Type='video',
+            Key=None,
+            BizType=BizType,
+            Conf=conf,
+            Url=Url,
+            DetectType=DetectType,
+            RequestType='live_video',
+            DataId=DataId,
+            UserInfo=UserInfo,
+            **kwargs
+        )
+
+    def ci_auditing_live_video_cancle(self, Bucket, JobID, **kwargs):
+        """取消直播流审核任务接口 https://cloud.tencent.com/document/product/460/46926
+
+        :param Bucket(string): 存储桶名称.
+        :param JobID(string): 任务id.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 取消直播流
+            response = client.ci_auditing_live_video_cancle(
+                Bucket='bucket',
+                JobID='v11122zxxxazzz',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = '/video/cancel_auditing/' + JobID
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("live video canlce result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        logger.debug("live video canlce:%s", rt.content)
+        data = xml_to_dict(rt.content)
+
+        return data
+
     def ci_auditing_virus_submit(self, Bucket, Key=None, Url=None, Callback=None, **kwargs):
         """提交病毒审核任务接口 https://cloud.tencent.com/document/product/460/63964
 
@@ -5514,7 +5653,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("ci auditing rsp:%s", rt.content)
+        logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -5565,7 +5704,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("query ci auditing:%s", rt.content)
+        logger.debug("query ci auditing:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         # 格式化array的输出
