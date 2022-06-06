@@ -5483,8 +5483,8 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_live_video_submit(self, Bucket, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
-                                      BizType=None, UserInfo=None, **kwargs):
+    def ci_auditing_live_video_submit(self, Bucket, BizType, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
+                                      UserInfo=None, **kwargs):
         """提交直播流审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
@@ -5532,6 +5532,7 @@ class CosS3Client(object):
             DetectType=DetectType,
             RequestType='live_video',
             DataId=DataId,
+            UserInfo=UserInfo,
             **kwargs
         )
 
