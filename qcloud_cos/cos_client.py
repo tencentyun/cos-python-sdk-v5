@@ -485,7 +485,7 @@ class CosS3Client(object):
         return response
 
     def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None,
-                                                 dataid=None, **kwargs):
+                                                 DataId=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
@@ -498,7 +498,7 @@ class CosS3Client(object):
             填写了detect-url时，后台会审核detect-url链接，无需再填写ObjectKey。 detect-url示例：http://www.example.com/abc.jpg.
         :param LargeImageDetect(int): 对于超过大小限制的图片是否进行压缩后再审核，取值为： 0（不压缩），1（压缩）。默认为0。
             注：压缩最大支持32M的图片，且会收取压缩费用。
-        :param dataid(string): 图片标识，该字段在结果中返回原始内容，长度限制为512字节.
+        :param DataId(string): 图片标识，该字段在结果中返回原始内容，长度限制为512字节.
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -560,8 +560,8 @@ class CosS3Client(object):
             params['detect-url'] = DetectUrl
         if LargeImageDetect:
             params['large-image-detect'] = LargeImageDetect
-        if dataid:
-            params['dataid'] = dataid
+        if DataId:
+            params['dataid'] = DataId
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -578,7 +578,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("get object sensitive content recognition rsp:%s", rt.content)
+        logger.debug("get object sensitive content recognition rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
         # format res
         if 'PornInfo' in data:
@@ -4736,7 +4736,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("ci auditing rsp:%s", rt.content)
+        logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -4789,7 +4789,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("query ci auditing:%s", rt.content)
+        logger.debug("query ci auditing:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -5410,7 +5410,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("ci auditing rsp:%s", rt.content)
+        logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         if 'JobsDetail' in data:
@@ -5581,7 +5581,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("live video canlce:%s", rt.content)
+        logger.debug("live video canlce:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -5653,7 +5653,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("ci auditing rsp:%s", rt.content)
+        logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
@@ -5704,7 +5704,7 @@ class CosS3Client(object):
             params=params,
             headers=headers)
 
-        logging.debug("query ci auditing:%s", rt.content)
+        logger.debug("query ci auditing:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         # 格式化array的输出

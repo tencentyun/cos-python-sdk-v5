@@ -1875,7 +1875,7 @@ def test_ci_list_doc_transcode_jobs():
 def test_ci_live_video_auditing():
     if TEST_CI != 'true':
         return
-    # 查询任务列表
+    # 提交视频流审核任务
     response = client.ci_auditing_live_video_submit(
                     Bucket=ci_bucket_name,
                     Url='rtmp://example.com/live/123',
@@ -1890,9 +1890,11 @@ def test_ci_live_video_auditing():
                         'IP': 'IP-test',
                         'Type': 'Type-test',
                     },
+                    BizType="44f32597a627d013962c54d459a9ab6e",
                 )
     assert (response['JobsDetail']['JobId'])
     jobId = response['JobsDetail']['JobId']
+    time.sleep(5)
     response = client.ci_auditing_live_video_cancle(
                     Bucket=ci_bucket_name,
                     JobID=jobId,
