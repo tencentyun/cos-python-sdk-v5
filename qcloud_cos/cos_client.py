@@ -5641,14 +5641,15 @@ class CosS3Client(object):
         format_dict(data, ['MediaBucketList'])
         return data
 
-    def ci_get_media_queue(self, Bucket, state='All', queueIds='', pageNumber='', pageSize='', path='/queue', **kwargs):
+    def ci_get_media_queue(self, Bucket, State='All', QueueIds='', PageNumber='', PageSize='', UrlPath='/queue', **kwargs):
         """查询媒体处理队列接口 https://cloud.tencent.com/document/product/436/54045
 
         :param Bucket(string): 存储桶名称.
-        :param queueIds(string): 队列 ID，以“,”符号分割字符串.
-        :param state(string): 队列状态
-        :param pageNumber(string): 第几页
-        :param pageSize(string): 每页个数
+        :param QueueIds(string): 队列 ID，以“,”符号分割字符串.
+        :param State(string): 队列状态
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param UrlPath(string): 请求URL路径，无需主动设置
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -5674,14 +5675,14 @@ class CosS3Client(object):
 
         params = format_values(params)
 
-        path = path
+        path = UrlPath
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         url = u"{url}?{queueIds}&{state}&{pageNumber}&{pageSize}".format(
             url=to_unicode(url),
-            queueIds=to_unicode('queueIds='+queueIds),
-            state=to_unicode('state='+state),
-            pageNumber=to_unicode('pageNumber='+pageNumber),
-            pageSize=to_unicode('pageSize='+pageSize),
+            queueIds=to_unicode('queueIds='+QueueIds),
+            state=to_unicode('state='+State),
+            pageNumber=to_unicode('pageNumber='+PageNumber),
+            pageSize=to_unicode('pageSize='+PageSize),
         )
         logger.info("get_media_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
@@ -5700,12 +5701,13 @@ class CosS3Client(object):
         format_dict(data, ['QueueList'])
         return data
 
-    def ci_update_media_queue(self, Bucket, QueueId, Request={}, Path="/queue/", **kwargs):
+    def ci_update_media_queue(self, Bucket, QueueId, Request={}, UrlPath="/queue/", **kwargs):
         """ 更新媒体处理队列接口 https://cloud.tencent.com/document/product/436/54046
 
         :param Bucket(string): 存储桶名称.
         :param QueueId(string): 队列ID.
         :param Request(dict): 更新队列配置请求体.
+        :param UrlPath(string): 请求URL路径，无需主动设置
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -5733,7 +5735,7 @@ class CosS3Client(object):
 
         params = format_values(params)
         xml_config = format_xml(data=Request, root='Request')
-        path = Path + QueueId
+        path = UrlPath + QueueId
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         logger.info("update_media_queue result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
             url=url,
