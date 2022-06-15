@@ -141,8 +141,6 @@ support proxies
 
 ## [v1.7.3](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.7.2...v1.7.3) - 2019-08-06
 
-optimize object download
-
 ### Merged
 
 - optimize object download [`#94`](https://github.com/tencentyun/cos-python-sdk-v5/pull/94)
