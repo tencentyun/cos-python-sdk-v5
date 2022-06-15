@@ -5778,16 +5778,16 @@ class CosS3Client(object):
             print response
         """
         return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
-                                          Request=Request, Path="/picqueue/", **kwargs)
+                                          Request=Request, UrlPath="/picqueue/", **kwargs)
 
-    def ci_get_media_pic_queue(self, Bucket, state='All', queueIds='', pageNumber='', pageSize='', **kwargs):
+    def ci_get_media_pic_queue(self, Bucket, State='All', QueueIds='', PageNumber='', PageSize='', **kwargs):
         """查询图片处理队列接口
 
         :param Bucket(string): 存储桶名称.
-        :param queueIds(string): 队列 ID，以“,”符号分割字符串.
-        :param state(string): 队列状态
-        :param pageNumber(string): 第几页
-        :param pageSize(string): 每页个数
+        :param QueueIds(string): 队列 ID，以“,”符号分割字符串.
+        :param State(string): 队列状态
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -5801,9 +5801,9 @@ class CosS3Client(object):
             )
             print response
         """
-        return self.ci_get_media_queue(Bucket=Bucket, state=state, queueIds=queueIds,
-                                       pageNumber=pageNumber, pageSize=pageSize,
-                                       path="/picqueue", **kwargs)
+        return self.ci_get_media_queue(Bucket=Bucket, State=State, QueueIds=QueueIds,
+                                       PageNumber=PageNumber, PageSize=PageSize,
+                                       UrlPath="/picqueue", **kwargs)
 
     def ci_create_media_jobs(self, Bucket, Jobs={}, Lst={}, **kwargs):
         """ 创建任务接口 https://cloud.tencent.com/document/product/436/54013
