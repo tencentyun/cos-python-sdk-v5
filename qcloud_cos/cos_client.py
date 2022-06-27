@@ -30,6 +30,11 @@ from .version import __version__
 from .select_event_stream import EventStream
 from .resumable_downloader import ResumableDownLoader
 
+# python 3.10报错"module 'collections' has no attribute 'Iterable'"，这里先规避
+if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
+    import collections.abc
+    collections.Iterable = collections.abc.Iterable
+
 logger = logging.getLogger(__name__)
 
 
@@ -253,14 +258,14 @@ class CosS3Client(object):
         # 重新绑定到内置连接池
         if rebound:
             self._session = CosS3Client.__built_in_sessions
-            logger.warn("rebound built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+            logger.info("rebound built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
 
     def generate_built_in_connection_pool(self, PoolConnections, PoolMaxSize):
         """生成SDK内置的连接池，此连接池是client间共用的"""
         built_in_sessions = requests.session()
         built_in_sessions.mount('http://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
         built_in_sessions.mount('https://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
-        logger.warn("generate built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+        logger.info("generate built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
         return built_in_sessions
 
     def get_conf(self):
