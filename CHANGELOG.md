@@ -123,8 +123,6 @@ support Inventory and Bucket Tagging
 
 ## [v1.7.4](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.7.3...v1.7.4) - 2019-08-26
 
-support proxies
-
 ### Merged
 
 - S3 [`#97`](https://github.com/tencentyun/cos-python-sdk-v5/pull/97)
