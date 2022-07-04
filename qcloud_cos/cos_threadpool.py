@@ -30,7 +30,7 @@ class WorkerThread(Thread):
                 self._ret.append(ret)
 
             except Exception as e:
-                logger.warn(str(e))
+                logger.error(str(e))
                 self._fail_task_num += 1
                 if hasattr(e, '_message') and e._message:
                     self._ret.append(e._message)

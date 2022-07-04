@@ -1,11 +1,16 @@
 sudo: false
 language: python
+dist: xenial
 python:
 - '2.7'
 - '3.5'
 - '3.6'
 - '3.8'
 - '3.9'
+- '3.9'
+  dist:  focal
+- '3.10'  
+  dist:  focal
 install:
 - pip install requests
 - pip install six

@@ -46,58 +46,152 @@ def ci_get_media_bucket():
 def ci_get_media_queue():
     # 查询媒体队列信息
     response = client.ci_get_media_queue(
-                    Bucket=bucket_name
+                    Bucket=bucket_name,
                 )
     print(response)
     return response
 
 
-def ci_create_media_transcode_watermark_jobs():
-    # 创建转码任务
+def ci_get_media_pic_queue():
+    # 查询图片处理队列信息
+    response = client.ci_get_media_pic_queue(
+        Bucket=bucket_name,
+    )
+    print(response)
+    return response
+
+
+def ci_put_media_queue():
+    # 更新媒体队列信息
     body = {
-        'Input':{
-            'Object':'117374C.mp4'
+        'Name': 'media-queue',
+        'QueueID': 'p5135bc6xxxxxxxxxxxxxxxxf047454',
+        'State': 'Active',
+        'NotifyConfig': {
+            'Type': 'Url',
+            'Url': 'http://www.demo.callback.com',
+            'Event': 'TaskFinish',
+            'State': 'On',
+            'ResultFormat': 'JSON'
+        }
+    }
+    response = client.ci_update_media_queue(
+        Bucket=bucket_name,
+        QueueId='p5135bcxxxxxxxxxxxxxxxxf047454',
+        Request=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_put_media_pic_queue():
+    # 更新图片处理队列信息
+    body = {
+        'Name': 'media-pic-queue',
+        'QueueID': 'peb83bdxxxxxxxxxxxxxxxxa21c7d68',
+        'State': 'Active',
+        'NotifyConfig': {
+            'Type': 'Url',
+            'Url': 'http://www.demo.callback.com',
+            'Event': 'TaskFinish',
+            'State': 'On',
+            'ResultFormat': 'JSON'
+        }
+    }
+    response = client.ci_update_media_pic_queue(
+        Bucket=bucket_name,
+        QueueId='peb83bdxxxxxxxxxxxxxxxxxx4a21c7d68',
+        Request=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_transcode_with_digital_watermark_jobs():
+    # 创建带数字水印的转码任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
         },
-        'QueueId': 'pe943803693bd42d1a3105804ddaee525',
+        'QueueId': 'p5135bcxxxxxxxxxxxxxxxx047454',
         'Tag': 'Transcode',
         'Operation': {
-        'Output':{'Bucket':bucket_name, 'Region':region, 'Object':'117374C_output.mp4'},
-        'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5',
-        # "WatermarkTemplateId": ["", ""],
-        'Watermark': [
-            {
-                'Type':'Text',
-                'Pos':'TopRight',
-                'LocMode':'Absolute',
-                'Dx':'64',
-                'Dy': '64',
-                'StartTime':'0',
-                'EndTime':'1000.5',
-                'Text': {
-                    'Text': '水印内容',
-                    'FontSize': '90',
-                    'FontType': 'simfang.ttf',
-                    'FontColor': '0xFFEEFF',
-                    'Transparency': '100',
-                },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'transcode_with_digital_watermark_output.mp4'
             },
-            {
-                'Type':'Image',
-                'Pos':'TopLeft',
-                'LocMode':'Absolute',
-                'Dx':'100',
-                'Dy': '100',
-                'StartTime':'0',
-                'EndTime':'1000.5',
-                'Image': {
-                    'Url': 'http://'+bucket_name+".cos."+region+".tencentcos.cn/1215shuiyin.jpg",
-                    'Mode': 'Fixed',
-                    'Width': '128',
-                    'Height': '128',
-                    'Transparency': '100',
+            'TemplateId': 't04e1ab86554984f1aa17c062fbf6c007c',
+            'DigitalWatermark': {
+                'Type': 'Text',
+                'Message': '123456789ab',
+                'Version': 'V1',
+                'IgnoreError': 'false',
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_transcode_with_watermark_jobs():
+    # 创建带水印的转码任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bc6xxxxxxxxxxxxxxxxxxbf047454',
+        'Tag': 'Transcode',
+        'Operation': {
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'transcode_with_watermark_output.mp4'
+            },
+            'TemplateId': 't04e1ab86554984f1aa17c062fbf6c007c',
+            # "WatermarkTemplateId": ["", ""],
+            'Watermark': [
+                {
+                    'Type': 'Text',
+                    'Pos': 'TopRight',
+                    'LocMode': 'Absolute',
+                    'Dx': '64',
+                    'Dy': '64',
+                    'StartTime': '0',
+                    'EndTime': '1000.5',
+                    'Text': {
+                        'Text': '水印内容',
+                        'FontSize': '90',
+                        'FontType': 'simfang.ttf',
+                        'FontColor': '0xFFEEFF',
+                        'Transparency': '100',
+                    },
                 },
-            }
-        ]
+                {
+                    'Type': 'Image',
+                    'Pos': 'TopLeft',
+                    'LocMode': 'Absolute',
+                    'Dx': '100',
+                    'Dy': '100',
+                    'StartTime': '0',
+                    'EndTime': '1000.5',
+                    'Image': {
+                        'Url': 'http://'+bucket_name+".cos."+region+".myqcloud.com/watermark.png",
+                        'Mode': 'Fixed',
+                        'Width': '128',
+                        'Height': '128',
+                        'Transparency': '100',
+                    },
+                }
+            ]
         }
     }
     # dict中数组类型的标签，都需要特殊处理
@@ -114,20 +208,108 @@ def ci_create_media_transcode_watermark_jobs():
                     ContentType='application/xml'
                 )
     print(response)
-    return response    
+    return response
+
+
+def ci_create_media_hls_transcode_jobs():
+    # 创建hls转码任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135xxxxxxxxxxxxxxxxxxxxx047454',
+        'Tag': 'Transcode',
+        'Operation': {
+            "Transcode": {
+                "Container": {
+                    "Format": "hls"
+                },
+                "Video": {
+                    "Codec": "H.264",
+                    "Profile": "high",
+                    "Bitrate": "1000",
+                    "Width": "1280",
+                    "Fps": "30",
+                    "Preset": "medium",
+                    "Bufsize": "1000",
+                    "Maxrate": "10"
+                },
+                "Audio": {
+                    "Codec": "aac",
+                    "Samplerate": "44100",
+                    "Bitrate": "128",
+                    "Channels": "4"
+                },
+                "TransConfig": {
+                    'HlsEncrypt': {
+                        'IsHlsEncrypt': 'true',
+                        'UriKey': 'http://www.demo.com'
+                    }
+                },
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'transcode_output.mp4'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
 
 
 def ci_create_media_transcode_jobs():
     # 创建转码任务
     body = {
-        'Input':{
-            'Object':'117374C.mp4'
+        'Input': {
+            'Object': 'demo.mp4'
         },
-        'QueueId': 'pe943803693bd42d1a3105804ddaee525',
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxx8bf047454',
         'Tag': 'Transcode',
         'Operation': {
-        'Output':{'Bucket':bucket_name, 'Region':region, 'Object':'117374C_output.mp4'},
-        'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+            "Transcode": {
+                "Container": {
+                    "Format": "mp4"
+                },
+                "Video": {
+                    "Codec": "H.264",
+                    "Profile": "high",
+                    "Bitrate": "1000",
+                    "Width": "1280",
+                    "Fps": "30",
+                    "Preset": "medium",
+                    "Bufsize": "1000",
+                    "Maxrate": "10"
+                },
+                "Audio": {
+                    "Codec": "aac",
+                    "Samplerate": "44100",
+                    "Bitrate": "128",
+                    "Channels": "4"
+                },
+                "TransConfig": {
+                    "AdjDarMethod": "scale",
+                    "IsCheckReso": "false",
+                    "ResoAdjMethod": "1"
+                },
+                "TimeInterval": {
+                    "Start": "0",
+                    "Duration": "60"
+                }
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'transcode_output.mp4'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
         }
     }
     response = client.ci_create_media_jobs(
@@ -137,30 +319,623 @@ def ci_create_media_transcode_jobs():
                     ContentType='application/xml'
                 )
     print(response)
-    return response   
+    return response
+
+
+def ci_create_media_snapshot_jobs():
+    # 创建截图任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'Snapshot',
+        'Operation': {
+            'Snapshot': {
+                'Mode': 'Interval',
+                'Width': '1280',
+                'Height': '1280',
+                'Start': '0',
+                'TimeInterval': '',
+                'Count': '1',
+                'SnapshotOutMode': 'SnapshotAndSprite',
+                'SpriteSnapshotConfig': {
+                    "CellHeight": "128",
+                    "CellWidth": "128",
+                    "Color": "White",
+                    "Columns": "10",
+                    "Lines": "10",
+                    "Margin": "0",
+                    "Padding": "0"
+                }
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'snapshot-${Number}.jpg',
+                'SpriteObject': 'sprite-snapshot-${Number}.jpg'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_animation_jobs():
+    # 创建转动图任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'Animation',
+        'Operation': {
+            "Animation": {
+                "Container": {
+                    "Format": "gif"
+                },
+                "Video": {
+                    "Codec": "gif",
+                    "Width": "1280",
+                    "Fps": "15",
+                    "AnimateOnlyKeepKeyFrame": "true"
+                },
+                "TimeInterval": {
+                    "Start": "0",
+                    "Duration": "60"
+                }
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'snapshot.gif'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_concat_jobs():
+    # 创建拼接任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'Concat',
+        'Operation': {
+            "ConcatTemplate": {
+                "ConcatFragment": [
+                    {
+                        "Url": "http://demo-1xxxxxxxxx.cos.ap-chongqing.myqcloud.com/1.mp4"
+                    },
+                    {
+                        "Url": "http://demo-1xxxxxxxxx.cos.ap-chongqing.myqcloud.com/2.mp4"
+                    }
+                ],
+                "Audio": {
+                    "Codec": "mp3"
+                },
+                "Video": {
+                    "Codec": "H.264",
+                    "Bitrate": "1000",
+                    "Width": "1280",
+                    "Fps": "30"
+                },
+                "Container": {
+                    "Format": "mp4"
+                }
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'concat-result.mp4'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+        }
+    }
+    lst = ['<ConcatFragment>', '</ConcatFragment>']
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst=lst,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_smart_cover_jobs():
+    # 创建智能封面任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'SmartCover',
+        'Operation': {
+            'SmartCover': {
+                'Format': 'jpg',
+                'Width': '128',
+                'Height': '128',
+                'Count': '3',
+                'DeleteDuplicates': 'true'
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'smart-cover-${Number}.jpg'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_video_process_jobs():
+    # 创建视频增强任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'VideoProcess',
+        'Operation': {
+            "VideoProcess": {
+                "ColorEnhance": {
+                    "Enable": "true",
+                    "Contrast": "10",
+                    "Correction": "10",
+                    "Saturation": "10"
+                },
+                "MsSharpen": {
+                    "Enable": "true",
+                    "SharpenLevel": "1"
+                }
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'video-process.mp4'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5',
+            'TranscodeTemplateId': 't04e1ab86554984f1aa17c062fbf6c007c'
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_video_montage_jobs():
+    # 创建精彩集锦任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'VideoMontage',
+        'Operation': {
+            "VideoMontage": {
+                "Container": {
+                    "Format": "mp4"
+                },
+                "Video": {
+                    "Codec": "H.264",
+                    "Bitrate": "1000",
+                    "Width": "1280",
+                    "Height": "1280"
+                },
+                "Audio": {
+                    "Codec": "aac",
+                    "Samplerate": "44100",
+                    "Bitrate": "128",
+                    "Channels": "4"
+                },
+                "AudioMix": {
+                    "AudioSource": "https://demo-xxxxxxxxxxxx.cos.ap-chongqing.myqcloud.com/1.mp4",
+                    "MixMode": "Once",
+                    "Replace": "true"
+                },
+                "Duration": "1"
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'video-montage.mp4'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5',
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_voice_separate_jobs():
+    # 创建人声分离任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'VoiceSeparate',
+        'Operation': {
+            "VoiceSeparate": {
+                "AudioMode": "IsAudio",
+                "AudioConfig": {
+                    "Codec": "mp3",
+                    "Samplerate": "44100",
+                    "Bitrate": "12",
+                    "Channels": "2"
+                }
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'voice-separate.mp3',
+                'AuObject': 'voice-separate-audio.mp3'
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5',
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_sdr2hdr_jobs():
+    # 创建sdr2hdr任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'SDRtoHDR',
+        'Operation': {
+            "SDRtoHDR": {
+                "HdrMode": "HLG",
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'sdr2hdr.mp4'
+            },
+            'TranscodeTemplateId': 't04e1ab86554984f1aa17c062fbf6c007c'
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_digital_watermark_jobs():
+    # 创建嵌入数字水印任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'DigitalWatermark',
+        'Operation': {
+            "DigitalWatermark": {
+                "Type": "Text",
+                "Message": "123456789ab",
+                "Version": "V1"
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'digital.mp4'
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_extract_digital_watermark_jobs():
+    # 创建提取数字水印任务
+    body = {
+        'Input': {
+            'Object': 'digital.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'ExtractDigitalWatermark',
+        'Operation': {
+            "ExtractDigitalWatermark": {
+                "Type": "Text",
+                "Version": "V1"
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_super_resolution_jobs():
+    # 创建超分任务
+    body = {
+        'Input':{
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'SuperResolution',
+        'Operation': {
+            "SuperResolution": {
+                "Resolution": "sdtohd",
+                "EnableScaleUp": "true"
+            },
+            'TranscodeTemplateId': 't04e1ab86554984f1aa17c062fbf6c007c',
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'super.mp4'
+            },
+        },
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_video_tag_jobs():
+    # 创建视频标签任务
+    body = {
+        'Input':{
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'VideoTag',
+        'Operation': {
+            "VideoTag": {
+                "Scenario": "Stream"
+            },
+        },
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_segment_jobs():
+    # 创建转封装任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'Segment',
+        'Operation': {
+            "Segment": {
+                "Format": "mp4",
+                "Duration": "5",
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'segment-${Number}.mp4'
+            },
+        },
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_multi_jobs():
+    # 创建多任务
+    body = {
+        'Input': {
+            'Object': '117374C.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Operation': [
+            {
+                'Tag': 'Segment',
+                "Segment": {
+                    "Format": "mp4",
+                    "Duration": "50",
+                },
+                'Output': {
+                    'Bucket': bucket_name,
+                    'Region': region,
+                    'Object': 'multi-segment-${Number}.mp4'
+                },
+            },
+            {
+                'Tag': 'SDRtoHDR',
+                "SDRtoHDR": {
+                    "HdrMode": "HLG",
+                },
+                'Output': {
+                    'Bucket': bucket_name,
+                    'Region': region,
+                    'Object': 'multi-sdr2hdr.mp4'
+                },
+                'TranscodeTemplateId': 't04e1ab86554984f1aa17c062fbf6c007c'
+            }
+        ],
+    }
+    lst = ['<Operation>', '</Operation>']
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst=lst,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_get_media_info_jobs():
+    # 创建获取媒体信息任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        'Tag': 'MediaInfo',
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_media_pic_jobs():
+    # 创建图片处理任务
+    body = {
+        'Input': {
+            'Object': '1.png'
+        },
+        'QueueId': 'peb83bdbxxxxxxxxxxxxxxxxxxxa21c7d68',
+        'Tag': 'PicProcess',
+        'Operation': {
+            "PicProcess": {
+                "IsPicInfo": "true",
+                "ProcessRule": "imageMogr2/rotate/90",
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'pic-process-result.png'
+            },
+        }
+    }
+    response = client.ci_create_media_pic_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
 
 
 def ci_list_media_transcode_jobs():
-    # 转码任务
+    # 转码任务列表
     response = client.ci_list_media_jobs(
                     Bucket=bucket_name,
-                    QueueId='pe943803693bd42d1a3105804ddaee525',
-                    Tag='Transcode',
-                    ContentType='application/xml'
+                    QueueId='p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+                    Tag='DigitalWatermark',
+                    ContentType='application/xml',
+                    StartCreationTime='2022-05-27T00:00:00+0800',
+                    EndCreationTime='2022-05-31T00:00:00+0800',
+                    States='Success'
                 )
     print(response)
-    return response 
+    return response
 
 
 def ci_get_media_transcode_jobs():
-    # 转码任务
+    # 转码任务详情
     response = client.ci_get_media_jobs(
                     Bucket=bucket_name,
-                    JobIDs='j3feb7ccc28fc11eca50b6f68c211dc6c,jb83bcc5a28fb11ecae48a1f29371c5f8',
+                    JobIDs='j318302b8e0bc11ec97444b29c7b914d9',
                     ContentType='application/xml'
                 )
     print(response)
-    return response 
+    return response
+
+
+def ci_list_media_pic_jobs():
+    # 图片处理任务列表
+    response = client.ci_list_media_pic_jobs(
+        Bucket=bucket_name,
+        QueueId='peb83bdbxxxxxxxxxxxxxxxxxxxa21c7d68',
+        Tag='PicProcess',
+        ContentType='application/xml',
+        StartCreationTime='2022-05-30T23:30:00+0800',
+        EndCreationTime='2022-05-31T01:00:00+0800',
+        States='Success'
+    )
+    print(response)
+    return response
+
+
+def ci_get_media_pic_jobs():
+    # 图片处理任务详情
+    response = client.ci_get_media_jobs(
+        Bucket=bucket_name,
+        JobIDs='c01742xxxxxxxxxxxxxxxxxx7438e39',
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
 
 
 def get_media_info():
@@ -228,13 +1003,38 @@ def ci_list_workflowexecution():
 
 
 if __name__ == "__main__":
-    #ci_get_media_queue()
-    #ci_get_media_transcode_jobs()
-    #ci_create_media_transcode_jobs()
+    ci_get_media_queue()
+    # ci_get_media_transcode_jobs()
+    # ci_create_media_transcode_jobs()
     # get_media_info()
     # get_snapshot()
-    #ci_trigger_workflow()
-    #ci_list_workflowexecution()
+    # ci_trigger_workflow()
+    # ci_list_workflowexecution()
     # ci_get_workflowexecution()
     # ci_get_media_bucket()
-    get_pm3u8()
+    # get_pm3u8()
+    # ci_create_media_snapshot_jobs()
+    # ci_create_media_animation_jobs()
+    # ci_create_media_smart_cover_jobs()
+    # ci_create_media_video_process_jobs()
+    # ci_create_media_video_montage_jobs()
+    # ci_create_media_voice_separate_jobs()
+    # ci_create_media_sdr2hdr_jobs()
+    # ci_create_media_super_resolution_jobs()
+    # ci_create_media_concat_jobs()
+    # ci_create_media_digital_watermark_jobs()
+    # ci_create_media_extract_digital_watermark_jobs()
+    # ci_create_media_video_tag_jobs()
+    # ci_create_media_segment_jobs()
+    # ci_create_multi_jobs()
+    # ci_create_media_pic_jobs()
+    # ci_get_media_pic_jobs()
+    # ci_create_get_media_info_jobs()
+    # ci_put_media_queue()
+    # ci_create_media_transcode_with_watermark_jobs()
+    # ci_create_media_transcode_with_digital_watermark_jobs()
+    # ci_create_media_hls_transcode_jobs()
+    # ci_list_media_transcode_jobs()
+    # ci_list_media_pic_jobs()
+    # ci_get_media_pic_queue()
+    # ci_put_media_pic_queue()
