@@ -1622,6 +1622,93 @@ def _test_qrcode():
     print(response, data)
 
 
+def test_ci_put_image_style():
+    """增加图片样式接口"""
+    body = {
+        'StyleName': 'style_name',
+        'StyleBody': 'imageMogr2/thumbnail/!50px',
+    }
+    response = client.ci_put_image_style(
+        Bucket=test_bucket,
+        Request=body,
+    )
+    print(response)
+
+
+def test_ci_get_image_style():
+    """获取图片样式接口"""
+    body = {
+        'StyleName': 'style_name',
+    }
+    response, data = client.ci_get_image_style(
+        Bucket=test_bucket,
+        Request=body,
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_get_image_info():
+    """ci获取图片基本信息接口"""
+    response, data = client.ci_get_image_info(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_get_image_exif_info():
+    """获取图片exif信息接口"""
+    response, data = client.ci_get_image_exif_info(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_get_image_ave_info():
+    """获取图片主色调接口"""
+    response, data = client.ci_get_image_info(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_image_assess_quality():
+    """图片质量评估接口"""
+    response = client.ci_image_assess_quality(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response)
+
+
+def test_ci_qrcode_generate():
+    """二维码生成接口"""
+    response = client.ci_qrcode_generate(
+        Bucket=test_bucket,
+        QrcodeContent='https://www.example.com',
+        Width=200
+    )
+    qrCodeImage = base64.b64decode(response['ResultImage'])
+    with open('/result.png', 'wb') as f:
+        f.write(qrCodeImage)
+    print(response)
+
+
+def test_ci_ocr_process():
+    """通用文字识别"""
+    response = client.ci_ocr_process(
+        Bucket=test_bucket,
+        Key='ocr.jpeg',
+    )
+    print(response)
+
+
 def test_ci_get_media_queue():
     if TEST_CI != 'true':
         return
@@ -2111,5 +2198,13 @@ if __name__ == "__main__":
     test_ci_list_media_pic_jobs()
     test_ci_create_media_pic_jobs()
     test_ci_get_media_pic_queue()
+    test_ci_put_image_style()
+    test_ci_get_image_style()
+    test_ci_get_image_info()
+    test_ci_get_image_exif_info()
+    test_ci_get_image_ave_info()
+    test_ci_qrcode_generate()
+    test_ci_image_assess_quality()
+    test_ci_ocr_process()
     """
     tearDown()
