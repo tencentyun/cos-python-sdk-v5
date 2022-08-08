@@ -44,7 +44,7 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EnableOldDomain=True, EnableInternalDomain=True):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -80,6 +80,7 @@ class CosConfig(object):
         self._region = Region
         self._endpoint = Endpoint
         self._endpoint_ci = EndpointCi
+        self._endpoint_pic = EndpointPic
         self._ip = to_unicode(IP)
         self._port = Port
         self._anonymous = Anonymous
@@ -107,6 +108,7 @@ class CosConfig(object):
         # 格式化ci的endpoint 不支持自定义域名的
         # ci暂不支持新域名
         self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.', True, False)
+        self._endpoint_pic = format_endpoint(EndpointCi, Region, u'pic.', True, False)
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
@@ -4489,6 +4491,510 @@ class CosS3Client(object):
         response = dict(**rt.headers)
         data = xml_to_dict(rt.content)
         return response, data
+
+    def ci_put_image_style(self, Bucket, Request, **kwargs):
+        """CI增加图片样式接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Request(dict): 图片样式请求体.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 添加图片样式返回结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            body = {
+                'StyleName': 'style_name',
+                'StyleBody': 'imageMogr2/thumbnail/!50px',
+            }
+            response = client.ci_put_image_style(
+                Bucket=bucket_name,
+                Request=body,
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'style': ''}
+        xml_config = format_xml(data=Request, root='AddStyle')
+        url = self._conf.uri(bucket=Bucket, endpoint=self._conf._endpoint_pic)
+        logger.info("ci_put_image_style, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        response = dict(**rt.headers)
+        return response
+
+    def ci_get_image_style(self, Bucket, Request, **kwargs):
+        """CI获取图片样式接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Request(dict): 图片样式请求体.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 获取图片样式结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+                body = {
+                    'StyleName': 'style_name',
+                }
+                response, data = client.ci_get_image_style(
+                    Bucket=bucket_name,
+                    Request=body,
+                )
+                print(response['x-cos-request-id'])
+                print(data)
+        """
+        headers = mapped(kwargs)
+        params = {'style': ''}
+        url = self._conf.uri(bucket=Bucket, endpoint=self._conf._endpoint_pic)
+        xml_config = format_xml(data=Request, root='GetStyle')
+        logger.info("ci_get_image_style, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
+
+    def ci_delete_image_style(self, Bucket, Request, **kwargs):
+        """CI删除图片样式接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Request(dict): 图片样式请求体.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 获取图片样式response header.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            body = {
+                'StyleName': 'style_name',
+            }
+            response = client.ci_delete_image_style(
+                Bucket=bucket_name,
+                Request=body,
+            )
+            print(response['x-cos-request-id'])
+        """
+        headers = mapped(kwargs)
+        params = {'style': ''}
+        xml_config = format_xml(data=Request, root='DeleteStyle')
+        url = self._conf.uri(bucket=Bucket, endpoint=self._conf._endpoint_pic)
+        logger.info("ci_delete_image_style, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        response = dict(**rt.headers)
+        return response
+
+    def ci_get_object(self, Bucket, Key, DestImagePath, Rule, **kwargs):
+        """单文件CI下载对象到文件接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param DestImagePath(string): 下载图片的目的路径.
+        :param Rule(string): 图片处理规则.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 下载后response header.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_get_object(
+                    Bucket='bucket',
+                    Key='local.jpg',
+                    DestImagePath='download.png'
+                    Rule='imageView2/format/png'
+                )
+                print(response['x-cos-request-id'])
+
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {Rule: ''}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_get_object, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        StreamBody(rt).get_stream_to_file(DestImagePath)
+        response = dict(**rt.headers)
+        return response
+
+    def ci_get_image_info(self, Bucket, Key, Param='imageInfo', **kwargs):
+        """ci获取图片基本信息接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Param(string): 请求参数，一般情况下不进行赋值操作.
+        :kwargs(dict): 设置获取图片信息的headers.
+        :return(dict): response header.
+        :return(dict): 图片信息结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_info(
+                Bucket=bucket_name,
+                 Key='format.png',
+            )
+            print(response['x-cos-request-id'])
+            print(data)
+
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {Param: ''}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_get_image_info, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        data = rt.content
+        return response, data
+
+    def ci_get_image_exif_info(self, Bucket, Key, **kwargs):
+        """ci获取图片exif信息接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :kwargs(dict): 设置获取图片exif信息的headers.
+        :return(dict): response header.
+        :return(dict): 图片exif信息结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_exif_info(
+                Bucket=bucket_name,
+                Key='format.png',
+            )
+            print(response['x-cos-request-id'])
+            print(data)
+
+        """
+        return self.ci_get_image_info(Bucket, Key, 'exif', **kwargs)
+
+    def ci_get_image_ave_info(self, Bucket, Key, **kwargs):
+        """ci获取图片主色调接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :kwargs(dict): 设置获取图片主色调的headers.
+        :return(dict): response header.
+        :return(dict): 图片主色调结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_exif_info(
+                Bucket=bucket_name,
+                Key='format.png',
+            )
+            print(response['x-cos-request-id'])
+            print(data)
+
+        """
+        return self.ci_get_image_info(Bucket, Key, 'imageAve', **kwargs)
+
+    def ci_process(self, Bucket, Key, CiProcess, **kwargs):
+        """ci_process基本信息的接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param CiProcess(string): ci process处理参数.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_process(
+                Bucket='bucket',
+                Key='test.mp4',
+                CiProcess='AssessQuality',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': CiProcess}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['Response'])
+        return data
+
+    def ci_image_assess_quality(self, Bucket, Key, **kwargs):
+        """ci_image_assess_quality图片质量评估接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 图片质量评估返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_image_assess_quality(
+                Bucket='bucket',
+                Key='test.mp4',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "AssessQuality", **kwargs)
+
+    def ci_image_detect_car(self, Bucket, Key, **kwargs):
+        """ci_image_detect_car车辆车牌检测接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 车辆车牌检测返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_image_detect_car(
+                Bucket='bucket',
+                Key='test.mp4',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "DetectCar", **kwargs)
+
+    def ci_image_detect_label(self, Bucket, Key, **kwargs):
+        """ci_image_detect_label图片标签接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 图片质量评估返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_image_detect_label(
+                Bucket='bucket',
+                Key='test.mp4',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "detect-label", **kwargs)
+
+    def ci_qrcode_generate(self, Bucket, QrcodeContent, Width, Mode=0, **kwargs):
+        """二维码生成接口
+
+        :param Bucket(string): 存储桶名称.
+        :param QrcodeContent(string): 可识别的二维码文本信息.
+        :param Width(string):  指定生成的二维码或条形码的宽度，高度会进行等比压缩.
+        :param Mode(int): 生成的二维码类型，可选值：0或1。0为二维码，1为条形码，默认值为0.
+        :return(dict): 二维码生成结果
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_qrcode_generate(
+                Bucket=bucket_name,
+                QrcodeContent='https://www.example.com',
+                Width=200
+            )
+            qrCodeImage = base64.b64decode(response['ResultImage'])
+            with open('/result.png', 'wb') as f:
+                f.write(qrCodeImage)
+            print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'qrcode-generate'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['qrcode-content'] = '<' + QrcodeContent + '>'
+        params['width'] = Width
+        params['mode'] = Mode
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("ci_qrcode_generate, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_ocr_process(self, Bucket, Key, Type='general', LanguageType='zh', Ispdf=False, PdfPagenumber=1, Isword=False, EnableWordPolygon=False, **kwargs):
+        """通用文字识别
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Type(string): OCR 的识别类型，有效值为 general，accurate，efficient，fast，handwriting。general 表示通用印刷体识别；accurate 表示印刷体高精度版；efficient 表示印刷体精简版；fast 表示印刷体高速版；handwriting 表示手写体识别。默认值为 general。
+        :param LanguageType(string):  type 值为 general 时有效，表示识别语言类型。支持自动识别语言类型，同时支持自选语言种类，默认中英文混合(zh)，各种语言均支持与英文混合的文字识别。可选值请参见 可识别的语言类型。
+        :param Ispdf(bool): type 值为 general、fast 时有效，表示是否开启 PDF 识别，有效值为 true 和 false，默认值为 false，开启后可同时支持图片和 PDF 的识别。
+        :param PdfPagenumber(int): type 值为 general、fast 时有效，表示需要识别的 PDF 页面的对应页码，仅支持 PDF 单页识别，当上传文件为 PDF 且 ispdf 参数值为 true 时有效，默认值为1。
+        :param Isword(bool): type 值为 general、accurate 时有效，表示识别后是否需要返回单字信息，有效值为 true 和 false，默认为 false。
+        :param EnableWordPolygon(bool): type 值为 handwriting 时有效，表示是否开启单字的四点定位坐标输出，有效值为 true 和 false，默认值为 false。
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            def ci_ocr_process():
+                # 通用文字识别
+                response = client.ci_ocr_process(
+                    Bucket=bucket_name,
+                    Key='ocr.jpeg',
+                )
+                print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'OCR'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['type'] = Type
+        params['language-type'] = LanguageType
+        params['ispdf'] = str(Ispdf).lower()
+        params['pdf-pagenumber'] = PdfPagenumber
+        params['isword'] = str(Isword).lower()
+        params['enable-word-polygon'] = str(EnableWordPolygon).lower()
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_ocr_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+
+        return data
 
     def ci_image_process(self, Bucket, Key, **kwargs):
         """查询CI image process
