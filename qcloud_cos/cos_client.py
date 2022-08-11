@@ -7173,8 +7173,8 @@ class CosS3Client(object):
         return data
 
     def ci_create_doc_job(self, Bucket, QueueId, InputObject, OutputBucket, OutputRegion, OutputObject, SrcType=None, TgtType=None,
-                          StartPage=None, EndPage=None, SheetId=None, PaperDirection=None, PaperSize=None, DocPassword=None, Comments=None, PageRanges=None,
-                          ImageParams=None, Quality=None, Zoom=None, ImageDpi=None, PicPagination=None, **kwargs):
+                          StartPage=None, EndPage=-1, SheetId=0, PaperDirection=0, PaperSize=0, DocPassword=None, Comments=None, PageRanges=None,
+                          ImageParams=None, Quality=100, Zoom=100, ImageDpi=96, PicPagination=0, **kwargs):
         """ 创建任务接口 https://cloud.tencent.com/document/product/460/46942
 
         :param Bucket(string): 存储桶名称.
