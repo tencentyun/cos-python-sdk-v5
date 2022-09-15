@@ -7124,14 +7124,14 @@ class CosS3Client(object):
 
         return response
 
-    def ci_get_doc_queue(self, Bucket, State='All', QueueIds='', PageNumber='', PageSize='', **kwargs):
+    def ci_get_doc_queue(self, Bucket, State='All', QueueIds='', PageNumber=1, PageSize=10, **kwargs):
         """查询文档转码处理队列接口 https://cloud.tencent.com/document/product/460/46946
 
         :param Bucket(string): 存储桶名称.
         :param QueueIds(string): 队列 ID，以“,”符号分割字符串.
         :param State(string): 队列状态
-        :param PageNumber(string): 第几页
-        :param PageSize(string): 每页个数
+        :param PageNumber(int): 第几页
+        :param PageSize(int): 每页个数
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -7163,8 +7163,8 @@ class CosS3Client(object):
             url=to_unicode(url),
             queueIds=to_unicode('queueIds='+QueueIds),
             state=to_unicode('state='+State),
-            pageNumber=to_unicode('pageNumber='+PageNumber),
-            pageSize=to_unicode('pageSize='+PageSize),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
         )
         logger.info("get_doc_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
@@ -7635,7 +7635,7 @@ class CosS3Client(object):
 
         return response
 
-    def ci_get_doc_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
+    def ci_get_doc_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber=1, PageSize=10, **kwargs):
         """查询文档预览开通状态接口 https://cloud.tencent.com/document/product/460/46945
 
         :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
@@ -7679,8 +7679,8 @@ class CosS3Client(object):
             regions=to_unicode('regions='+Regions),
             bucketNames=to_unicode('bucketNames='+BucketNames),
             bucketName=to_unicode('bucketName='+BucketName),
-            pageNumber=to_unicode('pageNumber='+PageNumber),
-            pageSize=to_unicode('pageSize='+PageSize),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
         )
         logger.info("ci_get_doc_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
@@ -7760,17 +7760,17 @@ class CosS3Client(object):
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
-        format_dict(data, ['SpeechBucketList'])
+        format_dict(data, ['AsrBucketList'])
         return data
 
-    def ci_get_asr_queue(self, Bucket, State='All', QueueIds='', PageNumber='', PageSize='', **kwargs):
+    def ci_get_asr_queue(self, Bucket, State='All', QueueIds='', PageNumber=1, PageSize=10, **kwargs):
         """查询语音识别队列接口 https://cloud.tencent.com/document/product/460/46234
 
         :param Bucket(string): 存储桶名称.
         :param QueueIds(string): 队列 ID，以“,”符号分割字符串.
         :param State(string): 队列状态
-        :param PageNumber(string): 第几页
-        :param PageSize(string): 每页个数
+        :param PageNumber(int): 第几页
+        :param PageSize(int): 每页个数
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -7802,8 +7802,8 @@ class CosS3Client(object):
             url=to_unicode(url),
             queueIds=to_unicode('queueIds='+QueueIds),
             state=to_unicode('state='+State),
-            pageNumber=to_unicode('pageNumber='+PageNumber),
-            pageSize=to_unicode('pageSize='+PageSize),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
         )
         logger.info("get_asr_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
@@ -8075,7 +8075,7 @@ class CosS3Client(object):
         """ 创建语音识别模板接口 https://cloud.tencent.com/document/product/460/78939
 
         :param Bucket(string): 存储桶名称.
-        :param Name(string): 存储桶名称.
+        :param Name(string): 模板名称.
         :param EngineModelType(string): 引擎模型类型，分为电话场景和非电话场景
                                         电话场景：
                                             8k_zh：电话 8k 中文普通话通用（可用于双声道音频）。

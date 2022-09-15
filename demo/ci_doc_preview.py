@@ -33,8 +33,8 @@ def ci_get_doc_bucket():
         Regions=region,
         # BucketName='demo',
         BucketNames=bucket_name,
-        PageSize="1",
-        PageNumber="1"
+        PageSize=1,
+        PageNumber=1
     )
     print(response)
     return response
@@ -44,9 +44,9 @@ def ci_get_doc_queue():
     # 查询文档预览队列信息
     response = client.ci_get_doc_queue(
         Bucket=bucket_name,
-        QueueIds='p4bdf22xxxxxxxxxxxxxxxxxxxxxxxxxf1',
-        PageNumber='1',
-        PageSize='10',
+        # QueueIds='p4bdf22xxxxxxxxxxxxxxxxxxxxxxxxxf1',
+        PageNumber=1,
+        PageSize=1,
     )
     print(response)
     return response
