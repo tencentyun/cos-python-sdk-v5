@@ -1049,6 +1049,50 @@ def test_put_get_delete_bucket_domain():
         Bucket=test_bucket
     )
 
+def test_put_get_delete_bucket_domain_certificate():
+    """测试设置获取删除bucket自定义域名证书"""
+    domain = 'tiedu-gz.coshelper.com'
+    if TRAVIS_FLAG == 'true':
+        domain = 'tiedu-ger.coshelper.com'
+    domain_cert_config = {
+        'CertificateInfo': {
+            'CertType': 'CustomCert',
+            'CustomCert': {
+                'Cert': "====certificate====",
+                'PrivateKey': "====PrivateKey====",
+            },
+        },
+        'DomainList': [
+            {
+                'DomainName': domain
+            },
+        ],
+    }
+
+    response = client.delete_bucket_domain_certificate(
+        Bucket=test_bucket,
+        DomainName=domain
+    )
+
+    time.sleep(2)
+    response = client.put_bucket_domain_certificate(
+        Bucket=test_bucket,
+        DomainCertificateConfiguration=domain_cert_config
+    )
+    # wait for sync
+    # get domain certificate
+    time.sleep(4)
+    response = client.get_bucket_domain_certificate(
+        Bucket=test_bucket,
+        DomainName=domain
+    )
+    assert response["Status"] == "Enabled"
+
+    # delete domain certificate
+    response = client.delete_bucket_domain_certificate(
+        Bucket=test_bucket,
+        DomainName=domain
+    )
 
 def test_put_get_delete_bucket_inventory():
     """测试设置获取删除bucket清单"""
