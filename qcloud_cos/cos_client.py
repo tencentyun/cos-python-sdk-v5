@@ -1273,10 +1273,11 @@ class CosS3Client(object):
         return data
 
     # s3 bucket interface begin
-    def create_bucket(self, Bucket, **kwargs):
+    def create_bucket(self, Bucket, BucketAZConfig=None, **kwargs):
         """创建一个bucket
 
         :param Bucket(string): 存储桶名称.
+        :param BucketAZConfig(string): 存储桶的多AZ配置
         :param kwargs(dict): 设置请求headers.
         :return: None.
 
@@ -1284,12 +1285,23 @@ class CosS3Client(object):
 
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
-            # 创建bucket
+            # 创建单AZ bucket
             response = client.create_bucket(
                 Bucket='bucket'
             )
+            # 创建多AZ bucket
+            response = client.create_bucket(
+                Bucket='bucket',
+                BucketAZConfig='MAZ'
+            )
         """
         headers = mapped(kwargs)
+        xml_config = None
+        if BucketAZConfig == 'MAZ':
+            bucket_config = {'BucketAZConfig': 'MAZ'}
+            xml_config = format_xml(data=bucket_config, root='CreateBucketConfiguration')
+            headers['Content-MD5'] = get_md5(xml_config)
+            headers['Content-Type'] = 'application/xml'
         url = self._conf.uri(bucket=Bucket)
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -1298,6 +1310,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             bucket=Bucket,
+            data=xml_config,
             auth=CosS3Auth(self._conf),
             headers=headers)
         return None
@@ -2564,6 +2577,28 @@ class CosS3Client(object):
             method='DELETE',
             url=url,
             bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def put_bucket_domain_certificate(self, Bucket, DomainCertificateConfiguration={}, **kwargs):
+
+        lst = ['<DomainList>', '</DomainList>']  # 类型为list的标签
+        xml_config = format_xml(data=DomainCertificateConfiguration, root='DomainCertificate', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'domaincertificate': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket domain certificate, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
             params=params)
