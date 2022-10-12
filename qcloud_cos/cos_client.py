@@ -7846,13 +7846,14 @@ class CosS3Client(object):
         return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
                                           Request=Request, UrlPath="/asrqueue/", **kwargs)
 
-    def ci_create_asr_job(self, Bucket, QueueId, InputObject, OutputBucket, OutputRegion, OutputObject, TemplateId=None,
+    def ci_create_asr_job(self, Bucket, QueueId, OutputBucket, OutputRegion, OutputObject, InputObject=None, Url=None, TemplateId=None,
                           SpeechRecognition=None, CallBack=None, CallBackFormat=None, CallBackType=None, CallBackMqConfig=None, **kwargs):
         """ 创建语音识别任务接口 https://cloud.tencent.com/document/product/460/78951
 
         :param Bucket(string): 存储桶名称.
         :param QueueId(string): 任务所在的队列 ID.
         :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param Url(string): 外网可下载的Url.
         :param OutputBucket(string): 存储结果的存储桶.
         :param OutputRegion(string): 存储结果的存储桶的地域.
         :param OutputObject(string): 输出文件路径。
@@ -7901,7 +7902,6 @@ class CosS3Client(object):
         params = format_values(params)
         body = {
             'Input': {
-                'Object': InputObject,
             },
             'QueueId': QueueId,
             'Tag': 'SpeechRecognition',
@@ -7913,6 +7913,10 @@ class CosS3Client(object):
                 },
             }
         }
+        if InputObject:
+            body['Input']['Object'] = InputObject
+        if Url:
+            body['Input']['Url'] = Url
         if TemplateId:
             body['Operation']['TemplateId'] = TemplateId
         if SpeechRecognition:
@@ -8069,9 +8073,9 @@ class CosS3Client(object):
         format_dict(data, ['JobsDetail'])
         return data
 
-    def ci_create_asr_template(self, Bucket, Name, EngineModelType, ChannelNum,
-                               ResTextFormat, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
-                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', **kwargs):
+    def ci_create_asr_template(self, Bucket, Name, EngineModelType, ChannelNum=None,
+                               ResTextFormat=None, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
         """ 创建语音识别模板接口 https://cloud.tencent.com/document/product/460/78939
 
         :param Bucket(string): 存储桶名称.
@@ -8099,8 +8103,12 @@ class CosS3Client(object):
         :param ConvertNumMode(int): 是否进行阿拉伯数字智能转换（目前支持中文普通话引擎）：0 表示不转换，直接输出中文数字。1 表示根据场景智能转换为阿拉伯数字。3 表示打开数学相关数字转换。默认值为0。
         :param SpeakerDiarization(int): 是否开启说话人分离：0 表示不开启。1 表示开启(仅支持8k_zh，16k_zh，16k_zh_video，单声道音频)。默认值为0。注意：8k电话场景建议使用双声道来区分通话双方，设置ChannelNum=2即可，不用开启说话人分离。
         :param SpeakerNumber(int): 说话人分离人数（需配合开启说话人分离使用），取值范围：0-10。0 代表自动分离（目前仅支持≤6个人），1-10代表指定说话人数分离。默认值为 0。
-        :param FilterPunc(int): 是否过滤标点符号（目前支持中文普通话引擎）：0 表示不过滤。1 表示过滤句末标点。2 表示过滤所有标点。默认值为 0。
+        :param FilterPunc(int): 是否过滤标点符号（目前支持中文普通话引擎）：0 表示不过滤。1 表示过滤句末标点。2 表示过滤所有标点。默认值为 0 。
         :param OutputFileType(string): 输出文件类型，可选 txt、srt。默认为 txt。
+        :param FlashAsr(bool): 是否开启极速ASR，可选true、false。默认为false.
+        :param Format(string): 极速ASR音频格式。支持 wav、pcm、ogg-opus、speex、silk、mp3、m4a、aac 。
+        :param FirstChannelOnly(int): 极速ASR参数。表示是否只识别首个声道，默认为1。0：识别所有声道；1：识别首个声道。
+        :param WordInfo(int): 极速ASR参数。表示是否显示词级别时间戳，默认为0。0：不显示；1：显示，不包含标点时间戳，2：显示，包含标点时间戳。
         :return(dict): 创建成功返回的结果,dict类型.
 
         .. code-block:: python
@@ -8135,10 +8143,12 @@ class CosS3Client(object):
             'Tag': 'SpeechRecognition',
             'SpeechRecognition': {
                 'EngineModelType': EngineModelType,
-                'ChannelNum': ChannelNum,
-                'ResTextFormat': ResTextFormat
             }
         }
+        if ChannelNum:
+            body['SpeechRecognition']['ChannelNum'] = ChannelNum
+        if ResTextFormat:
+            body['SpeechRecognition']['ResTextFormat'] = ResTextFormat
         body['SpeechRecognition']['FilterDirty'] = FilterDirty
         body['SpeechRecognition']['FilterModal'] = FilterModal
         body['SpeechRecognition']['ConvertNumMode'] = ConvertNumMode
@@ -8146,6 +8156,12 @@ class CosS3Client(object):
         body['SpeechRecognition']['SpeakerNumber'] = SpeakerNumber
         body['SpeechRecognition']['FilterPunc'] = FilterPunc
         body['SpeechRecognition']['OutputFileType'] = OutputFileType
+        body['SpeechRecognition']['FlashAsr'] = str(FlashAsr).lower()
+        if Format:
+            body['SpeechRecognition']['Format'] = Format
+        body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
+        body['SpeechRecognition']['WordInfo'] = WordInfo
+
         xml_config = format_xml(data=body, root='Request')
         path = "/template"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
@@ -8168,7 +8184,7 @@ class CosS3Client(object):
 
     def ci_update_asr_template(self, Bucket, TemplateId, Name, EngineModelType, ChannelNum,
                                ResTextFormat, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
-                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', **kwargs):
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
         """ 更新语音识别模板接口 https://cloud.tencent.com/document/product/460/78942
 
         :param Bucket(string): 存储桶名称.
@@ -8199,6 +8215,10 @@ class CosS3Client(object):
         :param SpeakerNumber(int): 说话人分离人数（需配合开启说话人分离使用），取值范围：0-10。0 代表自动分离（目前仅支持≤6个人），1-10代表指定说话人数分离。默认值为 0。
         :param FilterPunc(int): 是否过滤标点符号（目前支持中文普通话引擎）：0 表示不过滤。1 表示过滤句末标点。2 表示过滤所有标点。默认值为 0。
         :param OutputFileType(string): 输出文件类型，可选 txt、srt。默认为 txt。
+        :param FlashAsr(bool): 是否开启极速ASR，可选true、false。默认为false.
+        :param Format(string): 极速ASR音频格式。支持 wav、pcm、ogg-opus、speex、silk、mp3、m4a、aac 。
+        :param FirstChannelOnly(int): 极速ASR参数。表示是否只识别首个声道，默认为1。0：识别所有声道；1：识别首个声道。
+        :param WordInfo(int): 极速ASR参数。表示是否显示词级别时间戳，默认为0。0：不显示；1：显示，不包含标点时间戳，2：显示，包含标点时间戳。
         :return(dict): 更新成功返回的结果,dict类型.
 
         .. code-block:: python
@@ -8234,10 +8254,12 @@ class CosS3Client(object):
             'Tag': 'SpeechRecognition',
             'SpeechRecognition': {
                 'EngineModelType': EngineModelType,
-                'ChannelNum': ChannelNum,
-                'ResTextFormat': ResTextFormat
             }
         }
+        if ChannelNum:
+            body['SpeechRecognition']['ChannelNum'] = ChannelNum
+        if ResTextFormat:
+            body['SpeechRecognition']['ResTextFormat'] = ResTextFormat
         body['SpeechRecognition']['FilterDirty'] = FilterDirty
         body['SpeechRecognition']['FilterModal'] = FilterModal
         body['SpeechRecognition']['ConvertNumMode'] = ConvertNumMode
@@ -8245,6 +8267,11 @@ class CosS3Client(object):
         body['SpeechRecognition']['SpeakerNumber'] = SpeakerNumber
         body['SpeechRecognition']['FilterPunc'] = FilterPunc
         body['SpeechRecognition']['OutputFileType'] = OutputFileType
+        body['SpeechRecognition']['FlashAsr'] = str(FlashAsr).lower()
+        if Format:
+            body['SpeechRecognition']['Format'] = Format
+        body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
+        body['SpeechRecognition']['WordInfo'] = WordInfo
         xml_config = format_xml(data=body, root='Request')
         path = "/template/" + TemplateId
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
