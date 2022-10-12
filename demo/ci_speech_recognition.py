@@ -78,6 +78,8 @@ def ci_create_asr_jobs():
         'EngineModelType': '16k_zh',
         'ChannelNum': '1',
         'ResTextFormat': '1',
+        # 'FlashAsr': 'true',
+        # 'Format': 'mp3'
     }
     response = client.ci_create_asr_job(
         Bucket=bucket_name,
@@ -122,6 +124,8 @@ def ci_create_asr_template():
         EngineModelType='16k_zh',
         ChannelNum=1,
         ResTextFormat=2,
+        FlashAsr=True,
+        Format='mp3',
     )
     print(response)
     return response
