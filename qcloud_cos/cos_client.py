@@ -2640,6 +2640,8 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
         # params = {'domaincertificate': '', 'domainname': DomainName}
         params = {'domainname': DomainName}
         url = self._conf.uri(bucket=Bucket)
@@ -2675,6 +2677,8 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
         # params = {'domaincertificate': '', 'domainname': DomainName}
         params = {'domainname': DomainName}
         url = self._conf.uri(bucket=Bucket)

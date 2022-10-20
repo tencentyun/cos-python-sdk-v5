@@ -1051,15 +1051,50 @@ def test_put_get_delete_bucket_domain():
 
 def test_put_get_delete_bucket_domain_certificate():
     """测试设置获取删除bucket自定义域名证书"""
-    domain = 'tiedu-gz.coshelper.com'
-    if TRAVIS_FLAG == 'true':
-        domain = 'tiedu-ger.coshelper.com'
+
+    """
+    存储桶 bj-1259654469 专门用于测试自定义域名证书
+    """
+
+    temp_bucket = 'bj-1259654469'
+    temp_conf = CosConfig(
+        Region='ap-beijing',
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY
+    )
+    temp_client = CosS3Client(
+        conf=temp_conf,
+        retry=3
+    )
+
+    domain = 'testcertificate.coshelper.com'
+    domain_config = {
+        'DomainRule': [
+            {
+                'Name': domain,
+                'Type': 'REST',
+                'Status': 'ENABLED',
+            },
+        ]
+    }
+
+    # put domain
+    response = temp_client.put_bucket_domain(
+        Bucket=temp_bucket,
+        DomainConfiguration=domain_config
+    ) 
+
+    with open('./testcertificate.coshelper.com.key', 'rb') as f:
+        key = f.read().decode('utf-8')
+    with open('./testcertificate.coshelper.com.pem', 'rb') as f:
+        cert = f.read().decode('utf-8')
+
     domain_cert_config = {
         'CertificateInfo': {
             'CertType': 'CustomCert',
             'CustomCert': {
-                'Cert': "====certificate====",
-                'PrivateKey': "====PrivateKey====",
+                'Cert': cert,
+                'PrivateKey': key,
             },
         },
         'DomainList': [
@@ -1069,29 +1104,35 @@ def test_put_get_delete_bucket_domain_certificate():
         ],
     }
 
-    response = client.delete_bucket_domain_certificate(
-        Bucket=test_bucket,
+    # put domain certificate
+    response = temp_client.delete_bucket_domain_certificate(
+        Bucket=temp_bucket,
         DomainName=domain
     )
 
     time.sleep(2)
-    response = client.put_bucket_domain_certificate(
-        Bucket=test_bucket,
+    response = temp_client.put_bucket_domain_certificate(
+        Bucket=temp_bucket,
         DomainCertificateConfiguration=domain_cert_config
     )
     # wait for sync
     # get domain certificate
     time.sleep(4)
-    response = client.get_bucket_domain_certificate(
-        Bucket=test_bucket,
+    response = temp_client.get_bucket_domain_certificate(
+        Bucket=temp_bucket,
         DomainName=domain
     )
     assert response["Status"] == "Enabled"
 
     # delete domain certificate
-    response = client.delete_bucket_domain_certificate(
-        Bucket=test_bucket,
+    response = temp_client.delete_bucket_domain_certificate(
+        Bucket=temp_bucket,
         DomainName=domain
+    )
+
+    # delete domain
+    response = temp_client.delete_bucket_domain(
+        Bucket=temp_bucket,
     )
 
 def test_put_get_delete_bucket_inventory():
