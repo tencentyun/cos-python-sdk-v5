@@ -2582,7 +2582,7 @@ class CosS3Client(object):
             params=params)
         return None
 
-    def put_bucket_domain_certificate(self, Bucket, DomainCertificateConfiguration={}, **kwargs):
+    def put_bucket_domain_certificate(self, Bucket, DomainCertificateConfiguration, **kwargs):
         """设置bucket的自定义域名证书配置规则
 
         :param Bucket(string): 存储桶名称.
