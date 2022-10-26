@@ -1273,10 +1273,11 @@ class CosS3Client(object):
         return data
 
     # s3 bucket interface begin
-    def create_bucket(self, Bucket, **kwargs):
+    def create_bucket(self, Bucket, BucketAZConfig=None, **kwargs):
         """创建一个bucket
 
         :param Bucket(string): 存储桶名称.
+        :param BucketAZConfig(string): 存储桶的多AZ配置
         :param kwargs(dict): 设置请求headers.
         :return: None.
 
@@ -1284,12 +1285,23 @@ class CosS3Client(object):
 
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
-            # 创建bucket
+            # 创建单AZ bucket
             response = client.create_bucket(
                 Bucket='bucket'
             )
+            # 创建多AZ bucket
+            response = client.create_bucket(
+                Bucket='bucket',
+                BucketAZConfig='MAZ'
+            )
         """
         headers = mapped(kwargs)
+        xml_config = None
+        if BucketAZConfig == 'MAZ':
+            bucket_config = {'BucketAZConfig': 'MAZ'}
+            xml_config = format_xml(data=bucket_config, root='CreateBucketConfiguration')
+            headers['Content-MD5'] = get_md5(xml_config)
+            headers['Content-Type'] = 'application/xml'
         url = self._conf.uri(bucket=Bucket)
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -1298,6 +1310,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             bucket=Bucket,
+            data=xml_config,
             auth=CosS3Auth(self._conf),
             headers=headers)
         return None
@@ -2558,6 +2571,119 @@ class CosS3Client(object):
         params = {'domain': ''}
         url = self._conf.uri(bucket=Bucket)
         logger.info("delete bucket domain, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def put_bucket_domain_certificate(self, Bucket, DomainCertificateConfiguration, **kwargs):
+        """设置bucket的自定义域名证书配置规则
+
+        :param Bucket(string): 存储桶名称.
+        :param DomainCertificateConfiguration(dict): 设置Bucket的自定义域名证书配置规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket自定义域名证书配置规则
+            domain_cert_config = {}
+            response = client.put_bucket_domain_certificate(
+                Bucket='bucket',
+                DomainCertificateConfiguration=domain_cert_config
+            )
+        """
+        lst = ['<DomainList>', '</DomainList>']  # 类型为list的标签
+        xml_config = format_xml(data=DomainCertificateConfiguration, root='DomainCertificate', lst=lst)
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        # params = {'domaincertificate': ''}
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
+        url = self._conf.uri(bucket=Bucket)
+        url += '?domaincertificate'
+        logger.info("put bucket domain certificate, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf),
+            headers=headers)
+        return None
+    
+    def get_bucket_domain_certificate(self, Bucket, DomainName, **kwargs):
+        """获取bucket的自定义域名证书配置规则
+
+        :param Bucket(string): 存储桶名称.
+        :param DomainName(string): Bucket的自定义域名.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket的自定义域名证书配置规则.
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket自定义域名证书配置规则
+            response = client.get_bucket_domain_certificate(
+                Bucket='bucket',
+                DomainName='domain-name'
+            )
+        """
+        headers = mapped(kwargs)
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
+        # params = {'domaincertificate': '', 'domainname': DomainName}
+        params = {'domainname': DomainName}
+        url = self._conf.uri(bucket=Bucket)
+        url += '?domaincertificate'
+        logger.info("get bucket domain certificate, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        return data
+    
+    def delete_bucket_domain_certificate(self, Bucket, DomainName, **kwargs):
+        """删除bucket的自定义域名证书配置规则
+
+        :param Bucket(string): 存储桶名称.
+        :param DomainName(string): Bucket的自定义域名.
+        :param kwargs(dict): 设置请求headers.
+        :return: None
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket自定义域名证书配置规则
+            response = client.delete_bucket_domain_certificate(
+                Bucket='bucket',
+                DomainName='domain-name'
+            )
+        """
+        headers = mapped(kwargs)
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
+        # params = {'domaincertificate': '', 'domainname': DomainName}
+        params = {'domainname': DomainName}
+        url = self._conf.uri(bucket=Bucket)
+        url += "?domaincertificate"
+        logger.info("delete bucket domain certificate, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(

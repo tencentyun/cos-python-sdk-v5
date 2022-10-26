@@ -406,6 +406,21 @@ def test_create_head_delete_bucket():
         Bucket=bucket_name
     )
 
+def test_create_head_delete_maz_bucket():
+    """创建一个多AZ bucket,head它是否存在,最后删除一个空bucket"""
+    bucket_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
+    bucket_name = 'buckettest-maz' + bucket_id + '-' + APPID
+    response = client.create_bucket(
+        Bucket=bucket_name,
+        BucketAZConfig='MAZ',
+        ACL='public-read'
+    )
+    response = client.head_bucket(
+        Bucket=bucket_name
+    )
+    response = client.delete_bucket(
+        Bucket=bucket_name
+    )
 
 def test_put_bucket_acl_illegal():
     """设置非法的ACL"""
@@ -1034,6 +1049,91 @@ def test_put_get_delete_bucket_domain():
         Bucket=test_bucket
     )
 
+def test_put_get_delete_bucket_domain_certificate():
+    """测试设置获取删除bucket自定义域名证书"""
+
+    """
+    存储桶 bj-1259654469 专门用于测试自定义域名证书
+    """
+
+    temp_bucket = 'bj-1259654469'
+    temp_conf = CosConfig(
+        Region='ap-beijing',
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY
+    )
+    temp_client = CosS3Client(
+        conf=temp_conf,
+        retry=3
+    )
+
+    domain = 'testcertificate.coshelper.com'
+    domain_config = {
+        'DomainRule': [
+            {
+                'Name': domain,
+                'Type': 'REST',
+                'Status': 'ENABLED',
+            },
+        ]
+    }
+
+    # put domain
+    response = temp_client.put_bucket_domain(
+        Bucket=temp_bucket,
+        DomainConfiguration=domain_config
+    ) 
+
+    with open('./testcertificate.coshelper.com.key', 'rb') as f:
+        key = f.read().decode('utf-8')
+    with open('./testcertificate.coshelper.com.pem', 'rb') as f:
+        cert = f.read().decode('utf-8')
+
+    domain_cert_config = {
+        'CertificateInfo': {
+            'CertType': 'CustomCert',
+            'CustomCert': {
+                'Cert': cert,
+                'PrivateKey': key,
+            },
+        },
+        'DomainList': [
+            {
+                'DomainName': domain
+            },
+        ],
+    }
+
+    # put domain certificate
+    response = temp_client.delete_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainName=domain
+    )
+
+    time.sleep(2)
+    response = temp_client.put_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainCertificateConfiguration=domain_cert_config
+    )
+    # wait for sync
+    # get domain certificate
+    time.sleep(4)
+    response = temp_client.get_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainName=domain
+    )
+    assert response["Status"] == "Enabled"
+
+    # delete domain certificate
+    response = temp_client.delete_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainName=domain
+    )
+
+    # delete domain
+    response = temp_client.delete_bucket_domain(
+        Bucket=temp_bucket,
+    )
 
 def test_put_get_delete_bucket_inventory():
     """测试设置获取删除bucket清单"""
