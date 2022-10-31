@@ -1276,7 +1276,7 @@ class CosS3Client(object):
     def create_bucket(self, Bucket, BucketAZConfig=None, **kwargs):
         """创建一个bucket
 
-        :param Bucket(string): 存储桶名称.
+        :param Bucket(string): 存储桶名称. 存储桶名称不支持大写字母，COS 后端会将用户传入的大写字母自动转换为小写字母用于创建存储桶.
         :param BucketAZConfig(string): 存储桶的多AZ配置
         :param kwargs(dict): 设置请求headers.
         :return: None.
