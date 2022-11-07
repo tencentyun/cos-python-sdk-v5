@@ -514,7 +514,7 @@ def test_put_get_delete_cors():
     )
     assert response
     # delete cors
-    response = client.get_bucket_cors(
+    response = client.delete_bucket_cors(
         Bucket=test_bucket
     )
 
