@@ -13,7 +13,6 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 from datetime import datetime
 from xmltodict import unparse
-from dicttoxml import dicttoxml
 from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError

@@ -9,7 +9,7 @@ install:
   - pip install six
   - pip install nose
   - pip install pycodestyle
-  - pip install dicttoxml
+  - pip install xmltodict
   - pip install crcmod
 notifications:
   email:

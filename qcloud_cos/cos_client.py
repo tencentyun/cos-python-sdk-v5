@@ -17,7 +17,6 @@ from datetime import datetime
 from six.moves.urllib.parse import quote, unquote, urlencode
 from six import text_type, binary_type
 from hashlib import md5
-from dicttoxml import dicttoxml
 from .streambody import StreamBody
 from .xml2dict import Xml2Dict
 from .cos_auth import CosS3Auth
