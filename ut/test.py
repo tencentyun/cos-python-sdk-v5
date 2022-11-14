@@ -2253,7 +2253,7 @@ def test_sse_c_file():
 
 if __name__ == "__main__":
     setUp()
-    '''
+    """
     test_put_get_delete_object_10MB()
     test_put_object_speacil_names()
     test_get_object_special_names()
@@ -2334,5 +2334,5 @@ if __name__ == "__main__":
     test_ci_list_doc_transcode_jobs()
     test_ci_live_video_auditing()
     test_sse_c_file()
-    '''
+    """
     tearDown()
