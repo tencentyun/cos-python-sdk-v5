@@ -17,7 +17,7 @@ install:
 - pip install nose
 - pip install pycodestyle
 - pip install importlib_metadata
-- pip install dicttoxml
+- pip install xmltodict
 - pip install crcmod
 - pip install pycryptodome
 notifications:

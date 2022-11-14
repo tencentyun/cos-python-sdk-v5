@@ -17,7 +17,6 @@ from datetime import datetime
 from six.moves.urllib.parse import quote, unquote, urlencode
 from six import text_type, binary_type
 from hashlib import md5
-from dicttoxml import dicttoxml
 from .streambody import StreamBody
 from .xml2dict import Xml2Dict
 from .cos_auth import CosS3Auth
@@ -747,8 +746,7 @@ class CosS3Client(object):
                 Delete=objects
             )
         """
-        lst = ['<Object>', '</Object>']  # 类型为list的标签
-        xml_config = format_xml(data=Delete, root='Delete', lst=lst)
+        xml_config = format_xml(data=Delete, root='Delete')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -1141,12 +1139,9 @@ class CosS3Client(object):
                 GrantRead='id="qcs::cam::uin/123:uin/456",id="qcs::cam::uin/123:uin/123"'
             )
         """
-        lst = [  # 类型为list的标签
-            '<Grant>',
-            '</Grant>']
         xml_config = ""
         if AccessControlPolicy:
-            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy', lst=lst)
+            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy')
         headers = mapped(kwargs)
         params = {'acl': ''}
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -1610,12 +1605,9 @@ class CosS3Client(object):
                 GrantRead='id="qcs::cam::uin/123:uin/456",id="qcs::cam::uin/123:uin/123"'
             )
         """
-        lst = [  # 类型为list的标签
-            '<Grant>',
-            '</Grant>']
         xml_config = ""
         if AccessControlPolicy:
-            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy', lst=lst)
+            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy')
         headers = mapped(kwargs)
         params = {'acl': ''}
         url = self._conf.uri(bucket=Bucket)
@@ -1699,18 +1691,7 @@ class CosS3Client(object):
                 CORSConfiguration=cors_config
             )
         """
-        lst = [  # 类型为list的标签
-            '<CORSRule>',
-            '<AllowedOrigin>',
-            '<AllowedMethod>',
-            '<AllowedHeader>',
-            '<ExposeHeader>',
-            '</CORSRule>',
-            '</AllowedOrigin>',
-            '</AllowedMethod>',
-            '</AllowedHeader>',
-            '</ExposeHeader>']
-        xml_config = format_xml(data=CORSConfiguration, root='CORSConfiguration', lst=lst)
+        xml_config = format_xml(data=CORSConfiguration, root='CORSConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -1833,17 +1814,7 @@ class CosS3Client(object):
             )
         """
         # 类型为list的标签
-        lst = [
-            '<Rule>',
-            '<Tag>',
-            '<Transition>',
-            '<NoncurrentVersionTransition>',
-            '</NoncurrentVersionTransition>',
-            '</Transition>',
-            '</Tag>',
-            '</Rule>'
-        ]
-        xml_config = format_xml(data=LifecycleConfiguration, root='LifecycleConfiguration', lst=lst)
+        xml_config = format_xml(data=LifecycleConfiguration, root='LifecycleConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2068,8 +2039,7 @@ class CosS3Client(object):
                 ReplicationConfiguration=replication_config
             )
         """
-        lst = ['<Rule>', '</Rule>']  # 类型为list的标签
-        xml_config = format_xml(data=ReplicationConfiguration, root='ReplicationConfiguration', lst=lst)
+        xml_config = format_xml(data=ReplicationConfiguration, root='ReplicationConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2197,7 +2167,12 @@ class CosS3Client(object):
                 WebsiteConfiguration=website_config
             )
         """
-        xml_config = format_xml(data=WebsiteConfiguration, root='WebsiteConfiguration', parent_child=True)
+        # 重构 WebsiteConfiguration['RoutingRules']
+        WebsiteConfigurationCpy = copy.deepcopy(WebsiteConfiguration)
+        if 'RoutingRules' in WebsiteConfigurationCpy.keys():
+            WebsiteConfigurationCpy['RoutingRules'] = {'RoutingRule': WebsiteConfigurationCpy['RoutingRules']}
+
+        xml_config = format_xml(data=WebsiteConfigurationCpy, root='WebsiteConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2496,8 +2471,7 @@ class CosS3Client(object):
                 DomainConfiguration=domain_config
             )
         """
-        lst = ['<DomainRule>', '</DomainRule>']  # 类型为list的标签
-        xml_config = format_xml(data=DomainConfiguration, root='DomainConfiguration', lst=lst)
+        xml_config = format_xml(data=DomainConfiguration, root='DomainConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2600,8 +2574,7 @@ class CosS3Client(object):
                 DomainCertificateConfiguration=domain_cert_config
             )
         """
-        lst = ['<DomainList>', '</DomainList>']  # 类型为list的标签
-        xml_config = format_xml(data=DomainCertificateConfiguration, root='DomainCertificate', lst=lst)
+        xml_config = format_xml(data=DomainCertificateConfiguration, root='DomainCertificate')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2714,8 +2687,7 @@ class CosS3Client(object):
                 OriginConfiguration=origin_config
             )
         """
-        lst = ['<OriginRule>', '</OriginRule>']  # 类型为list的标签
-        xml_config = format_xml(data=OriginConfiguration, root='OriginConfiguration', lst=lst)
+        xml_config = format_xml(data=OriginConfiguration, root='OriginConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2848,9 +2820,8 @@ class CosS3Client(object):
                 InventoryConfiguration=inventory_config
             )
         """
-        lst = ['<Field>', '</Field>']  # 类型为list的标签
         InventoryConfiguration['Id'] = Id
-        xml_config = format_xml(data=InventoryConfiguration, root='InventoryConfiguration', lst=lst)
+        xml_config = format_xml(data=InventoryConfiguration, root='InventoryConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2965,8 +2936,7 @@ class CosS3Client(object):
                 Tagging=tagging_set
             )
         """
-        lst = ['<Tag>', '</Tag>']  # 类型为list的标签
-        xml_config = format_xml(data=Tagging, root='Tagging', lst=lst)
+        xml_config = format_xml(data=Tagging, root='Tagging')
         headers = mapped(kwargs)
         params = {'tagging': ''}
         if 'versionId' in headers:
@@ -3089,8 +3059,7 @@ class CosS3Client(object):
                 Tagging=tagging_set
             )
         """
-        lst = ['<Tag>', '</Tag>']  # 类型为list的标签
-        xml_config = format_xml(data=Tagging, root='Tagging', lst=lst)
+        xml_config = format_xml(data=Tagging, root='Tagging')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -3203,8 +3172,7 @@ class CosS3Client(object):
                 RefererConfiguration=referer_config
             )
         """
-        lst = ['<Domain>', '</Domain>']  # 类型为list的标签
-        xml_config = format_xml(data=RefererConfiguration, root='RefererConfiguration', lst=lst)
+        xml_config = format_xml(data=RefererConfiguration, root='RefererConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -4059,13 +4027,7 @@ class CosS3Client(object):
         :param kwargs(dict): 设置请求的headers.
         :return: None.
         """
-        # 类型为list的标签
-        lst = [
-            '<Rule>',
-            '</Rule>'
-        ]
-        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration',
-                                lst=lst)
+        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration')
         headers = mapped(kwargs)
         params = {'encryption': ''}
         url = self._conf.uri(bucket=Bucket)
@@ -6012,21 +5974,7 @@ class CosS3Client(object):
             'Conf': conf
         }
 
-        lst = [  # 类型为list的标签
-            '<Input>',
-            '<Object>',
-            '<Url>',
-            '<Interval>',
-            '<MaxFrames>',
-            '<DataId>',
-            '</Input>',
-            '</Object>',
-            '</Url>',
-            '</Interval>',
-            '</MaxFrames>',
-            '</DataId>']
-
-        xml_request = format_xml(data=request, root='Request', lst=lst)
+        xml_request = format_xml(data=request, root='Request')
         headers['Content-Type'] = 'application/xml'
 
         path = 'image/auditing'
@@ -6586,7 +6534,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Jobs(dict): 创建任务的配置.
-        :param Lst(dict): 创建任务dict转xml时去除Key数组.
+        :param Lst(dict): 创建任务dict转xml时去除Key数组. TODO 替换成 xmltodict 库后可以将 Lst 参数去掉
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -6613,7 +6561,7 @@ class CosS3Client(object):
         headers = final_headers
 
         params = format_values(params)
-        xml_config = format_xml(data=Jobs, root='Request', lst=Lst)
+        xml_config = format_xml(data=Jobs, root='Request')
         path = "/jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         logger.info("create_media_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
@@ -6640,7 +6588,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Jobs(dict): 创建任务的配置.
-        :param Lst(dict): 创建任务dict转xml时去除Key数组.
+        :param Lst(dict): 创建任务dict转xml时去除Key数组. TODO 替换为 xmltodict 库后可以将 Lst 参数去掉
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -6667,7 +6615,7 @@ class CosS3Client(object):
         headers = final_headers
 
         params = format_values(params)
-        xml_config = format_xml(data=Jobs, root='Request', lst=Lst)
+        xml_config = format_xml(data=Jobs, root='Request')
         path = "/pic_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         logger.info("create_media_pic_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
