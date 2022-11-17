@@ -127,6 +127,7 @@ class CosConfig(object):
         elif self._anonymous:
             self._secret_id = None
             self._secret_key = None
+            self._credential_inst = None
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
