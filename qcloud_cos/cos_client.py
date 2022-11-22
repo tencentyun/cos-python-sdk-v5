@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 class CosConfig(object):
     """config类，保存用户相关信息"""
 
-    def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
+    def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, CredentialInstance=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
                  PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True):
@@ -119,9 +119,14 @@ class CosConfig(object):
         elif (Access_id and Access_key):
             self._secret_id = self.convert_secret_value(Access_id)
             self._secret_key = self.convert_secret_value(Access_key)
+        elif (CredentialInstance and hasattr(CredentialInstance, "secret_id") and hasattr(CredentialInstance, "secret_key") and hasattr(CredentialInstance, "token")):
+            self._secret_id = None
+            self._secret_key = None
+            self._credential_inst = CredentialInstance
         elif self._anonymous:
             self._secret_id = None
             self._secret_key = None
+            self._credential_inst = None
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 

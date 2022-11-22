@@ -23,16 +23,39 @@ TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ["REGION"]
 APPID = '1251668577'
 TEST_CI = os.environ["TEST_CI"]
+USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-conf = CosConfig(
-    Region=REGION,
-    SecretId=SECRET_ID,
-    SecretKey=SECRET_KEY,
-)
+
+""" CredentialDemo """
+class CredentialDemo:
+    @property
+    def secret_id(self):
+        return SECRET_ID
+    
+    @property
+    def secret_key(self):
+        return SECRET_KEY
+    
+    @property
+    def token(self):
+        return ''
+
+if USE_CREDENTIAL_INST == 'true':
+    conf = CosConfig(
+        Region=REGION,
+        CredentialInstance=CredentialDemo()
+    )
+else:
+    conf = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+    )
+
 client = CosS3Client(conf, retry=3)
 rsa_provider = RSAProvider()
 client_for_rsa = CosEncryptionClient(conf, rsa_provider)
