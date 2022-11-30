@@ -109,8 +109,6 @@ support bucket referer
 
 ## [1.7.6](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.7.5...1.7.6) - 2019-11-26
 
-support Inventory and Bucket Tagging
-
 ### Merged
 
 - support Inventory and Bucket Tagging [`#103`](https://github.com/tencentyun/cos-python-sdk-v5/pull/103)
