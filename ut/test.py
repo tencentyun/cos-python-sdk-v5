@@ -24,7 +24,7 @@ REGION = os.environ["REGION"]
 APPID = '1251668577'
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
-test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
+test_bucket = 'cos-python-v5-testbkt-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
