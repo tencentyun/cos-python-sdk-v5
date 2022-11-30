@@ -1587,6 +1587,8 @@ def test_rsa_client():
 
 
 def test_live_channel():
+    if TEST_CI != 'true':
+        return
     """测试rtmp推流功能"""
     livechannel_config = {
         'Description': 'cos python sdk test',
@@ -1746,6 +1748,9 @@ def _test_qrcode():
 
 
 def test_ci_put_image_style():
+    if TEST_CI != 'true':
+        return
+
     """增加图片样式接口"""
     body = {
         'StyleName': 'style_name',
@@ -1759,6 +1764,9 @@ def test_ci_put_image_style():
 
 
 def test_ci_get_image_style():
+    if TEST_CI != 'true':
+        return
+
     """获取图片样式接口"""
     body = {
         'StyleName': 'style_name',
@@ -1772,6 +1780,9 @@ def test_ci_get_image_style():
 
 
 def test_ci_get_image_info():
+    if TEST_CI != 'true':
+        return
+
     """ci获取图片基本信息接口"""
     response, data = client.ci_get_image_info(
         Bucket=test_bucket,
@@ -1782,6 +1793,9 @@ def test_ci_get_image_info():
 
 
 def test_ci_get_image_exif_info():
+    if TEST_CI != 'true':
+        return
+
     """获取图片exif信息接口"""
     response, data = client.ci_get_image_exif_info(
         Bucket=test_bucket,
@@ -1792,6 +1806,9 @@ def test_ci_get_image_exif_info():
 
 
 def test_ci_get_image_ave_info():
+    if TEST_CI != 'true':
+        return
+
     """获取图片主色调接口"""
     response, data = client.ci_get_image_info(
         Bucket=test_bucket,
@@ -1802,6 +1819,9 @@ def test_ci_get_image_ave_info():
 
 
 def test_ci_image_assess_quality():
+    if TEST_CI != 'true':
+        return
+
     """图片质量评估接口"""
     response = client.ci_image_assess_quality(
         Bucket=test_bucket,
@@ -1811,6 +1831,9 @@ def test_ci_image_assess_quality():
 
 
 def test_ci_qrcode_generate():
+    if TEST_CI != 'true':
+        return
+
     """二维码生成接口"""
     response = client.ci_qrcode_generate(
         Bucket=test_bucket,
@@ -1824,6 +1847,9 @@ def test_ci_qrcode_generate():
 
 
 def test_ci_ocr_process():
+    if TEST_CI != 'true':
+        return
+
     """通用文字识别"""
     response = client.ci_ocr_process(
         Bucket=test_bucket,
