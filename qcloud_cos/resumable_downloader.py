@@ -146,12 +146,13 @@ class ResumableDownLoader(object):
     def __dump_record(self, record):
         record_filepath = self.__record_filepath
         if os.path.exists(self.__record_filepath):
-            record_filepath += '.bak'
+            record_filepath += '.tmp'
         with open(record_filepath, 'w') as f:
             json.dump(record, f)
             logger.debug(
                 'dump record to {0}, bucket: {1}, key: {2}'.format(record_filepath, self.__bucket, self.__key))
-        os.rename(record_filepath, self.__record_filepath)
+        if record_filepath != self.__record_filepath:
+            os.rename(record_filepath, self.__record_filepath)
 
     def __load_record(self):
         record = None
