@@ -11,16 +11,16 @@ def requirements():
         requirements = []
 
         # certifi2021.10.8之后的版本不再支持python2和python3.6之前的版本
-        if sys.version_info.major < 3 or \
-                (sys.version_info.major == 3 and sys.version_info.minor < 6):
-            requirements.append('certifi<=2021.10.8')
+        # if sys.version_info.major < 3 or \
+        #         (sys.version_info.major == 3 and sys.version_info.minor < 6):
+        #     requirements.append('certifi<=2021.10.8')
 
         # requests2.27.1之后的版本不再支持python2和python3.7之前的版本
-        if sys.version_info.major < 3 or \
-                (sys.version_info.major == 3 and sys.version_info.minor < 7):
-            requirements.append('requests>=2.8,<=2.27.1')
-        else:
-            requirements.append('requests>=2.8')
+        # if sys.version_info.major < 3 or \
+        #         (sys.version_info.major == 3 and sys.version_info.minor < 7):
+        #     requirements.append('requests>=2.8,<=2.27.1')
+        # else:
+        #     requirements.append('requests>=2.8')
 
         requirements.extend([line.strip() for line in fileobj])
         return requirements
