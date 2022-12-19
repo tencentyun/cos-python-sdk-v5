@@ -99,8 +99,6 @@ fix retry logic
 
 ## [v1.7.7](https://github.com/tencentyun/cos-python-sdk-v5/compare/1.7.6...v1.7.7) - 2019-12-24
 
-support bucket referer
-
 ### Merged
 
 - support bucket referer [`#106`](https://github.com/tencentyun/cos-python-sdk-v5/pull/106)
