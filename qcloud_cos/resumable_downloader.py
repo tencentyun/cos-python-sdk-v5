@@ -152,6 +152,7 @@ class ResumableDownLoader(object):
             logger.debug(
                 'dump record to {0}, bucket: {1}, key: {2}'.format(record_filepath, self.__bucket, self.__key))
         if record_filepath != self.__record_filepath:
+            os.remove(self.__record_filepath)
             os.rename(record_filepath, self.__record_filepath)
 
     def __load_record(self):
