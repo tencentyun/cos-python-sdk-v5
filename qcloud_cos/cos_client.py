@@ -886,7 +886,7 @@ class CosS3Client(object):
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
         params = format_values(params)
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("upload part copy, url=:{url} ,headers=:{headers}".format(
+        logger.debug("upload part copy, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
@@ -967,7 +967,7 @@ class CosS3Client(object):
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
         params = format_values(params)
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("upload part, url=:{url} ,headers=:{headers}, params=:{params}".format(
+        logger.debug("upload part, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
             params=params))
