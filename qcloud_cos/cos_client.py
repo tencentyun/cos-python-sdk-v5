@@ -311,7 +311,7 @@ class CosS3Client(object):
             Headers = dict()
         if not Params:
             Params = dict()
-
+            
         url = self._conf.uri(bucket=Bucket, path=Key)
         r = Request(Method, url, headers=Headers, params=Params)
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
@@ -635,6 +635,8 @@ class CosS3Client(object):
             )
         """
         url = self._conf.uri(bucket=Bucket, path=Key)
+        if self._conf._token is not None and 'x-cos-security-token' not in Params:
+            Params['x-cos-security-token'] = self._conf._token
         sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params, SignHost=SignHost)
         sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
         url = url + '?' + sign
