@@ -69,18 +69,6 @@ ci_region = 'ap-guangzhou'
 def _create_test_bucket(test_bucket, create_region=None):
     try:
         if create_region is None:
-            response = client.list_objects(
-                Bucket=test_bucket
-            )
-            if 'Contents' in response:
-                for content in response['Contents']:
-                    client.delete_object(
-                        Bucket=test_bucket,
-                        Key=content['Key']
-                    )
-            response = client.delete_bucket(
-                Bucket=test_bucket
-            )
             response = client.create_bucket(
                 Bucket=test_bucket,
             )
@@ -97,6 +85,8 @@ def _create_test_bucket(test_bucket, create_region=None):
     except Exception as e:
         if e.get_error_code() == 'BucketAlreadyOwnedByYou':
             print('BucketAlreadyOwnedByYou')
+        elif e.get_error_code() == 'BucketAlreadyExists':
+            print('BucketAlreadyExists')
         else:
             raise e
     return None
@@ -1087,21 +1077,6 @@ def test_put_get_delete_bucket_domain():
 def test_put_get_delete_bucket_domain_certificate():
     """测试设置获取删除bucket自定义域名证书"""
 
-    """
-    存储桶 bj-1259654469 专门用于测试自定义域名证书
-    """
-
-    temp_bucket = 'bj-1259654469'
-    temp_conf = CosConfig(
-        Region='ap-beijing',
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY
-    )
-    temp_client = CosS3Client(
-        conf=temp_conf,
-        retry=3
-    )
-
     domain = 'testcertificate.coshelper.com'
     domain_config = {
         'DomainRule': [
@@ -1114,8 +1089,8 @@ def test_put_get_delete_bucket_domain_certificate():
     }
 
     # put domain
-    response = temp_client.put_bucket_domain(
-        Bucket=temp_bucket,
+    response = client.put_bucket_domain(
+        Bucket=test_bucket,
         DomainConfiguration=domain_config
     ) 
 
@@ -1140,34 +1115,35 @@ def test_put_get_delete_bucket_domain_certificate():
     }
 
     # put domain certificate
-    response = temp_client.delete_bucket_domain_certificate(
-        Bucket=temp_bucket,
+    response = client.delete_bucket_domain_certificate(
+        Bucket=test_bucket,
         DomainName=domain
     )
 
     time.sleep(2)
-    response = temp_client.put_bucket_domain_certificate(
-        Bucket=temp_bucket,
+    response = client.put_bucket_domain_certificate(
+        Bucket=test_bucket,
         DomainCertificateConfiguration=domain_cert_config
     )
     # wait for sync
     # get domain certificate
     time.sleep(4)
-    response = temp_client.get_bucket_domain_certificate(
-        Bucket=temp_bucket,
+    response = client.get_bucket_domain_certificate(
+        Bucket=test_bucket,
         DomainName=domain
     )
     assert response["Status"] == "Enabled"
 
     # delete domain certificate
-    response = temp_client.delete_bucket_domain_certificate(
-        Bucket=temp_bucket,
+    response = client.delete_bucket_domain_certificate(
+        Bucket=test_bucket,
         DomainName=domain
     )
 
     # delete domain
-    response = temp_client.delete_bucket_domain(
-        Bucket=temp_bucket,
+    time.sleep(2)
+    response = client.delete_bucket_domain(
+        Bucket=test_bucket,
     )
 
 def test_put_get_delete_bucket_inventory():
@@ -1175,7 +1151,7 @@ def test_put_get_delete_bucket_inventory():
     inventory_config = {
         'Destination': {
             'COSBucketDestination': {
-                'AccountId': '2779643970',
+                'AccountId': '2832742109',
                 'Bucket': 'qcs::cos:' + REGION + '::' + test_bucket,
                 'Format': 'CSV',
                 'Prefix': 'list1',
@@ -2354,6 +2330,11 @@ def test_config_none_aksk():
 if __name__ == "__main__":
     setUp()
     """
+    test_config_invalid_scheme()
+    test_config_credential_inst()
+    test_config_anoymous()
+    test_config_none_aksk()
+
     test_put_get_delete_object_10MB()
     test_put_object_speacil_names()
     test_get_object_special_names()
@@ -2399,6 +2380,7 @@ if __name__ == "__main__":
     test_put_get_gzip_file()
     test_put_get_delete_bucket_domain()
     test_put_get_delete_bucket_domain_certificate()
+    """
     test_put_get_delete_bucket_inventory()
     test_put_get_delete_bucket_tagging()
     test_put_get_delete_object_tagging()
@@ -2434,5 +2416,5 @@ if __name__ == "__main__":
     test_ci_list_doc_transcode_jobs()
     test_ci_live_video_auditing()
     test_sse_c_file()
-    """
+
     tearDown()
