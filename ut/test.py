@@ -17,11 +17,11 @@ from qcloud_cos.crypto import AESProvider
 from qcloud_cos.crypto import RSAProvider
 from qcloud_cos.cos_comm import CiDetectType, get_md5, to_bytes
 
-SECRET_ID = os.environ["SECRET_ID"]
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_ID = os.environ["COS_SECRET_ID"]
+SECRET_KEY = os.environ["COS_SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
-REGION = os.environ["REGION"]
-APPID = '1251668577'
+REGION = os.environ['COS_REGION']
+APPID = '1253960454'
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 test_bucket = 'cos-python-v5-testbkt-' + str(sys.version_info[0]) + '-' + str(
@@ -69,6 +69,18 @@ ci_region = 'ap-guangzhou'
 def _create_test_bucket(test_bucket, create_region=None):
     try:
         if create_region is None:
+            response = client.list_objects(
+                Bucket=test_bucket
+            )
+            if 'Contents' in response:
+                for content in response['Contents']:
+                    client.delete_object(
+                        Bucket=test_bucket,
+                        Key=content['Key']
+                    )
+            response = client.delete_bucket(
+                Bucket=test_bucket
+            )
             response = client.create_bucket(
                 Bucket=test_bucket,
             )
@@ -2299,6 +2311,45 @@ def test_sse_c_file():
                            CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5)
     assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
 
+def test_config_invalid_scheme():
+    """初始化Scheme为非法值"""
+    try:
+        my_conf = CosConfig(
+            Region=REGION,
+            SecretId=SECRET_ID,
+            SecretKey=SECRET_KEY,
+            Scheme="ftp")
+    except Exception as e:
+        print(e)
+
+def test_config_credential_inst():
+    """使用CredentialInstance初始化"""
+    try:
+        my_conf = CosConfig(
+            Region=REGION,
+            CredentialInstance=CredentialDemo(),
+        )
+    except Exception as e:
+        raise e
+
+def test_config_anoymous():
+    """匿名访问配置"""
+    try:
+        my_conf = CosConfig(
+            Region=REGION,
+            Anonymous=True        
+        )
+    except Exception as e:
+        raise e
+
+def test_config_none_aksk():
+    """缺少aksk"""
+    try:
+        my_conf = CosConfig(
+            Region=REGION,
+        ) 
+    except Exception as e:
+        print(e)
 
 if __name__ == "__main__":
     setUp()
