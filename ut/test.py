@@ -1444,18 +1444,25 @@ def test_download_file():
 
 def test_put_get_bucket_intelligenttiering():
     """测试设置获取智能分层"""
-    intelligent_tiering_conf = {
-                'Status': 'Enabled',
-                'Transition': {
-                    'Days': '30',
-                    'RequestFrequent': '1'
+    try:
+        intelligent_tiering_conf = {
+                    'Status': 'Enabled',
+                    'Transition': {
+                        'Days': '30',
+                        'RequestFrequent': '1'
+                    }
                 }
-            }
-    response = client.put_bucket_intelligenttiering(
-        Bucket=test_bucket,
-        IntelligentTieringConfiguration=intelligent_tiering_conf
-    )
-    time.sleep(2)
+        response = client.put_bucket_intelligenttiering(
+            Bucket=test_bucket,
+            IntelligentTieringConfiguration=intelligent_tiering_conf
+        )
+        time.sleep(2)
+    except CosServiceError as e:
+        if e.get_error_msg() == 'Not support modify intelligent tiering configuration':
+            print(e.get_error_msg())
+        else:
+            raise e
+
     response = client.get_bucket_intelligenttiering(
         Bucket=test_bucket,
     )
