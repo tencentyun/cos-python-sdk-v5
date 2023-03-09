@@ -24,7 +24,7 @@ REGION = os.environ['COS_REGION']
 APPID = '1253960454'
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
-test_bucket = 'cos-python-v5-testbkt-' + str(sys.version_info[0]) + '-' + str(
+test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
@@ -141,6 +141,7 @@ def setUp():
     print("start create bucket " + test_bucket)
     _create_test_bucket(test_bucket)
     _create_test_bucket(copy_test_bucket)
+    _upload_test_file(test_bucket, test_object)
     _upload_test_file(copy_test_bucket, test_object)
 
 
