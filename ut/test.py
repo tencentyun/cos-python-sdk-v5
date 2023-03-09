@@ -1380,7 +1380,8 @@ def test_select_object():
 def test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
     image_key = 'lena.png'
-    _upload_test_file_from_local_file(test_bucket, image_key, image_key)
+    image_file = './lena.png'
+    _upload_test_file_from_local_file(test_bucket, image_key, image_file)
     response = client.get_object_sensitive_content_recognition(
         Bucket=test_bucket,
         Key=image_key,
