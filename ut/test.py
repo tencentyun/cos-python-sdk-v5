@@ -100,6 +100,14 @@ def _upload_test_file(test_bucket, test_key):
     )
     return None
 
+def _upload_test_file_from_local_file(test_bucket, test_key, file_name):
+    with open(file_name, 'rb') as f:
+        response = client.put_object(
+            Bucket=test_bucket,
+            Key=test_key,
+            Body=f
+        )
+    return None
 
 def get_raw_md5(data):
     m2 = hashlib.md5(data)
@@ -1369,12 +1377,13 @@ def test_select_object():
         print(event)
 
 
-def _test_get_object_sensitive_content_recognition():
+def test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
-    print(CiDetectType)
+    image_key = 'lena.png'
+    _upload_test_file_from_local_file(test_bucket, image_key, image_key)
     response = client.get_object_sensitive_content_recognition(
         Bucket=test_bucket,
-        Key=test_object,
+        Key=image_key,
         Interval=3,
         MaxFrames=20,
         # BizType='xxxx',
@@ -2328,6 +2337,44 @@ def test_config_none_aksk():
     except Exception as e:
         print(e)
 
+def test_head_bucket_object_not_exist():
+    """HEAD不存在的桶和对象"""
+    try:
+        response = client.head_bucket(
+            Bucket="nosuchbucket-" + APPID
+        )
+    except CosServiceError as e:
+        if e.get_error_code() == "NoSuchResource":
+            print(e.get_error_code())
+        else:
+            raise e
+
+    try:
+        response = client.head_object(
+            Bucket=test_bucket,
+            Key="nosuchkey"
+        )
+    except CosServiceError as e:
+        if e.get_error_code() == "NoSuchResource":
+            print(e.get_error_code())
+        else:
+            raise e
+
+def test_append_object():
+    """APPEND上传对象"""
+    test_append_object = "test_append_object"
+    response = client.delete_object(
+        Bucket=test_bucket,
+        Key=test_append_object
+    )
+    response = client.append_object(
+        Bucket=test_bucket,
+        Key=test_append_object,
+        Position=0,
+        Data='test'
+    )
+    assert response
+
 if __name__ == "__main__":
     setUp()
     """
@@ -2335,7 +2382,6 @@ if __name__ == "__main__":
     test_config_credential_inst()
     test_config_anoymous()
     test_config_none_aksk()
-
     test_put_get_delete_object_10MB()
     test_put_object_speacil_names()
     test_get_object_special_names()
@@ -2381,7 +2427,6 @@ if __name__ == "__main__":
     test_put_get_gzip_file()
     test_put_get_delete_bucket_domain()
     test_put_get_delete_bucket_domain_certificate()
-    """
     test_put_get_delete_bucket_inventory()
     test_put_get_delete_bucket_tagging()
     test_put_get_delete_object_tagging()
@@ -2417,5 +2462,5 @@ if __name__ == "__main__":
     test_ci_list_doc_transcode_jobs()
     test_ci_live_video_auditing()
     test_sse_c_file()
-
+    """
     tearDown()
