@@ -1433,7 +1433,7 @@ def test_download_file():
         os.remove(file_name)
 
 
-def _test_put_get_bucket_intelligenttiering():
+def test_put_get_bucket_intelligenttiering():
     """测试设置获取智能分层"""
     intelligent_tiering_conf = {
                 'Status': 'Enabled',
