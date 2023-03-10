@@ -62,7 +62,7 @@ client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
 client_for_aes = CosEncryptionClient(conf, aes_provider)
 
-ci_bucket_name = 'ci-qta-gz-1251668577'
+ci_bucket_name = 'cos-python-v5-test-ci-1253960454'
 ci_region = 'ap-guangzhou'
 
 
