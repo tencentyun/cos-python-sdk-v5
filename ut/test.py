@@ -2090,9 +2090,8 @@ def test_get_media_info():
     # 获取媒体信息
     response = client.get_media_info(
         Bucket=ci_bucket_name,
-        Key='workflow/input/video/test1.mp4'
+        Key='gaobai.mp4'
     )
-    print(response)
     assert (response)
 
 
@@ -2107,7 +2106,6 @@ def test_get_snapshot():
         Width='480',
         Format='png'
     )
-    print(response)
     assert (response)
 
 
@@ -2120,7 +2118,6 @@ def test_get_pm3u8():
         Key='/data/media/m3u8_no_end.m3u8',
         Expires='3600'
     )
-    print(response)
     assert (response)
 
 
@@ -2135,7 +2132,6 @@ def test_ci_get_media_bucket():
         PageNumber='1',
         PageSize='2'
     )
-    print(response)
     assert (response)
 
 
@@ -2145,7 +2141,6 @@ def test_ci_create_doc_transcode_jobs():
     response = client.ci_get_doc_queue(
                     Bucket=ci_bucket_name
                 )
-    print(response)
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
     response = client.ci_create_doc_job(
@@ -2159,7 +2154,6 @@ def test_ci_create_doc_transcode_jobs():
                     Quality=109,
                     PageRanges='1,3',
                 )
-    print(response)
     assert (response['JobsDetail']['JobId'])
 
     # 测试转码查询任务
@@ -2168,7 +2162,6 @@ def test_ci_create_doc_transcode_jobs():
                     Bucket=ci_bucket_name,
                     JobID=JobID,
                 )
-    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2179,7 +2172,6 @@ def test_ci_list_doc_transcode_jobs():
     response = client.ci_get_doc_queue(
                     Bucket=ci_bucket_name
                 )
-    print(response)
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
     response = client.ci_list_doc_jobs(
@@ -2187,7 +2179,6 @@ def test_ci_list_doc_transcode_jobs():
                     QueueId=queueId,
                     Size=10,
                 )
-    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2218,7 +2209,6 @@ def test_ci_live_video_auditing():
                     Bucket=ci_bucket_name,
                     JobID=jobId,
                 )
-    print(response)
     assert (response['JobsDetail'])
 
 
