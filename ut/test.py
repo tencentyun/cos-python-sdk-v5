@@ -62,7 +62,7 @@ client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
 client_for_aes = CosEncryptionClient(conf, aes_provider)
 
-ci_bucket_name = 'cos-python-v5-test-ci-1253960454'
+ci_bucket_name = 'ci-qta-gz-1251668577'
 ci_region = 'ap-guangzhou'
 
 
@@ -1087,6 +1087,7 @@ def test_put_get_delete_bucket_domain_certificate():
     """测试设置获取删除bucket自定义域名证书"""
 
     domain = 'testcertificate.coshelper.com'
+    # 这个域名可能被别的SDK测试占用, 后面 put_bucket_domain 要捕获异常
     domain_config = {
         'DomainRule': [
             {
@@ -1098,10 +1099,17 @@ def test_put_get_delete_bucket_domain_certificate():
     }
 
     # put domain
-    response = client.put_bucket_domain(
-        Bucket=test_bucket,
-        DomainConfiguration=domain_config
-    ) 
+    try:
+        response = client.put_bucket_domain(
+            Bucket=test_bucket,
+            DomainConfiguration=domain_config
+        ) 
+    except CosServiceError as e:
+        if e.get_error_code() == "RecordAlreadyExist":
+            print(e.get_error_code())
+            return
+        else:
+            raise e
 
     with open('./testcertificate.coshelper.com.key', 'rb') as f:
         key = f.read().decode('utf-8')
@@ -1380,8 +1388,7 @@ def test_select_object():
 def test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
     image_key = 'lena.png'
-    image_file = './lena.png'
-    _upload_test_file_from_local_file(test_bucket, image_key, image_file)
+    _upload_test_file_from_local_file(test_bucket, image_key, image_key)
     response = client.get_object_sensitive_content_recognition(
         Bucket=test_bucket,
         Key=image_key,
@@ -2090,8 +2097,9 @@ def test_get_media_info():
     # 获取媒体信息
     response = client.get_media_info(
         Bucket=ci_bucket_name,
-        Key='gaobai.mp4'
+        Key='workflow/input/video/test1.mp4'
     )
+    print(response)
     assert (response)
 
 
@@ -2106,6 +2114,7 @@ def test_get_snapshot():
         Width='480',
         Format='png'
     )
+    print(response)
     assert (response)
 
 
@@ -2118,6 +2127,7 @@ def test_get_pm3u8():
         Key='/data/media/m3u8_no_end.m3u8',
         Expires='3600'
     )
+    print(response)
     assert (response)
 
 
@@ -2132,6 +2142,7 @@ def test_ci_get_media_bucket():
         PageNumber='1',
         PageSize='2'
     )
+    print(response)
     assert (response)
 
 
@@ -2141,6 +2152,7 @@ def test_ci_create_doc_transcode_jobs():
     response = client.ci_get_doc_queue(
                     Bucket=ci_bucket_name
                 )
+    print(response)
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
     response = client.ci_create_doc_job(
@@ -2154,6 +2166,7 @@ def test_ci_create_doc_transcode_jobs():
                     Quality=109,
                     PageRanges='1,3',
                 )
+    print(response)
     assert (response['JobsDetail']['JobId'])
 
     # 测试转码查询任务
@@ -2162,6 +2175,7 @@ def test_ci_create_doc_transcode_jobs():
                     Bucket=ci_bucket_name,
                     JobID=JobID,
                 )
+    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2172,6 +2186,7 @@ def test_ci_list_doc_transcode_jobs():
     response = client.ci_get_doc_queue(
                     Bucket=ci_bucket_name
                 )
+    print(response)
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
     response = client.ci_list_doc_jobs(
@@ -2179,6 +2194,7 @@ def test_ci_list_doc_transcode_jobs():
                     QueueId=queueId,
                     Size=10,
                 )
+    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2209,6 +2225,7 @@ def test_ci_live_video_auditing():
                     Bucket=ci_bucket_name,
                     JobID=jobId,
                 )
+    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2429,6 +2446,8 @@ if __name__ == "__main__":
     test_put_get_delete_bucket_tagging()
     test_put_get_delete_object_tagging()
     test_put_get_delete_bucket_referer()
+    test_put_get_bucket_intelligenttiering()
+    test_put_get_delete_bucket_domain_certificate()
     test_put_get_traffic_limit()
     test_select_object()
     test_download_file()
@@ -2460,6 +2479,5 @@ if __name__ == "__main__":
     test_ci_list_doc_transcode_jobs()
     test_ci_live_video_auditing()
     test_sse_c_file()
-    
     """
     tearDown()
