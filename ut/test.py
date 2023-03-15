@@ -456,12 +456,20 @@ def test_create_head_delete_maz_bucket():
         Bucket=bucket_name
     )
 
+def test_put_bucket_acl():
+    """正常设置bucket ACL"""
+    response = client.put_bucket_acl(
+        Bucket=test_bucket,
+        ACL='private',
+    )
+    print(response)
+
 def test_put_bucket_acl_illegal():
     """设置非法的ACL"""
     try:
         response = client.put_bucket_acl(
             Bucket=test_bucket,
-            ACL='public-read-writ'
+            ACL='public-read-writ',
         )
     except CosServiceError as e:
         print_error_msg(e)
@@ -485,6 +493,26 @@ def test_list_objects():
     )
     assert response
 
+    # EncodingType为'url'和其他非法值
+    response = client.list_objects(
+        Bucket=test_bucket,
+        MaxKeys=100,
+        Prefix='中文',
+        Delimiter='/',
+        EncodingType='url'
+    )
+    assert response
+
+    try:
+        response = client.list_objects(
+            Bucket=test_bucket,
+            MaxKeys=100,
+            Prefix='中文',
+            Delimiter='/',
+            EncodingType="xml"
+        )
+    except Exception as e:
+        print(e)
 
 def test_list_objects_versions():
     """列出bucket下的带版本信息的objects"""
@@ -493,6 +521,27 @@ def test_list_objects_versions():
         MaxKeys=50
     )
     assert response
+
+    # EncodingType为'url'和其他非法值
+    response = client.list_objects(
+        Bucket=test_bucket,
+        MaxKeys=100,
+        Prefix='中文',
+        Delimiter='/',
+        EncodingType='url'
+    )
+    assert response
+
+    try:
+        response = client.list_objects(
+            Bucket=test_bucket,
+            MaxKeys=100,
+            Prefix='中文',
+            Delimiter='/',
+            EncodingType="xml"
+        )
+    except Exception as e:
+        print(e)
 
 
 def test_get_presigned_url():
@@ -742,6 +791,27 @@ def test_list_multipart_uploads():
     )
     assert response['Upload'][0]['Key'] == "multipartfile.txt"
     assert response['Upload'][0]['UploadId'] == uploadid
+
+    # using EncodingType
+    response = client.list_multipart_uploads(
+        Bucket=test_bucket,
+        Prefix="multipart",
+        MaxUploads=100,
+        EncodingType='url'
+    )
+    assert response['Upload'][0]['Key'] == "multipartfile.txt"
+    assert response['Upload'][0]['UploadId'] == uploadid
+
+    try:
+        response = client.list_multipart_uploads(
+            Bucket=test_bucket,
+            Prefix="multipart",
+            MaxUploads=100,
+            EncodingType='xml' # 非法, 只能为url
+        )
+    except Exception as e:
+        print(e)
+
     # abort again make sure delete all uploads
     for data in response['Upload']:
         response = client.abort_multipart_upload(
@@ -1407,6 +1477,9 @@ def test_download_file():
     client.download_file(copy_test_bucket, test_object, 'test_download_file.local')
     if os.path.exists('test_download_file.local'):
         os.remove('test_download_file.local')
+
+    # 重置内置线程池大小
+    client.set_built_in_connection_pool_max_size(10, 5)
 
     # 测试限速下载
     client.download_file(copy_test_bucket, test_object, 'test_download_traffic_limit.local', TrafficLimit='819200')
@@ -2312,6 +2385,29 @@ def test_sse_c_file():
                            CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5)
     assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
 
+def test_short_connection_put_get_object():
+    """使用短连接上传下载对象"""
+
+    my_conf = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        KeepAlive=False)
+    my_client = CosS3Client(my_conf)
+    
+    response = my_client.put_object(
+        Bucket=test_bucket,
+        Key=test_object,
+        Body='test'
+    )
+    assert response['Connection'] == 'close'
+
+    response = my_client.get_object(
+        Bucket=test_bucket,
+        Key=test_object,
+    )
+    assert response['Connection'] == 'close'
+    
 def test_config_invalid_scheme():
     """初始化Scheme为非法值"""
     try:
@@ -2320,6 +2416,16 @@ def test_config_invalid_scheme():
             SecretId=SECRET_ID,
             SecretKey=SECRET_KEY,
             Scheme="ftp")
+    except Exception as e:
+        print(e)
+
+def test_config_invalid_aksk():
+    """aksk首尾包含空格"""
+    try:
+        my_conf = CosConfig(
+            Region=REGION,
+            SecretId=SECRET_ID + ' ',
+            SecretKey='   ' + SECRET_KEY)
     except Exception as e:
         print(e)
 
@@ -2389,6 +2495,7 @@ def test_append_object():
         Data='test'
     )
     assert response
+
 
 if __name__ == "__main__":
     setUp()
