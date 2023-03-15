@@ -42,7 +42,7 @@ class CosConfig(object):
 
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, CredentialInstance=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
-                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
+                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
                  PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True):
         """初始化，保存用户的信息
 
@@ -65,6 +65,7 @@ class CosConfig(object):
         :param Proxies(dict):  使用代理来访问COS
         :param Domain(string):  使用自定义的域名来访问COS
         :param ServiceDomain(string):  使用自定义的域名来访问cos service
+        :param KeepAlive(bool):       是否使用长连接
         :param PoolConnections(int):  连接池个数
         :param PoolMaxSize(int):      连接池中最大连接数
         :param AllowRedirects(bool):  是否重定向
@@ -87,6 +88,7 @@ class CosConfig(object):
         self._proxies = Proxies
         self._domain = Domain
         self._service_domain = ServiceDomain
+        self._keep_alive = KeepAlive
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
@@ -332,6 +334,8 @@ class CosS3Client(object):
                 kwargs['headers']['Host'] = self._conf._domain
             elif bucket is not None:
                 kwargs['headers']['Host'] = self._conf.get_host(bucket)
+        if self._conf._keep_alive == False:
+            kwargs['headers']['Connection'] = 'close'
         kwargs['headers'] = format_values(kwargs['headers'])
 
         file_position = None
