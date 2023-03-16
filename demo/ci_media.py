@@ -929,7 +929,7 @@ def ci_list_media_pic_jobs():
 
 def ci_get_media_pic_jobs():
     # 图片处理任务详情
-    response = client.ci_get_media_jobs(
+    response = client.ci_get_media_pic_jobs(
         Bucket=bucket_name,
         JobIDs='c01742xxxxxxxxxxxxxxxxxx7438e39',
         ContentType='application/xml'

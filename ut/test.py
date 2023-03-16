@@ -62,8 +62,13 @@ client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
 client_for_aes = CosEncryptionClient(conf, aes_provider)
 
-ci_bucket_name = 'cos-python-v5-test-ci-' + APPID
+ci_bucket_name = 'cos-python-v5-test-ci-1253960454'
 ci_region = 'ap-guangzhou'
+ci_test_media = "test.mp4"
+ci_test_m3u8 = "test.m3u8"
+ci_test_image = "test.png"
+ci_test_ocr_image = "ocr.jpeg"
+ci_test_txt = "test.txt"
 
 
 def _create_test_bucket(test_bucket, create_region=None):
@@ -1473,11 +1478,9 @@ def test_select_object():
 
 def test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
-    image_key = 'lena.png'
-    _upload_test_file_from_local_file(test_bucket, image_key, image_key)
     response = client.get_object_sensitive_content_recognition(
-        Bucket=test_bucket,
-        Key=image_key,
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
         Interval=3,
         MaxFrames=20,
         # BizType='xxxx',
@@ -1825,14 +1828,14 @@ def test_get_object_url():
     print(response)
 
 
-def _test_qrcode():
+def test_qrcode():
     """二维码图片上传时识别"""
-    file_name = 'test_object_sdk_qrcode.file'
+    file_name = 'qrcode.svg'
     with open(file_name, 'rb') as fp:
         # fp验证
         opts = '{"is_pic_info":1,"rules":[{"fileid":"format.jpg","rule":"QRcode/cover/1"}]}'
         response, data = client.ci_put_object_from_local_file_and_get_qrcode(
-            Bucket=test_bucket,
+            Bucket=ci_bucket_name,
             LocalFilePath=file_name,
             Key=file_name,
             EnableMD5=False,
@@ -1842,7 +1845,7 @@ def _test_qrcode():
 
     """二维码图片下载时识别"""
     response, data = client.ci_get_object_qrcode(
-        Bucket=test_bucket,
+        Bucket=ci_bucket_name,
         Key=file_name,
         Cover=0
     )
@@ -1859,10 +1862,18 @@ def test_ci_put_image_style():
         'StyleBody': 'imageMogr2/thumbnail/!50px',
     }
     response = client.ci_put_image_style(
-        Bucket=test_bucket,
+        Bucket=ci_bucket_name,
         Request=body,
     )
-    print(response)
+    assert response
+    body = {
+        'StyleName': 'style_name',
+    }
+    response = client.ci_delete_image_style(
+        Bucket=ci_bucket_name,
+        Request=body,
+    )
+    assert response
 
 
 def test_ci_get_image_style():
@@ -1874,11 +1885,10 @@ def test_ci_get_image_style():
         'StyleName': 'style_name',
     }
     response, data = client.ci_get_image_style(
-        Bucket=test_bucket,
+        Bucket=ci_bucket_name,
         Request=body,
     )
-    print(response['x-cos-request-id'])
-    print(data)
+    assert response
 
 
 def test_ci_get_image_info():
@@ -1887,11 +1897,10 @@ def test_ci_get_image_info():
 
     """ci获取图片基本信息接口"""
     response, data = client.ci_get_image_info(
-        Bucket=test_bucket,
-        Key='format.png',
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
     )
-    print(response['x-cos-request-id'])
-    print(data)
+    assert response
 
 
 def test_ci_get_image_exif_info():
@@ -1900,11 +1909,10 @@ def test_ci_get_image_exif_info():
 
     """获取图片exif信息接口"""
     response, data = client.ci_get_image_exif_info(
-        Bucket=test_bucket,
-        Key='format.png',
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
     )
-    print(response['x-cos-request-id'])
-    print(data)
+    assert response
 
 
 def test_ci_get_image_ave_info():
@@ -1913,11 +1921,10 @@ def test_ci_get_image_ave_info():
 
     """获取图片主色调接口"""
     response, data = client.ci_get_image_info(
-        Bucket=test_bucket,
-        Key='format.png',
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
     )
-    print(response['x-cos-request-id'])
-    print(data)
+    assert response
 
 
 def test_ci_image_assess_quality():
@@ -1926,10 +1933,10 @@ def test_ci_image_assess_quality():
 
     """图片质量评估接口"""
     response = client.ci_image_assess_quality(
-        Bucket=test_bucket,
-        Key='format.png',
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
     )
-    print(response)
+    assert response
 
 
 def test_ci_qrcode_generate():
@@ -1938,14 +1945,11 @@ def test_ci_qrcode_generate():
 
     """二维码生成接口"""
     response = client.ci_qrcode_generate(
-        Bucket=test_bucket,
+        Bucket=ci_bucket_name,
         QrcodeContent='https://www.example.com',
         Width=200
     )
-    qrCodeImage = base64.b64decode(response['ResultImage'])
-    with open('/result.png', 'wb') as f:
-        f.write(qrCodeImage)
-    print(response)
+    assert response['ResultImage']
 
 
 def test_ci_ocr_process():
@@ -1954,10 +1958,10 @@ def test_ci_ocr_process():
 
     """通用文字识别"""
     response = client.ci_ocr_process(
-        Bucket=test_bucket,
-        Key='ocr.jpeg',
+        Bucket=ci_bucket_name,
+        Key=ci_test_ocr_image,
     )
-    print(response)
+    assert response
 
 
 def test_ci_get_media_queue():
@@ -1969,7 +1973,6 @@ def test_ci_get_media_queue():
                     Bucket=ci_bucket_name,
                     State="Active",
                 )
-    print(response)
     assert (response['QueueList'])
 
 
@@ -1982,7 +1985,6 @@ def test_ci_get_media_pic_queue():
         Bucket=ci_bucket_name,
         State="Active",
     )
-    print(response)
     assert (response['QueueList'])
 
 
@@ -2060,7 +2062,6 @@ def test_ci_create_media_transcode_watermark_jobs():
                     Lst=lst,
                     ContentType='application/xml'
                 )
-    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2095,7 +2096,6 @@ def test_ci_create_media_transcode_jobs():
                     Lst={},
                     ContentType='application/xml'
                 )
-    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2155,8 +2155,7 @@ def test_ci_list_media_pic_jobs():
         ContentType='application/xml',
         States='Success'
     )
-    print(response)
-    assert (response['JobsDetail'])
+    assert response
 
 
 def test_ci_list_media_transcode_jobs():
@@ -2176,7 +2175,6 @@ def test_ci_list_media_transcode_jobs():
                     Size=2,
                     ContentType='application/xml'
                 )
-    print(response)
     assert (response['JobsDetail'])
 
 
@@ -2186,9 +2184,9 @@ def test_get_media_info():
     # 获取媒体信息
     response = client.get_media_info(
         Bucket=ci_bucket_name,
-        Key='gaobai.mp4'
+        Key=ci_test_media
     )
-    assert (response)
+    assert response
 
 
 def test_get_snapshot():
@@ -2197,7 +2195,7 @@ def test_get_snapshot():
     # 产生同步截图
     response = client.get_snapshot(
         Bucket=ci_bucket_name,
-        Key='workflow/input/video/test1.mp4',
+        Key=ci_test_media,
         Time='1.5',
         Width='480',
         Format='png'
@@ -2211,7 +2209,7 @@ def test_get_pm3u8():
     # 获取私有 M3U8 ts 资源的下载授权
     response = client.get_pm3u8(
         Bucket=ci_bucket_name,
-        Key='/data/media/m3u8_no_end.m3u8',
+        Key=ci_test_m3u8,
         Expires='3600'
     )
     assert (response)
@@ -2503,6 +2501,380 @@ def test_append_object():
     assert response
 
 
+def test_ci_delete_asr_template():
+    # 删除指定语音识别模板
+    response = client.ci_delete_asr_template(
+        Bucket=ci_bucket_name,
+        TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
+    )
+    assert response
+
+
+def test_ci_get_asr_template():
+    # 获取语音识别模板
+    response = client.ci_get_asr_template(
+        Bucket=ci_bucket_name,
+    )
+    assert response
+
+
+def test_ci_update_asr_template():
+    # 修改语音识别模板
+    response = client.ci_update_asr_template(
+        Bucket=ci_bucket_name,
+        TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
+        Name='update_asr_template',
+        EngineModelType='16k_zh',
+        ChannelNum=1,
+        ResTextFormat=1,
+    )
+    assert response
+
+
+def test_ci_create_asr_template():
+    # 创建语音识别模板
+    response = client.ci_create_asr_template(
+        Bucket=ci_bucket_name,
+        Name='asr_template',
+        EngineModelType='16k_zh',
+        ChannelNum=1,
+        ResTextFormat=2,
+        FlashAsr=True,
+        Format='mp3',
+    )
+    assert response
+
+
+def test_ci_list_asr_jobs():
+    # 获取语音识别任务信息列表
+    response = client.ci_list_asr_jobs(
+        Bucket=ci_bucket_name,
+        QueueId='p7369exxxxxxxxxxxxxxxxf5a',
+        Size=10,
+    )
+    assert response
+
+
+def test_ci_get_asr_jobs():
+    # 获取语音识别任务信息
+    response = client.ci_get_asr_job(
+        Bucket=ci_bucket_name,
+        JobID='s0980xxxxxxxxxxxxxxxxff12',
+    )
+    assert response
+
+
+def test_ci_create_asr_jobs():
+    # 创建语音识别异步任务
+    body = {
+        'EngineModelType': '16k_zh',
+        'ChannelNum': '1',
+        'ResTextFormat': '1',
+        # 'FlashAsr': 'true',
+        # 'Format': 'mp3'
+    }
+    response = client.ci_create_asr_job(
+        Bucket=ci_bucket_name,
+        QueueId='s0980xxxxxxxxxxxxxxxxff12',
+        # TemplateId='t1ada6f282d29742db83244e085e920b08',
+        InputObject='normal.mp4',
+        OutputBucket=ci_bucket_name,
+        OutputRegion='ap-guangzhou',
+        OutputObject='result.txt',
+        SpeechRecognition=body
+    )
+    print(response)
+    return response
+
+
+def test_ci_put_asr_queue():
+    # 更新语音识别队列信息
+    body = {
+        'Name': 'asr-queue',
+        'QueueID': 'p7369xxxxxxxxxxxxxxxxxdff5a',
+        'State': 'Active',
+        'NotifyConfig': {
+            'Type': 'Url',
+            'Url': 'http://www.demo.callback.com',
+            'Event': 'TaskFinish',
+            'State': 'On',
+            'ResultFormat': 'JSON'
+        }
+    }
+    response = client.ci_update_asr_queue(
+        Bucket=ci_bucket_name,
+        QueueId='p7369xxxxxxxxxxxxxxxxxdff5a',
+        Request=body,
+        ContentType='application/xml'
+    )
+    assert response
+
+
+def test_ci_get_asr_queue():
+    # 查询语音识别队列信息
+    response = client.ci_get_asr_queue(
+        Bucket=ci_bucket_name,
+    )
+    assert response
+
+
+def test_ci_get_asr_bucket():
+    # 查询语音识别开通状态
+    response = client.ci_get_asr_bucket(
+        Regions=REGION,
+        BucketName=ci_bucket_name,
+        PageSize="10",
+        PageNumber="1"
+    )
+    assert response
+
+
+def test_ci_get_doc_bucket():
+    # 查询文档预览开通状态
+    response = client.ci_get_doc_bucket(
+        Regions=REGION,
+        # BucketName='demo',
+        BucketNames=ci_bucket_name,
+        PageSize=1,
+        PageNumber=1
+    )
+    assert response
+
+
+def test_ci_doc_preview_to_html_process():
+    # 文档预览同步接口（生成html）
+    response = client.ci_doc_preview_html_process(
+        Bucket=ci_bucket_name,
+        Key=ci_test_txt,
+    )
+    assert response
+    response['Body'].get_stream_to_file('result.html')
+
+
+def test_ci_doc_preview_process():
+    # 文档预览同步接口
+    response = client.ci_doc_preview_process(
+        Bucket=ci_bucket_name,
+        Key=ci_test_txt,
+    )
+    assert response
+    response['Body'].get_stream_to_file('result.png')
+
+
+def test_ci_put_doc_queue():
+    # 更新文档预览队列信息
+    body = {
+        'Name': 'doc-queue',
+        'QueueID': 'p4bdf22xxxxxxxxxxxxxxxxxxxxxxxxxf1',
+        'State': 'Active',
+        'NotifyConfig': {
+            'Type': 'Url',
+            'Url': 'http://www.demo.callback.com',
+            'Event': 'TaskFinish',
+            'State': 'On',
+            'ResultFormat': 'JSON'
+        }
+    }
+    response = client.ci_update_doc_queue(
+        Bucket=ci_bucket_name,
+        QueueId='p4bdf22xxxxxxxxxxxxxxxxxxxxxxxxxf1',
+        Request=body,
+        ContentType='application/xml'
+    )
+    assert response
+
+
+def test_ci_list_workflowexecution():
+    # 查询工作流实例接口
+    response = client.ci_list_workflowexecution(
+        Bucket=ci_bucket_name,
+        WorkflowId='w1b4ffd6900a343c3a2fe5b92b1fb7ff6'
+    )
+    assert response
+
+
+def test_ci_get_workflowexecution():
+    # 查询工作流实例接口
+    response = client.ci_get_workflowexecution(
+        Bucket=ci_bucket_name,
+        RunId='id1f94868688111eca793525400ca1839'
+    )
+    assert response
+
+
+def test_ci_trigger_workflow():
+    # 触发工作流接口
+    response = client.ci_trigger_workflow(
+        Bucket=ci_bucket_name,
+        WorkflowId='w1b4ffd6900a343c3a2fe5b92b1fb7ff6',
+        Key='117374C.mp4'
+    )
+    assert response
+
+
+def test_ci_get_media_transcode_jobs():
+    # 转码任务详情
+    response = client.ci_get_media_jobs(
+        Bucket=ci_bucket_name,
+        JobIDs='jc46435e40bcc11ed83d6e19dd89b02cc',
+        ContentType='application/xml'
+    )
+    assert response
+
+
+def test_ci_get_media_pic_jobs():
+    # 图片处理任务详情
+    response = client.ci_get_media_pic_jobs(
+        Bucket=ci_bucket_name,
+        JobIDs='c01742xxxxxxxxxxxxxxxxxx7438e39',
+        ContentType='application/xml'
+    )
+    assert response
+
+
+def test_ci_put_media_pic_queue():
+    # 更新图片处理队列信息
+    body = {
+        'Name': 'media-pic-queue',
+        'QueueID': 'peb83bdxxxxxxxxxxxxxxxxa21c7d68',
+        'State': 'Active',
+        'NotifyConfig': {
+            'Type': 'Url',
+            'Url': 'http://www.demo.callback.com',
+            'Event': 'TaskFinish',
+            'State': 'On',
+            'ResultFormat': 'JSON'
+        }
+    }
+    response = client.ci_update_media_pic_queue(
+        Bucket=ci_bucket_name,
+        QueueId='peb83bdxxxxxxxxxxxxxxxxxx4a21c7d68',
+        Request=body,
+        ContentType='application/xml'
+    )
+    assert response
+
+
+def test_ci_compress_image():
+    # HEIF 压缩
+    response = client.ci_download_compress_image(
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
+        DestImagePath='sample.heif',
+        CompressType='heif'
+    )
+    assert os.path.exists('sample.heif')
+
+
+def test_ci_image_detect_label():
+    # 图片标签
+    response = client.ci_image_detect_label(
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
+    )
+    assert response
+
+
+def test_ci_image_detect_car():
+    # 车辆车牌检测
+    response = client.ci_image_detect_car(
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
+    )
+    assert response
+
+
+def test_ci_get_image_ave_info():
+    # 获取图片主色调信息
+    response, data = client.ci_get_image_ave_info(
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_pic_process_when_download_object():
+    rule = 'imageMogr2/format/jpg/interlace/1'
+    response = client.ci_get_object(
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
+        DestImagePath='format.png',
+        # pic operation json struct
+        Rule=rule
+    )
+    print(response['x-cos-request-id'])
+
+
+def test_ci_delete_image_style():
+    # 删除图片样式
+    body = {
+        'StyleName': 'style_name',
+    }
+    response = client.ci_delete_image_style(
+        Bucket=ci_bucket_name,
+        Request=body,
+    )
+    print(response['x-cos-request-id'])
+
+
+def test_pic_process_when_put_object():
+    operations = '{"is_pic_info":1,"rules":[{"fileid": "format.png",' \
+                 '"rule": "imageMogr2/quality/60" }]}'
+    response, data = client.ci_put_object_from_local_file(
+        Bucket=ci_bucket_name,
+        LocalFilePath=ci_test_image,
+        Key=ci_test_image,
+        # pic operation json struct
+        PicOperations=operations
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_process_on_cloud():
+    operations = '{"is_pic_info":1,"rules":[{"fileid": "format.png",' \
+                 '"rule": "imageMogr2/quality/60" }]}'
+    response, data = client.ci_image_process(
+        Bucket=ci_bucket_name,
+        Key=ci_test_image,
+        # pic operation json struct
+        PicOperations=operations
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_auditing_video_submit():
+    response = client.ci_auditing_video_submit(ci_bucket_name, ci_test_media)
+    assert response
+
+
+def test_ci_auditing_video_query():
+    response = client.ci_auditing_video_query(Bucket=ci_bucket_name, JobID="xxxxxx")
+    assert response
+
+
+def test_ci_auditing_audio_submit():
+    response = client.ci_auditing_audio_submit(ci_bucket_name, ci_test_media)
+    assert response
+
+
+def test_ci_auditing_audio_query():
+    response = client.ci_auditing_audio_query(ci_bucket_name, JobID="xxxxxx")
+    assert response
+
+
+def test_ci_auditing_text_submit():
+    response = client.ci_auditing_text_submit(ci_bucket_name, ci_test_media)
+    assert response
+
+
+def test_ci_auditing_text_query():
+    response = client.ci_auditing_text_query(ci_bucket_name, JobID="xxxxxx")
+    assert response
+
+
 if __name__ == "__main__":
     setUp()
     """
@@ -2591,6 +2963,42 @@ if __name__ == "__main__":
     test_ci_create_doc_transcode_jobs()
     test_ci_list_doc_transcode_jobs()
     test_ci_live_video_auditing()
+    test_ci_delete_asr_template()
+    test_ci_get_asr_template()
+    test_ci_update_asr_template()
+    test_ci_create_asr_template()
+    test_ci_list_asr_jobs()
+    test_ci_get_asr_jobs()
+    test_ci_create_asr_jobs()
+    test_ci_put_asr_queue()
+    test_ci_get_asr_queue()
+    test_ci_get_asr_bucket()
+    test_ci_get_doc_bucket()
+    test_ci_doc_preview_to_html_process()
+    test_ci_doc_preview_process()
+    test_qrcode()
+    test_ci_put_doc_queue()
+    test_ci_list_workflowexecution()
+    test_ci_get_workflowexecution()
+    test_ci_trigger_workflow()
+    test_ci_get_media_transcode_jobs()
+    test_ci_get_media_pic_jobs()
+    test_ci_put_media_pic_queue()
+    test_ci_compress_image()
+    test_pic_process_when_download_object()
+    test_ci_image_detect_label()
+    test_ci_image_detect_car()
+    test_ci_get_image_ave_info()
+    test_ci_delete_image_style()
+    test_pic_process_when_put_object()
+    test_process_on_cloud()
+    test_ci_auditing_video_submit()
+    test_ci_auditing_video_query()
+    test_ci_auditing_audio_submit()
+    test_ci_auditing_audio_query()
+    test_ci_auditing_text_submit()
+    test_ci_auditing_text_query()
+    test_get_object_sensitive_content_recognition()
     test_sse_c_file()
     """
     tearDown()
