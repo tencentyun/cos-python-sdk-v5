@@ -523,7 +523,7 @@ def test_list_objects_versions():
     assert response
 
     # EncodingType为'url'和其他非法值
-    response = client.list_objects(
+    response = client.list_objects_versions(
         Bucket=test_bucket,
         MaxKeys=100,
         Prefix='中文',
@@ -533,7 +533,7 @@ def test_list_objects_versions():
     assert response
 
     try:
-        response = client.list_objects(
+        response = client.list_objects_versions(
             Bucket=test_bucket,
             MaxKeys=100,
             Prefix='中文',
@@ -1346,9 +1346,25 @@ def test_put_get_delete_object_tagging():
     )
 
 
-def _test_put_get_delete_bucket_origin():
+def test_put_get_delete_bucket_origin():
     """测试设置获取删除bucket回源域名"""
-    origin_config = {}
+    origin_config = {
+        'OriginRule': {
+            'RulePriority': 1,
+            'OriginType': 'Mirror',
+            'OriginCondition': {
+                'HTTPStatusCode': '404'
+            },
+            'OriginParameter': {
+                'Protocol': 'HTTP'
+            },
+            'OriginInfo': {
+                'HostInfo': {
+                    'HostName': 'examplebucket-1250000000.cos.ap-shanghai.myqcloud.com'
+                }
+            }
+        }
+    }
     response = client.put_bucket_origin(
         Bucket=test_bucket,
         OriginConfiguration=origin_config
@@ -2577,4 +2593,5 @@ if __name__ == "__main__":
     test_ci_live_video_auditing()
     test_sse_c_file()
     """
+    test_put_get_delete_bucket_origin()
     tearDown()
