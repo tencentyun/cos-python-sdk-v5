@@ -21,7 +21,7 @@ SECRET_ID = os.environ["COS_SECRET_ID"]
 SECRET_KEY = os.environ["COS_SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ['COS_REGION']
-APPID = '1253960454'
+APPID = os.environ['COS_APPID']
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
@@ -62,7 +62,7 @@ client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
 client_for_aes = CosEncryptionClient(conf, aes_provider)
 
-ci_bucket_name = 'cos-python-v5-test-ci-1253960454'
+ci_bucket_name = 'cos-python-v5-test-ci-' + APPID
 ci_region = 'ap-guangzhou'
 
 
@@ -2593,5 +2593,4 @@ if __name__ == "__main__":
     test_ci_live_video_auditing()
     test_sse_c_file()
     """
-    test_put_get_delete_bucket_origin()
     tearDown()
