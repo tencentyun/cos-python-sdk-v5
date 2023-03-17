@@ -62,7 +62,7 @@ client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
 client_for_aes = CosEncryptionClient(conf, aes_provider)
 
-ci_bucket_name = 'cos-python-v5-test-ci-1253960454'
+ci_bucket_name = 'cos-python-v5-test-ci-' + APPID
 ci_region = 'ap-guangzhou'
 ci_test_media = "test.mp4"
 ci_test_m3u8 = "test.m3u8"
