@@ -69,6 +69,7 @@ ci_test_m3u8 = "test.m3u8"
 ci_test_image = "test.png"
 ci_test_ocr_image = "ocr.jpeg"
 ci_test_txt = "test.txt"
+ci_test_car_image = "car.jpeg"
 
 
 def _create_test_bucket(test_bucket, create_region=None):
@@ -1178,7 +1179,7 @@ def test_put_get_delete_bucket_domain_certificate():
         response = client.put_bucket_domain(
             Bucket=test_bucket,
             DomainConfiguration=domain_config
-        ) 
+        )
     except CosServiceError as e:
         if e.get_error_code() == "RecordAlreadyExist":
             print(e.get_error_code())
@@ -1480,7 +1481,7 @@ def test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
     response = client.get_object_sensitive_content_recognition(
         Bucket=ci_bucket_name,
-        Key=ci_test_image,
+        Key=ci_test_ocr_image,
         Interval=3,
         MaxFrames=20,
         # BizType='xxxx',
@@ -1830,10 +1831,10 @@ def test_get_object_url():
 
 def test_qrcode():
     """二维码图片上传时识别"""
-    file_name = 'qrcode.svg'
+    file_name = 'format.png'
     with open(file_name, 'rb') as fp:
         # fp验证
-        opts = '{"is_pic_info":1,"rules":[{"fileid":"format.jpg","rule":"QRcode/cover/1"}]}'
+        opts = '{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"QRcode/cover/1"}]}'
         response, data = client.ci_put_object_from_local_file_and_get_qrcode(
             Bucket=ci_bucket_name,
             LocalFilePath=file_name,
@@ -1869,22 +1870,15 @@ def test_ci_put_image_style():
     body = {
         'StyleName': 'style_name',
     }
-    response = client.ci_delete_image_style(
+    response, data = client.ci_get_image_style(
         Bucket=ci_bucket_name,
         Request=body,
     )
     assert response
-
-
-def test_ci_get_image_style():
-    if TEST_CI != 'true':
-        return
-
-    """获取图片样式接口"""
     body = {
         'StyleName': 'style_name',
     }
-    response, data = client.ci_get_image_style(
+    response = client.ci_delete_image_style(
         Bucket=ci_bucket_name,
         Request=body,
     )
@@ -2294,7 +2288,7 @@ def test_ci_live_video_auditing():
                         'IP': 'IP-test',
                         'Type': 'Type-test',
                     },
-                    BizType="44f32597a627d013962c54d459a9ab6e",
+                    BizType='d0292362d07428b4f6982a31bf97c246'
                 )
     assert (response['JobsDetail']['JobId'])
     jobId = response['JobsDetail']['JobId']
@@ -2398,7 +2392,7 @@ def test_short_connection_put_get_object():
         SecretKey=SECRET_KEY,
         KeepAlive=False)
     my_client = CosS3Client(my_conf)
-    
+
     response = my_client.put_object(
         Bucket=test_bucket,
         Key=test_object,
@@ -2411,7 +2405,7 @@ def test_short_connection_put_get_object():
         Key=test_object,
     )
     assert response['Connection'] == 'close'
-    
+
 def test_config_invalid_scheme():
     """初始化Scheme为非法值"""
     try:
@@ -2448,7 +2442,7 @@ def test_config_anoymous():
     try:
         my_conf = CosConfig(
             Region=REGION,
-            Anonymous=True        
+            Anonymous=True
         )
     except Exception as e:
         raise e
@@ -2458,7 +2452,7 @@ def test_config_none_aksk():
     try:
         my_conf = CosConfig(
             Region=REGION,
-        ) 
+        )
     except Exception as e:
         print(e)
 
@@ -2518,38 +2512,48 @@ def test_ci_get_asr_template():
     assert response
 
 
-def test_ci_update_asr_template():
-    # 修改语音识别模板
-    response = client.ci_update_asr_template(
-        Bucket=ci_bucket_name,
-        TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
-        Name='update_asr_template',
-        EngineModelType='16k_zh',
-        ChannelNum=1,
-        ResTextFormat=1,
-    )
-    assert response
-
-
 def test_ci_create_asr_template():
     # 创建语音识别模板
     response = client.ci_create_asr_template(
         Bucket=ci_bucket_name,
-        Name='asr_template',
+        Name='test_asr_template',
         EngineModelType='16k_zh',
         ChannelNum=1,
         ResTextFormat=2,
         FlashAsr=True,
         Format='mp3',
     )
+    print(response)
+    assert response
+    templateId = response["Template"]["TemplateId"]
+    print(templateId)
+    response = client.ci_update_asr_template(
+        Bucket=ci_bucket_name,
+        TemplateId=templateId,
+        Name='update_asr_template',
+        EngineModelType='16k_zh',
+        ChannelNum=1,
+        ResTextFormat=1,
+        Format='mp3'
+    )
+    assert response
+    # 删除指定语音识别模板
+    response = client.ci_delete_asr_template(
+        Bucket=ci_bucket_name,
+        TemplateId=templateId,
+    )
     assert response
 
 
 def test_ci_list_asr_jobs():
+    response = client.ci_get_asr_queue(
+        Bucket=ci_bucket_name,
+    )
+    queueId = response["QueueList"][0]["QueueId"]
     # 获取语音识别任务信息列表
     response = client.ci_list_asr_jobs(
         Bucket=ci_bucket_name,
-        QueueId='p7369exxxxxxxxxxxxxxxxf5a',
+        QueueId=queueId,
         Size=10,
     )
     assert response
@@ -2565,6 +2569,10 @@ def test_ci_get_asr_jobs():
 
 
 def test_ci_create_asr_jobs():
+    response = client.ci_get_asr_queue(
+        Bucket=ci_bucket_name,
+    )
+    queueId = response["QueueList"][0]["QueueId"]
     # 创建语音识别异步任务
     body = {
         'EngineModelType': '16k_zh',
@@ -2575,7 +2583,7 @@ def test_ci_create_asr_jobs():
     }
     response = client.ci_create_asr_job(
         Bucket=ci_bucket_name,
-        QueueId='s0980xxxxxxxxxxxxxxxxff12',
+        QueueId=queueId,
         # TemplateId='t1ada6f282d29742db83244e085e920b08',
         InputObject='normal.mp4',
         OutputBucket=ci_bucket_name,
@@ -2588,14 +2596,18 @@ def test_ci_create_asr_jobs():
 
 
 def test_ci_put_asr_queue():
+    response = client.ci_get_asr_queue(
+        Bucket=ci_bucket_name,
+    )
+    queueId = response["QueueList"][0]["QueueId"]
     # 更新语音识别队列信息
     body = {
         'Name': 'asr-queue',
-        'QueueID': 'p7369xxxxxxxxxxxxxxxxxdff5a',
+        'QueueID': queueId,
         'State': 'Active',
         'NotifyConfig': {
             'Type': 'Url',
-            'Url': 'http://www.demo.callback.com',
+            'Url': 'http://www.demo.com',
             'Event': 'TaskFinish',
             'State': 'On',
             'ResultFormat': 'JSON'
@@ -2603,7 +2615,7 @@ def test_ci_put_asr_queue():
     }
     response = client.ci_update_asr_queue(
         Bucket=ci_bucket_name,
-        QueueId='p7369xxxxxxxxxxxxxxxxxdff5a',
+        QueueId=queueId,
         Request=body,
         ContentType='application/xml'
     )
@@ -2662,14 +2674,18 @@ def test_ci_doc_preview_process():
 
 
 def test_ci_put_doc_queue():
+    response = client.ci_get_doc_queue(
+        Bucket=ci_bucket_name,
+    )
+    queueId = response["QueueList"][0]["QueueId"]
     # 更新文档预览队列信息
     body = {
         'Name': 'doc-queue',
-        'QueueID': 'p4bdf22xxxxxxxxxxxxxxxxxxxxxxxxxf1',
+        'QueueID': queueId,
         'State': 'Active',
         'NotifyConfig': {
             'Type': 'Url',
-            'Url': 'http://www.demo.callback.com',
+            'Url': 'http://www.demo.com',
             'Event': 'TaskFinish',
             'State': 'On',
             'ResultFormat': 'JSON'
@@ -2677,7 +2693,7 @@ def test_ci_put_doc_queue():
     }
     response = client.ci_update_doc_queue(
         Bucket=ci_bucket_name,
-        QueueId='p4bdf22xxxxxxxxxxxxxxxxxxxxxxxxxf1',
+        QueueId=queueId,
         Request=body,
         ContentType='application/xml'
     )
@@ -2688,16 +2704,7 @@ def test_ci_list_workflowexecution():
     # 查询工作流实例接口
     response = client.ci_list_workflowexecution(
         Bucket=ci_bucket_name,
-        WorkflowId='w1b4ffd6900a343c3a2fe5b92b1fb7ff6'
-    )
-    assert response
-
-
-def test_ci_get_workflowexecution():
-    # 查询工作流实例接口
-    response = client.ci_get_workflowexecution(
-        Bucket=ci_bucket_name,
-        RunId='id1f94868688111eca793525400ca1839'
+        WorkflowId='w5307ee7a60d6489383c3921c715dd1c5'
     )
     assert response
 
@@ -2706,8 +2713,16 @@ def test_ci_trigger_workflow():
     # 触发工作流接口
     response = client.ci_trigger_workflow(
         Bucket=ci_bucket_name,
-        WorkflowId='w1b4ffd6900a343c3a2fe5b92b1fb7ff6',
-        Key='117374C.mp4'
+        WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
+        Key=ci_test_image
+    )
+    assert response
+    print(response)
+    instance_id = response['InstanceId']
+    # 查询工作流实例接口
+    response = client.ci_get_workflowexecution(
+        Bucket=ci_bucket_name,
+        RunId=instance_id
     )
     assert response
 
@@ -2733,14 +2748,18 @@ def test_ci_get_media_pic_jobs():
 
 
 def test_ci_put_media_pic_queue():
+    response = client.ci_get_media_pic_queue(
+        Bucket=ci_bucket_name,
+    )
+    queueId = response["QueueList"][0]["QueueId"]
     # 更新图片处理队列信息
     body = {
         'Name': 'media-pic-queue',
-        'QueueID': 'peb83bdxxxxxxxxxxxxxxxxa21c7d68',
+        'QueueID': queueId,
         'State': 'Active',
         'NotifyConfig': {
             'Type': 'Url',
-            'Url': 'http://www.demo.callback.com',
+            'Url': 'http://www.demo.com',
             'Event': 'TaskFinish',
             'State': 'On',
             'ResultFormat': 'JSON'
@@ -2748,7 +2767,7 @@ def test_ci_put_media_pic_queue():
     }
     response = client.ci_update_media_pic_queue(
         Bucket=ci_bucket_name,
-        QueueId='peb83bdxxxxxxxxxxxxxxxxxx4a21c7d68',
+        QueueId=queueId,
         Request=body,
         ContentType='application/xml'
     )
@@ -2779,7 +2798,7 @@ def test_ci_image_detect_car():
     # 车辆车牌检测
     response = client.ci_image_detect_car(
         Bucket=ci_bucket_name,
-        Key=ci_test_image,
+        Key=ci_test_car_image,
     )
     assert response
 
@@ -2802,18 +2821,6 @@ def test_pic_process_when_download_object():
         DestImagePath='format.png',
         # pic operation json struct
         Rule=rule
-    )
-    print(response['x-cos-request-id'])
-
-
-def test_ci_delete_image_style():
-    # 删除图片样式
-    body = {
-        'StyleName': 'style_name',
-    }
-    response = client.ci_delete_image_style(
-        Bucket=ci_bucket_name,
-        Request=body,
     )
     print(response['x-cos-request-id'])
 
@@ -2846,32 +2853,117 @@ def test_process_on_cloud():
 
 
 def test_ci_auditing_video_submit():
-    response = client.ci_auditing_video_submit(ci_bucket_name, ci_test_media)
-    assert response
-
-
-def test_ci_auditing_video_query():
-    response = client.ci_auditing_video_query(Bucket=ci_bucket_name, JobID="xxxxxx")
+    response = client.ci_auditing_video_submit(Bucket=ci_bucket_name,
+                                               Key=ci_test_media,
+                                               Callback="http://www.demo.com",
+                                               CallbackVersion='Simple',
+                                               DetectContent=1,
+                                               Mode='Interval',
+                                               Count=1,
+                                               TimeInterval=1)
+    jobId = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_video_query(Bucket=ci_bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
     assert response
 
 
 def test_ci_auditing_audio_submit():
-    response = client.ci_auditing_audio_submit(ci_bucket_name, ci_test_media)
-    assert response
-
-
-def test_ci_auditing_audio_query():
-    response = client.ci_auditing_audio_query(ci_bucket_name, JobID="xxxxxx")
+    response = client.ci_auditing_audio_submit(Bucket=ci_bucket_name,
+                                               Key=ci_test_media,
+                                               Callback="http://www.demo.com",
+                                               CallbackVersion='Simple')
+    jobId = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_audio_query(Bucket=ci_bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
     assert response
 
 
 def test_ci_auditing_text_submit():
-    response = client.ci_auditing_text_submit(ci_bucket_name, ci_test_media)
+    response = client.ci_auditing_text_submit(Bucket=ci_bucket_name,
+                                              Key=ci_test_txt,
+                                              Callback="http://www.demo.com")
+
+    jobId = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_text_query(Bucket=ci_bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
     assert response
 
 
-def test_ci_auditing_text_query():
-    response = client.ci_auditing_text_query(ci_bucket_name, JobID="xxxxxx")
+def test_ci_auditing_document_submit():
+    response = client.ci_auditing_document_submit(Bucket=ci_bucket_name,
+                                                  Url='https://cos-python-v5-test-ci-1253960454.cos.ap-guangzhou.myqcloud.com/test.txt',
+                                                  Key=ci_test_txt,
+                                                  Type='txt',
+                                                  Callback="http://www.demo.com")
+    jobId = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_document_query(Bucket=ci_bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        print(str(response))
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
+    assert response
+
+
+def test_ci_auditing_html_submit():
+    response = client.ci_auditing_html_submit(Bucket=ci_bucket_name,
+                                              Url="https://cloud.tencent.com/product/ci",
+                                              Callback="http://www.demo.com")
+    jobId = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_html_query(Bucket=ci_bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
+    assert response
+
+
+def test_ci_auditing_image_batch():
+    response = client.ci_auditing_image_batch(Bucket=ci_bucket_name,
+                                              Input=[{
+                                                'Object': 'ocr.jpeg'}])
+    jobId = response['JobsDetail'][0]['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_image_query(Bucket=ci_bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
+    assert response
+
+
+def test_ci_auditing_virus_submit():
+    response = client.ci_auditing_virus_submit(Bucket=ci_bucket_name,
+                                               Key=ci_test_image,
+                                               Callback="http://www.demo.com")
+    jobId = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_virus_query(Bucket=ci_bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
     assert response
 
 
@@ -2993,12 +3085,13 @@ if __name__ == "__main__":
     test_pic_process_when_put_object()
     test_process_on_cloud()
     test_ci_auditing_video_submit()
-    test_ci_auditing_video_query()
     test_ci_auditing_audio_submit()
-    test_ci_auditing_audio_query()
     test_ci_auditing_text_submit()
-    test_ci_auditing_text_query()
     test_get_object_sensitive_content_recognition()
+    test_ci_auditing_document_submit()
+    test_ci_auditing_html_submit()
+    test_ci_auditing_image_batch()
+    test_ci_auditing_virus_submit()
     test_sse_c_file()
     """
     tearDown()
