@@ -3015,6 +3015,11 @@ def test_ci_auditing_virus_submit():
     assert response
 
 
+def test_ci_auditing_detect_type():
+    detect_type = CiDetectType.get_detect_type_str(127)
+    assert detect_type
+
+
 if __name__ == "__main__":
     setUp()
     """
