@@ -1966,6 +1966,7 @@ def test_ci_get_media_queue():
     response = client.ci_get_media_queue(
                     Bucket=ci_bucket_name,
                     State="Active",
+                    ContentType='application/xml'
                 )
     assert (response['QueueList'])
 
@@ -2178,7 +2179,8 @@ def test_get_media_info():
     # 获取媒体信息
     response = client.get_media_info(
         Bucket=ci_bucket_name,
-        Key=ci_test_media
+        Key=ci_test_media,
+        ContentType='application/xml'
     )
     assert response
 
@@ -2192,6 +2194,7 @@ def test_get_snapshot():
         Key=ci_test_media,
         Time='1.5',
         Width='480',
+        Height='480',
         Format='png'
     )
     assert (response)
@@ -2218,7 +2221,8 @@ def test_ci_get_media_bucket():
         BucketNames=ci_bucket_name,
         BucketName=ci_bucket_name,
         PageNumber='1',
-        PageSize='2'
+        PageSize='2',
+        ContentType='application/xml'
     )
     assert (response)
 
@@ -2227,8 +2231,8 @@ def test_ci_create_doc_transcode_jobs():
     if TEST_CI != 'true':
         return
     response = client.ci_get_doc_queue(
-                    Bucket=ci_bucket_name
-                )
+                    Bucket=ci_bucket_name,
+                    ContentType='application/xml')
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
     response = client.ci_create_doc_job(
@@ -2238,9 +2242,21 @@ def test_ci_create_doc_transcode_jobs():
                     OutputBucket=ci_bucket_name,
                     OutputRegion='ap-guangzhou',
                     OutputObject='/test_doc/normal/abc_${Number}.jpg',
-                    # DocPassword='123',
+                    SrcType='pptx',
+                    TgtType='jpg',
+                    StartPage=1,
+                    EndPage=-1,
+                    SheetId=0,
+                    PaperDirection=0,
+                    PaperSize=0,
+                    DocPassword='123',
+                    Comments=0,
                     Quality=109,
+                    Zoom=100,
+                    ImageDpi=96,
+                    PicPagination=1,
                     PageRanges='1,3',
+                    ContentType='application/xml'
                 )
     assert (response['JobsDetail']['JobId'])
 
@@ -2249,6 +2265,7 @@ def test_ci_create_doc_transcode_jobs():
     response = client.ci_get_doc_job(
                     Bucket=ci_bucket_name,
                     JobID=JobID,
+                    ContentType='application/xml'
                 )
     assert (response['JobsDetail'])
 
@@ -2266,6 +2283,7 @@ def test_ci_list_doc_transcode_jobs():
                     Bucket=ci_bucket_name,
                     QueueId=queueId,
                     Size=10,
+                    ContentType='application/xml'
                 )
     assert (response['JobsDetail'])
 
@@ -2288,7 +2306,8 @@ def test_ci_live_video_auditing():
                         'IP': 'IP-test',
                         'Type': 'Type-test',
                     },
-                    BizType='d0292362d07428b4f6982a31bf97c246'
+                    BizType='d0292362d07428b4f6982a31bf97c246',
+                    CallbackType=1
                 )
     assert (response['JobsDetail']['JobId'])
     jobId = response['JobsDetail']['JobId']
@@ -2571,6 +2590,7 @@ def test_ci_get_asr_jobs():
 def test_ci_create_asr_jobs():
     response = client.ci_get_asr_queue(
         Bucket=ci_bucket_name,
+        ContentType='application/xml'
     )
     queueId = response["QueueList"][0]["QueueId"]
     # 创建语音识别异步任务
@@ -2586,10 +2606,16 @@ def test_ci_create_asr_jobs():
         QueueId=queueId,
         # TemplateId='t1ada6f282d29742db83244e085e920b08',
         InputObject='normal.mp4',
+        Url='',
+        TemplateId='',
         OutputBucket=ci_bucket_name,
         OutputRegion='ap-guangzhou',
         OutputObject='result.txt',
-        SpeechRecognition=body
+        SpeechRecognition=body,
+        CallBack="http://www.demo.com",
+        CallBackFormat='XML',
+        CallBackType='Url',
+        ContentType='application/xml'
     )
     print(response)
     return response
@@ -2636,7 +2662,8 @@ def test_ci_get_asr_bucket():
         Regions=REGION,
         BucketName=ci_bucket_name,
         PageSize="10",
-        PageNumber="1"
+        PageNumber="1",
+        ContentType='application/xml'
     )
     assert response
 
@@ -2648,7 +2675,8 @@ def test_ci_get_doc_bucket():
         # BucketName='demo',
         BucketNames=ci_bucket_name,
         PageSize=1,
-        PageNumber=1
+        PageNumber=1,
+        ContentType='application/xml'
     )
     assert response
 
@@ -2658,6 +2686,16 @@ def test_ci_doc_preview_to_html_process():
     response = client.ci_doc_preview_html_process(
         Bucket=ci_bucket_name,
         Key=ci_test_txt,
+        SrcType='txt',
+        Copyable='0',
+        DstType='html',
+        HtmlParams='',
+        HtmlWaterword='',
+        HtmlFillStyle='',
+        HtmlFront='',
+        HtmlRotate='315',
+        HtmlHorizontal='50',
+        HtmlVertical='100'
     )
     assert response
     response['Body'].get_stream_to_file('result.html')
@@ -2668,6 +2706,9 @@ def test_ci_doc_preview_process():
     response = client.ci_doc_preview_process(
         Bucket=ci_bucket_name,
         Key=ci_test_txt,
+        SrcType='txt',
+        Page=1,
+        DstType='jpg',
     )
     assert response
     response['Body'].get_stream_to_file('result.png')
@@ -2704,7 +2745,8 @@ def test_ci_list_workflowexecution():
     # 查询工作流实例接口
     response = client.ci_list_workflowexecution(
         Bucket=ci_bucket_name,
-        WorkflowId='w5307ee7a60d6489383c3921c715dd1c5'
+        WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
+        ContentType='application/xml'
     )
     assert response
 
@@ -2714,7 +2756,8 @@ def test_ci_trigger_workflow():
     response = client.ci_trigger_workflow(
         Bucket=ci_bucket_name,
         WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
-        Key=ci_test_image
+        Key=ci_test_image,
+        ContentType='application/xml'
     )
     assert response
     print(response)
@@ -2722,7 +2765,8 @@ def test_ci_trigger_workflow():
     # 查询工作流实例接口
     response = client.ci_get_workflowexecution(
         Bucket=ci_bucket_name,
-        RunId=instance_id
+        RunId=instance_id,
+        ContentType='application/xml'
     )
     assert response
 
@@ -2833,7 +2877,9 @@ def test_pic_process_when_put_object():
         LocalFilePath=ci_test_image,
         Key=ci_test_image,
         # pic operation json struct
-        PicOperations=operations
+        PicOperations=operations,
+        EnableMD5=True,
+        ContentType='application/xml'
     )
     print(response['x-cos-request-id'])
     print(data)
@@ -2846,7 +2892,8 @@ def test_process_on_cloud():
         Bucket=ci_bucket_name,
         Key=ci_test_image,
         # pic operation json struct
-        PicOperations=operations
+        PicOperations=operations,
+        ContentType='application/xml'
     )
     print(response['x-cos-request-id'])
     print(data)
@@ -2925,6 +2972,7 @@ def test_ci_auditing_document_submit():
 def test_ci_auditing_html_submit():
     response = client.ci_auditing_html_submit(Bucket=ci_bucket_name,
                                               Url="https://cloud.tencent.com/product/ci",
+                                              ReturnHighlightHtml=False,
                                               Callback="http://www.demo.com")
     jobId = response['JobsDetail']['JobId']
     while True:
