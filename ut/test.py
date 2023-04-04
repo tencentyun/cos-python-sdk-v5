@@ -97,6 +97,33 @@ def _create_test_bucket(test_bucket, create_region=None):
             raise e
     return None
 
+def _clear_and_delete_bucket(_client, _bucket):
+    marker = ""
+    while True:
+        response = _client.list_objects(
+            Bucket=_bucket, Marker=marker)
+        objects = list()
+        if 'Contents' in response:
+            for content in response['Contents']:
+                key = content['Key']
+                objects.append({'Key': key})
+        
+        if response['IsTruncated'] == 'false':
+            break
+
+        del_response = _client.delete_objects(
+            Bucket=_bucket,
+            Delete={
+                'Object': objects
+            }
+        )
+
+        marker = response["NextMarker"]
+
+    response = _client.delete_bucket(
+        Bucket=_bucket
+    )
+    print("bucket deleted: {}".format(_bucket))
 
 def _upload_test_file(test_bucket, test_key):
     response = client.put_object(
@@ -965,6 +992,8 @@ def test_put_get_bucket_logging():
     print(response)
     assert response['LoggingEnabled']['TargetBucket'] == logging_bucket
     assert response['LoggingEnabled']['TargetPrefix'] == 'test'
+
+    _clear_and_delete_bucket(logging_client, logging_bucket)
 
 
 def test_put_object_enable_md5():
