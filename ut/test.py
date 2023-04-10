@@ -23,16 +23,39 @@ TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ["REGION"]
 APPID = '1251668577'
 TEST_CI = os.environ["TEST_CI"]
-test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
+USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
+test_bucket = 'cos-python-v5-testbkt-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
 special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
-conf = CosConfig(
-    Region=REGION,
-    SecretId=SECRET_ID,
-    SecretKey=SECRET_KEY,
-)
+
+""" CredentialDemo """
+class CredentialDemo:
+    @property
+    def secret_id(self):
+        return SECRET_ID
+    
+    @property
+    def secret_key(self):
+        return SECRET_KEY
+    
+    @property
+    def token(self):
+        return ''
+
+if USE_CREDENTIAL_INST == 'true':
+    conf = CosConfig(
+        Region=REGION,
+        CredentialInstance=CredentialDemo()
+    )
+else:
+    conf = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+    )
+
 client = CosS3Client(conf, retry=3)
 rsa_provider = RSAProvider()
 client_for_rsa = CosEncryptionClient(conf, rsa_provider)
@@ -406,6 +429,21 @@ def test_create_head_delete_bucket():
         Bucket=bucket_name
     )
 
+def test_create_head_delete_maz_bucket():
+    """创建一个多AZ bucket,head它是否存在,最后删除一个空bucket"""
+    bucket_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
+    bucket_name = 'buckettest-maz' + bucket_id + '-' + APPID
+    response = client.create_bucket(
+        Bucket=bucket_name,
+        BucketAZConfig='MAZ',
+        ACL='public-read'
+    )
+    response = client.head_bucket(
+        Bucket=bucket_name
+    )
+    response = client.delete_bucket(
+        Bucket=bucket_name
+    )
 
 def test_put_bucket_acl_illegal():
     """设置非法的ACL"""
@@ -499,7 +537,7 @@ def test_put_get_delete_cors():
     )
     assert response
     # delete cors
-    response = client.get_bucket_cors(
+    response = client.delete_bucket_cors(
         Bucket=test_bucket
     )
 
@@ -1034,6 +1072,91 @@ def test_put_get_delete_bucket_domain():
         Bucket=test_bucket
     )
 
+def test_put_get_delete_bucket_domain_certificate():
+    """测试设置获取删除bucket自定义域名证书"""
+
+    """
+    存储桶 bj-1259654469 专门用于测试自定义域名证书
+    """
+
+    temp_bucket = 'bj-1259654469'
+    temp_conf = CosConfig(
+        Region='ap-beijing',
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY
+    )
+    temp_client = CosS3Client(
+        conf=temp_conf,
+        retry=3
+    )
+
+    domain = 'testcertificate.coshelper.com'
+    domain_config = {
+        'DomainRule': [
+            {
+                'Name': domain,
+                'Type': 'REST',
+                'Status': 'ENABLED',
+            },
+        ]
+    }
+
+    # put domain
+    response = temp_client.put_bucket_domain(
+        Bucket=temp_bucket,
+        DomainConfiguration=domain_config
+    ) 
+
+    with open('./testcertificate.coshelper.com.key', 'rb') as f:
+        key = f.read().decode('utf-8')
+    with open('./testcertificate.coshelper.com.pem', 'rb') as f:
+        cert = f.read().decode('utf-8')
+
+    domain_cert_config = {
+        'CertificateInfo': {
+            'CertType': 'CustomCert',
+            'CustomCert': {
+                'Cert': cert,
+                'PrivateKey': key,
+            },
+        },
+        'DomainList': [
+            {
+                'DomainName': domain
+            },
+        ],
+    }
+
+    # put domain certificate
+    response = temp_client.delete_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainName=domain
+    )
+
+    time.sleep(2)
+    response = temp_client.put_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainCertificateConfiguration=domain_cert_config
+    )
+    # wait for sync
+    # get domain certificate
+    time.sleep(4)
+    response = temp_client.get_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainName=domain
+    )
+    assert response["Status"] == "Enabled"
+
+    # delete domain certificate
+    response = temp_client.delete_bucket_domain_certificate(
+        Bucket=temp_bucket,
+        DomainName=domain
+    )
+
+    # delete domain
+    response = temp_client.delete_bucket_domain(
+        Bucket=temp_bucket,
+    )
 
 def test_put_get_delete_bucket_inventory():
     """测试设置获取删除bucket清单"""
@@ -1464,6 +1587,8 @@ def test_rsa_client():
 
 
 def test_live_channel():
+    if TEST_CI != 'true':
+        return
     """测试rtmp推流功能"""
     livechannel_config = {
         'Description': 'cos python sdk test',
@@ -1620,6 +1745,117 @@ def _test_qrcode():
         Cover=0
     )
     print(response, data)
+
+
+def test_ci_put_image_style():
+    if TEST_CI != 'true':
+        return
+
+    """增加图片样式接口"""
+    body = {
+        'StyleName': 'style_name',
+        'StyleBody': 'imageMogr2/thumbnail/!50px',
+    }
+    response = client.ci_put_image_style(
+        Bucket=test_bucket,
+        Request=body,
+    )
+    print(response)
+
+
+def test_ci_get_image_style():
+    if TEST_CI != 'true':
+        return
+
+    """获取图片样式接口"""
+    body = {
+        'StyleName': 'style_name',
+    }
+    response, data = client.ci_get_image_style(
+        Bucket=test_bucket,
+        Request=body,
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_get_image_info():
+    if TEST_CI != 'true':
+        return
+
+    """ci获取图片基本信息接口"""
+    response, data = client.ci_get_image_info(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_get_image_exif_info():
+    if TEST_CI != 'true':
+        return
+
+    """获取图片exif信息接口"""
+    response, data = client.ci_get_image_exif_info(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_get_image_ave_info():
+    if TEST_CI != 'true':
+        return
+
+    """获取图片主色调接口"""
+    response, data = client.ci_get_image_info(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response['x-cos-request-id'])
+    print(data)
+
+
+def test_ci_image_assess_quality():
+    if TEST_CI != 'true':
+        return
+
+    """图片质量评估接口"""
+    response = client.ci_image_assess_quality(
+        Bucket=test_bucket,
+        Key='format.png',
+    )
+    print(response)
+
+
+def test_ci_qrcode_generate():
+    if TEST_CI != 'true':
+        return
+
+    """二维码生成接口"""
+    response = client.ci_qrcode_generate(
+        Bucket=test_bucket,
+        QrcodeContent='https://www.example.com',
+        Width=200
+    )
+    qrCodeImage = base64.b64decode(response['ResultImage'])
+    with open('/result.png', 'wb') as f:
+        f.write(qrCodeImage)
+    print(response)
+
+
+def test_ci_ocr_process():
+    if TEST_CI != 'true':
+        return
+
+    """通用文字识别"""
+    response = client.ci_ocr_process(
+        Bucket=test_bucket,
+        Key='ocr.jpeg',
+    )
+    print(response)
 
 
 def test_ci_get_media_queue():
@@ -2067,49 +2303,85 @@ def test_sse_c_file():
 if __name__ == "__main__":
     setUp()
     """
-    test_put_object_enable_md5()
-    test_upload_with_server_side_encryption()
-    test_upload_empty_file()
     test_put_get_delete_object_10MB()
+    test_put_object_speacil_names()
+    test_get_object_special_names()
+    test_delete_object_special_names()
+    test_put_object_non_exist_bucket()
+    test_put_object_acl()
+    test_get_object_acl()
+    test_copy_object_diff_bucket()
+    test_create_abort_multipart_upload()
+    test_create_complete_multipart_upload()
+    test_upload_part_copy()
+    test_delete_multiple_objects()
+    test_create_head_delete_bucket()
+    test_create_head_delete_maz_bucket()
+    test_put_bucket_acl_illegal()
+    test_get_bucket_acl_normal()
+    test_list_objects()
+    test_list_objects_versions()
+    test_get_presigned_url()
+    test_get_bucket_location()
+    test_get_service()
+    test_put_get_delete_cors()
+    test_put_get_delete_lifecycle()
     test_put_get_versioning()
     test_put_get_delete_replication()
-    test_upload_part_copy()
+    test_put_get_delete_website()
+    test_list_multipart_uploads()
+    test_upload_file_from_buffer()
     test_upload_file_multithreading()
     test_upload_file_with_progress_callback()
     test_copy_file_automatically()
-    test_copy_10G_file_in_same_region()
-    test_list_objects()
+    test_upload_empty_file()
     test_use_get_auth()
+    test_upload_with_server_side_encryption()
     test_put_get_bucket_logging()
-    test_put_get_delete_website()
-    test_put_get_bucket_policy()
+    test_put_object_enable_md5()
+    test_put_object_from_local_file()
+    test_object_exists()
+    test_bucket_exists()
+    test_put_get_delete_bucket_policy()
     test_put_file_like_object()
     test_put_chunked_object()
-    test_put_get_delete_bucket_inventory()
-    test_put_get_traffic_limit()
+    test_put_get_gzip_file()
     test_put_get_delete_bucket_domain()
+    test_put_get_delete_bucket_domain_certificate()
+    test_put_get_delete_bucket_inventory()
+    test_put_get_delete_bucket_tagging()
+    test_put_get_delete_object_tagging()
+    test_put_get_delete_bucket_referer()
+    test_put_get_traffic_limit()
     test_select_object()
-    _test_get_object_sensitive_content_recognition()
-    test_live_channel()
     test_download_file()
-    test_put_get_bucket_intelligenttiering()
+    test_bucket_encryption()
     test_aes_client()
     test_rsa_client()
-    test_qrcode()
+    test_live_channel()
+    test_get_object_url()
+    test_ci_put_image_style()
+    test_ci_get_image_style()
+    test_ci_get_image_info()
+    test_ci_get_image_exif_info()
+    test_ci_get_image_ave_info()
+    test_ci_image_assess_quality()
+    test_ci_qrcode_generate()
+    test_ci_ocr_process()
     test_ci_get_media_queue()
+    test_ci_get_media_pic_queue()
     test_ci_create_media_transcode_watermark_jobs()
     test_ci_create_media_transcode_jobs()
+    test_ci_create_media_pic_jobs()
+    test_ci_list_media_pic_jobs()
     test_ci_list_media_transcode_jobs()
-    test_ci_create_doc_transcode_jobs()
-    test_ci_list_doc_transcode_jobs()
-    test_ci_live_video_auditing()
     test_get_media_info()
     test_get_snapshot()
     test_get_pm3u8()
     test_ci_get_media_bucket()
+    test_ci_create_doc_transcode_jobs()
+    test_ci_list_doc_transcode_jobs()
+    test_ci_live_video_auditing()
     test_sse_c_file()
-    test_ci_list_media_pic_jobs()
-    test_ci_create_media_pic_jobs()
-    test_ci_get_media_pic_queue()
     """
     tearDown()

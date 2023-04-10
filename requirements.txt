@@ -1,4 +1,4 @@
-dicttoxml
+xmltodict
 six
 crcmod
 pycryptodome

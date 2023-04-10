@@ -99,8 +99,6 @@ fix retry logic
 
 ## [v1.7.7](https://github.com/tencentyun/cos-python-sdk-v5/compare/1.7.6...v1.7.7) - 2019-12-24
 
-support bucket referer
-
 ### Merged
 
 - support bucket referer [`#106`](https://github.com/tencentyun/cos-python-sdk-v5/pull/106)
@@ -108,8 +106,6 @@ support bucket referer
 - update upload part return [`#104`](https://github.com/tencentyun/cos-python-sdk-v5/pull/104)
 
 ## [1.7.6](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.7.5...1.7.6) - 2019-11-26
-
-support Inventory and Bucket Tagging
 
 ### Merged
 
@@ -122,8 +118,6 @@ support Inventory and Bucket Tagging
 - compatible get object on Win-Platform [`#100`](https://github.com/tencentyun/cos-python-sdk-v5/pull/100)
 
 ## [v1.7.4](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.7.3...v1.7.4) - 2019-08-26
-
-support proxies
 
 ### Merged
 

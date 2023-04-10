@@ -17,7 +17,6 @@ from datetime import datetime
 from six.moves.urllib.parse import quote, unquote, urlencode
 from six import text_type, binary_type
 from hashlib import md5
-from dicttoxml import dicttoxml
 from .streambody import StreamBody
 from .xml2dict import Xml2Dict
 from .cos_auth import CosS3Auth
@@ -41,10 +40,10 @@ logger = logging.getLogger(__name__)
 class CosConfig(object):
     """config类，保存用户相关信息"""
 
-    def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, Scheme=None, Timeout=None,
+    def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, CredentialInstance=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EnableOldDomain=True, EnableInternalDomain=True):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -80,6 +79,7 @@ class CosConfig(object):
         self._region = Region
         self._endpoint = Endpoint
         self._endpoint_ci = EndpointCi
+        self._endpoint_pic = EndpointPic
         self._ip = to_unicode(IP)
         self._port = Port
         self._anonymous = Anonymous
@@ -107,6 +107,7 @@ class CosConfig(object):
         # 格式化ci的endpoint 不支持自定义域名的
         # ci暂不支持新域名
         self._endpoint_ci = format_endpoint(EndpointCi, Region, u'ci.', True, False)
+        self._endpoint_pic = format_endpoint(EndpointCi, Region, u'pic.', True, False)
 
         # 兼容(SecretId,SecretKey)以及(AccessId,AccessKey)
         if (SecretId and SecretKey):
@@ -118,9 +119,14 @@ class CosConfig(object):
         elif (Access_id and Access_key):
             self._secret_id = self.convert_secret_value(Access_id)
             self._secret_key = self.convert_secret_value(Access_key)
+        elif (CredentialInstance and hasattr(CredentialInstance, "secret_id") and hasattr(CredentialInstance, "secret_key") and hasattr(CredentialInstance, "token")):
+            self._secret_id = None
+            self._secret_key = None
+            self._credential_inst = CredentialInstance
         elif self._anonymous:
             self._secret_id = None
             self._secret_key = None
+            self._credential_inst = None
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
@@ -745,8 +751,7 @@ class CosS3Client(object):
                 Delete=objects
             )
         """
-        lst = ['<Object>', '</Object>']  # 类型为list的标签
-        xml_config = format_xml(data=Delete, root='Delete', lst=lst)
+        xml_config = format_xml(data=Delete, root='Delete')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -881,7 +886,7 @@ class CosS3Client(object):
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
         params = format_values(params)
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("upload part copy, url=:{url} ,headers=:{headers}".format(
+        logger.debug("upload part copy, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         rt = self.send_request(
@@ -962,7 +967,7 @@ class CosS3Client(object):
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
         params = format_values(params)
         url = self._conf.uri(bucket=Bucket, path=Key)
-        logger.info("upload part, url=:{url} ,headers=:{headers}, params=:{params}".format(
+        logger.debug("upload part, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
             params=params))
@@ -1139,12 +1144,9 @@ class CosS3Client(object):
                 GrantRead='id="qcs::cam::uin/123:uin/456",id="qcs::cam::uin/123:uin/123"'
             )
         """
-        lst = [  # 类型为list的标签
-            '<Grant>',
-            '</Grant>']
         xml_config = ""
         if AccessControlPolicy:
-            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy', lst=lst)
+            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy')
         headers = mapped(kwargs)
         params = {'acl': ''}
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -1271,10 +1273,11 @@ class CosS3Client(object):
         return data
 
     # s3 bucket interface begin
-    def create_bucket(self, Bucket, **kwargs):
+    def create_bucket(self, Bucket, BucketAZConfig=None, **kwargs):
         """创建一个bucket
 
-        :param Bucket(string): 存储桶名称.
+        :param Bucket(string): 存储桶名称. 存储桶名称不支持大写字母，COS 后端会将用户传入的大写字母自动转换为小写字母用于创建存储桶.
+        :param BucketAZConfig(string): 存储桶的多AZ配置
         :param kwargs(dict): 设置请求headers.
         :return: None.
 
@@ -1282,12 +1285,23 @@ class CosS3Client(object):
 
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
-            # 创建bucket
+            # 创建单AZ bucket
             response = client.create_bucket(
                 Bucket='bucket'
             )
+            # 创建多AZ bucket
+            response = client.create_bucket(
+                Bucket='bucket',
+                BucketAZConfig='MAZ'
+            )
         """
         headers = mapped(kwargs)
+        xml_config = None
+        if BucketAZConfig == 'MAZ':
+            bucket_config = {'BucketAZConfig': 'MAZ'}
+            xml_config = format_xml(data=bucket_config, root='CreateBucketConfiguration')
+            headers['Content-MD5'] = get_md5(xml_config)
+            headers['Content-Type'] = 'application/xml'
         url = self._conf.uri(bucket=Bucket)
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -1296,6 +1310,7 @@ class CosS3Client(object):
             method='PUT',
             url=url,
             bucket=Bucket,
+            data=xml_config,
             auth=CosS3Auth(self._conf),
             headers=headers)
         return None
@@ -1595,12 +1610,9 @@ class CosS3Client(object):
                 GrantRead='id="qcs::cam::uin/123:uin/456",id="qcs::cam::uin/123:uin/123"'
             )
         """
-        lst = [  # 类型为list的标签
-            '<Grant>',
-            '</Grant>']
         xml_config = ""
         if AccessControlPolicy:
-            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy', lst=lst)
+            xml_config = format_xml(data=AccessControlPolicy, root='AccessControlPolicy')
         headers = mapped(kwargs)
         params = {'acl': ''}
         url = self._conf.uri(bucket=Bucket)
@@ -1684,18 +1696,7 @@ class CosS3Client(object):
                 CORSConfiguration=cors_config
             )
         """
-        lst = [  # 类型为list的标签
-            '<CORSRule>',
-            '<AllowedOrigin>',
-            '<AllowedMethod>',
-            '<AllowedHeader>',
-            '<ExposeHeader>',
-            '</CORSRule>',
-            '</AllowedOrigin>',
-            '</AllowedMethod>',
-            '</AllowedHeader>',
-            '</ExposeHeader>']
-        xml_config = format_xml(data=CORSConfiguration, root='CORSConfiguration', lst=lst)
+        xml_config = format_xml(data=CORSConfiguration, root='CORSConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -1818,17 +1819,7 @@ class CosS3Client(object):
             )
         """
         # 类型为list的标签
-        lst = [
-            '<Rule>',
-            '<Tag>',
-            '<Transition>',
-            '<NoncurrentVersionTransition>',
-            '</NoncurrentVersionTransition>',
-            '</Transition>',
-            '</Tag>',
-            '</Rule>'
-        ]
-        xml_config = format_xml(data=LifecycleConfiguration, root='LifecycleConfiguration', lst=lst)
+        xml_config = format_xml(data=LifecycleConfiguration, root='LifecycleConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2053,8 +2044,7 @@ class CosS3Client(object):
                 ReplicationConfiguration=replication_config
             )
         """
-        lst = ['<Rule>', '</Rule>']  # 类型为list的标签
-        xml_config = format_xml(data=ReplicationConfiguration, root='ReplicationConfiguration', lst=lst)
+        xml_config = format_xml(data=ReplicationConfiguration, root='ReplicationConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2182,7 +2172,12 @@ class CosS3Client(object):
                 WebsiteConfiguration=website_config
             )
         """
-        xml_config = format_xml(data=WebsiteConfiguration, root='WebsiteConfiguration', parent_child=True)
+        # 重构 WebsiteConfiguration['RoutingRules']
+        WebsiteConfigurationCpy = copy.deepcopy(WebsiteConfiguration)
+        if 'RoutingRules' in WebsiteConfigurationCpy.keys():
+            WebsiteConfigurationCpy['RoutingRules'] = {'RoutingRule': WebsiteConfigurationCpy['RoutingRules']}
+
+        xml_config = format_xml(data=WebsiteConfigurationCpy, root='WebsiteConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2481,8 +2476,7 @@ class CosS3Client(object):
                 DomainConfiguration=domain_config
             )
         """
-        lst = ['<DomainRule>', '</DomainRule>']  # 类型为list的标签
-        xml_config = format_xml(data=DomainConfiguration, root='DomainConfiguration', lst=lst)
+        xml_config = format_xml(data=DomainConfiguration, root='DomainConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2567,6 +2561,118 @@ class CosS3Client(object):
             params=params)
         return None
 
+    def put_bucket_domain_certificate(self, Bucket, DomainCertificateConfiguration, **kwargs):
+        """设置bucket的自定义域名证书配置规则
+
+        :param Bucket(string): 存储桶名称.
+        :param DomainCertificateConfiguration(dict): 设置Bucket的自定义域名证书配置规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket自定义域名证书配置规则
+            domain_cert_config = {}
+            response = client.put_bucket_domain_certificate(
+                Bucket='bucket',
+                DomainCertificateConfiguration=domain_cert_config
+            )
+        """
+        xml_config = format_xml(data=DomainCertificateConfiguration, root='DomainCertificate')
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        # params = {'domaincertificate': ''}
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
+        url = self._conf.uri(bucket=Bucket)
+        url += '?domaincertificate'
+        logger.info("put bucket domain certificate, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf),
+            headers=headers)
+        return None
+    
+    def get_bucket_domain_certificate(self, Bucket, DomainName, **kwargs):
+        """获取bucket的自定义域名证书配置规则
+
+        :param Bucket(string): 存储桶名称.
+        :param DomainName(string): Bucket的自定义域名.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket的自定义域名证书配置规则.
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket自定义域名证书配置规则
+            response = client.get_bucket_domain_certificate(
+                Bucket='bucket',
+                DomainName='domain-name'
+            )
+        """
+        headers = mapped(kwargs)
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
+        # params = {'domaincertificate': '', 'domainname': DomainName}
+        params = {'domainname': DomainName}
+        url = self._conf.uri(bucket=Bucket)
+        url += '?domaincertificate'
+        logger.info("get bucket domain certificate, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        return data
+    
+    def delete_bucket_domain_certificate(self, Bucket, DomainName, **kwargs):
+        """删除bucket的自定义域名证书配置规则
+
+        :param Bucket(string): 存储桶名称.
+        :param DomainName(string): Bucket的自定义域名.
+        :param kwargs(dict): 设置请求headers.
+        :return: None
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket自定义域名证书配置规则
+            response = client.delete_bucket_domain_certificate(
+                Bucket='bucket',
+                DomainName='domain-name'
+            )
+        """
+        headers = mapped(kwargs)
+        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
+        # 只能将'?domaincertificate'拼接到url
+        # params = {'domaincertificate': '', 'domainname': DomainName}
+        params = {'domainname': DomainName}
+        url = self._conf.uri(bucket=Bucket)
+        url += "?domaincertificate"
+        logger.info("delete bucket domain certificate, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     def put_bucket_origin(self, Bucket, OriginConfiguration={}, **kwargs):
         """设置bucket的回源规则
 
@@ -2586,8 +2692,7 @@ class CosS3Client(object):
                 OriginConfiguration=origin_config
             )
         """
-        lst = ['<OriginRule>', '</OriginRule>']  # 类型为list的标签
-        xml_config = format_xml(data=OriginConfiguration, root='OriginConfiguration', lst=lst)
+        xml_config = format_xml(data=OriginConfiguration, root='OriginConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2720,9 +2825,8 @@ class CosS3Client(object):
                 InventoryConfiguration=inventory_config
             )
         """
-        lst = ['<Field>', '</Field>']  # 类型为list的标签
         InventoryConfiguration['Id'] = Id
-        xml_config = format_xml(data=InventoryConfiguration, root='InventoryConfiguration', lst=lst)
+        xml_config = format_xml(data=InventoryConfiguration, root='InventoryConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -2837,8 +2941,7 @@ class CosS3Client(object):
                 Tagging=tagging_set
             )
         """
-        lst = ['<Tag>', '</Tag>']  # 类型为list的标签
-        xml_config = format_xml(data=Tagging, root='Tagging', lst=lst)
+        xml_config = format_xml(data=Tagging, root='Tagging')
         headers = mapped(kwargs)
         params = {'tagging': ''}
         if 'versionId' in headers:
@@ -2961,8 +3064,7 @@ class CosS3Client(object):
                 Tagging=tagging_set
             )
         """
-        lst = ['<Tag>', '</Tag>']  # 类型为list的标签
-        xml_config = format_xml(data=Tagging, root='Tagging', lst=lst)
+        xml_config = format_xml(data=Tagging, root='Tagging')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -3075,8 +3177,7 @@ class CosS3Client(object):
                 RefererConfiguration=referer_config
             )
         """
-        lst = ['<Domain>', '</Domain>']  # 类型为list的标签
-        xml_config = format_xml(data=RefererConfiguration, root='RefererConfiguration', lst=lst)
+        xml_config = format_xml(data=RefererConfiguration, root='RefererConfiguration')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
@@ -3931,13 +4032,7 @@ class CosS3Client(object):
         :param kwargs(dict): 设置请求的headers.
         :return: None.
         """
-        # 类型为list的标签
-        lst = [
-            '<Rule>',
-            '</Rule>'
-        ]
-        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration',
-                                lst=lst)
+        xml_config = format_xml(data=ServerSideEncryptionConfiguration, root='ServerSideEncryptionConfiguration')
         headers = mapped(kwargs)
         params = {'encryption': ''}
         url = self._conf.uri(bucket=Bucket)
@@ -4489,6 +4584,510 @@ class CosS3Client(object):
         response = dict(**rt.headers)
         data = xml_to_dict(rt.content)
         return response, data
+
+    def ci_put_image_style(self, Bucket, Request, **kwargs):
+        """CI增加图片样式接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Request(dict): 图片样式请求体.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 添加图片样式返回结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            body = {
+                'StyleName': 'style_name',
+                'StyleBody': 'imageMogr2/thumbnail/!50px',
+            }
+            response = client.ci_put_image_style(
+                Bucket=bucket_name,
+                Request=body,
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'style': ''}
+        xml_config = format_xml(data=Request, root='AddStyle')
+        url = self._conf.uri(bucket=Bucket, endpoint=self._conf._endpoint_pic)
+        logger.info("ci_put_image_style, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        response = dict(**rt.headers)
+        return response
+
+    def ci_get_image_style(self, Bucket, Request, **kwargs):
+        """CI获取图片样式接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Request(dict): 图片样式请求体.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 获取图片样式结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+                body = {
+                    'StyleName': 'style_name',
+                }
+                response, data = client.ci_get_image_style(
+                    Bucket=bucket_name,
+                    Request=body,
+                )
+                print(response['x-cos-request-id'])
+                print(data)
+        """
+        headers = mapped(kwargs)
+        params = {'style': ''}
+        url = self._conf.uri(bucket=Bucket, endpoint=self._conf._endpoint_pic)
+        xml_config = format_xml(data=Request, root='GetStyle')
+        logger.info("ci_get_image_style, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        response = dict(**rt.headers)
+        data = xml_to_dict(rt.content)
+        return response, data
+
+    def ci_delete_image_style(self, Bucket, Request, **kwargs):
+        """CI删除图片样式接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Request(dict): 图片样式请求体.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 获取图片样式response header.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            body = {
+                'StyleName': 'style_name',
+            }
+            response = client.ci_delete_image_style(
+                Bucket=bucket_name,
+                Request=body,
+            )
+            print(response['x-cos-request-id'])
+        """
+        headers = mapped(kwargs)
+        params = {'style': ''}
+        xml_config = format_xml(data=Request, root='DeleteStyle')
+        url = self._conf.uri(bucket=Bucket, endpoint=self._conf._endpoint_pic)
+        logger.info("ci_delete_image_style, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+
+        response = dict(**rt.headers)
+        return response
+
+    def ci_get_object(self, Bucket, Key, DestImagePath, Rule, **kwargs):
+        """单文件CI下载对象到文件接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param DestImagePath(string): 下载图片的目的路径.
+        :param Rule(string): 图片处理规则.
+        :kwargs(dict): 设置上传的headers.
+        :return(dict): 下载后response header.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_get_object(
+                    Bucket='bucket',
+                    Key='local.jpg',
+                    DestImagePath='download.png'
+                    Rule='imageView2/format/png'
+                )
+                print(response['x-cos-request-id'])
+
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {Rule: ''}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_get_object, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        StreamBody(rt).get_stream_to_file(DestImagePath)
+        response = dict(**rt.headers)
+        return response
+
+    def ci_get_image_info(self, Bucket, Key, Param='imageInfo', **kwargs):
+        """ci获取图片基本信息接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Param(string): 请求参数，一般情况下不进行赋值操作.
+        :kwargs(dict): 设置获取图片信息的headers.
+        :return(dict): response header.
+        :return(dict): 图片信息结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_info(
+                Bucket=bucket_name,
+                 Key='format.png',
+            )
+            print(response['x-cos-request-id'])
+            print(data)
+
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {Param: ''}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_get_image_info, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        data = rt.content
+        return response, data
+
+    def ci_get_image_exif_info(self, Bucket, Key, **kwargs):
+        """ci获取图片exif信息接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :kwargs(dict): 设置获取图片exif信息的headers.
+        :return(dict): response header.
+        :return(dict): 图片exif信息结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_exif_info(
+                Bucket=bucket_name,
+                Key='format.png',
+            )
+            print(response['x-cos-request-id'])
+            print(data)
+
+        """
+        return self.ci_get_image_info(Bucket, Key, 'exif', **kwargs)
+
+    def ci_get_image_ave_info(self, Bucket, Key, **kwargs):
+        """ci获取图片主色调接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :kwargs(dict): 设置获取图片主色调的headers.
+        :return(dict): response header.
+        :return(dict): 图片主色调结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_exif_info(
+                Bucket=bucket_name,
+                Key='format.png',
+            )
+            print(response['x-cos-request-id'])
+            print(data)
+
+        """
+        return self.ci_get_image_info(Bucket, Key, 'imageAve', **kwargs)
+
+    def ci_process(self, Bucket, Key, CiProcess, **kwargs):
+        """ci_process基本信息的接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param CiProcess(string): ci process处理参数.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_process(
+                Bucket='bucket',
+                Key='test.mp4',
+                CiProcess='AssessQuality',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': CiProcess}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        format_dict(data, ['Response'])
+        return data
+
+    def ci_image_assess_quality(self, Bucket, Key, **kwargs):
+        """ci_image_assess_quality图片质量评估接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 图片质量评估返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_image_assess_quality(
+                Bucket='bucket',
+                Key='test.mp4',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "AssessQuality", **kwargs)
+
+    def ci_image_detect_car(self, Bucket, Key, **kwargs):
+        """ci_image_detect_car车辆车牌检测接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 车辆车牌检测返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_image_detect_car(
+                Bucket='bucket',
+                Key='test.mp4',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "DetectCar", **kwargs)
+
+    def ci_image_detect_label(self, Bucket, Key, **kwargs):
+        """ci_image_detect_label图片标签接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 图片质量评估返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_image_detect_label(
+                Bucket='bucket',
+                Key='test.mp4',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "detect-label", **kwargs)
+
+    def ci_qrcode_generate(self, Bucket, QrcodeContent, Width, Mode=0, **kwargs):
+        """二维码生成接口
+
+        :param Bucket(string): 存储桶名称.
+        :param QrcodeContent(string): 可识别的二维码文本信息.
+        :param Width(string):  指定生成的二维码或条形码的宽度，高度会进行等比压缩.
+        :param Mode(int): 生成的二维码类型，可选值：0或1。0为二维码，1为条形码，默认值为0.
+        :return(dict): 二维码生成结果
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_qrcode_generate(
+                Bucket=bucket_name,
+                QrcodeContent='https://www.example.com',
+                Width=200
+            )
+            qrCodeImage = base64.b64decode(response['ResultImage'])
+            with open('/result.png', 'wb') as f:
+                f.write(qrCodeImage)
+            print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'qrcode-generate'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['qrcode-content'] = '<' + QrcodeContent + '>'
+        params['width'] = Width
+        params['mode'] = Mode
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("ci_qrcode_generate, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_ocr_process(self, Bucket, Key, Type='general', LanguageType='zh', Ispdf=False, PdfPagenumber=1, Isword=False, EnableWordPolygon=False, **kwargs):
+        """通用文字识别
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Type(string): OCR 的识别类型，有效值为 general，accurate，efficient，fast，handwriting。general 表示通用印刷体识别；accurate 表示印刷体高精度版；efficient 表示印刷体精简版；fast 表示印刷体高速版；handwriting 表示手写体识别。默认值为 general。
+        :param LanguageType(string):  type 值为 general 时有效，表示识别语言类型。支持自动识别语言类型，同时支持自选语言种类，默认中英文混合(zh)，各种语言均支持与英文混合的文字识别。可选值请参见 可识别的语言类型。
+        :param Ispdf(bool): type 值为 general、fast 时有效，表示是否开启 PDF 识别，有效值为 true 和 false，默认值为 false，开启后可同时支持图片和 PDF 的识别。
+        :param PdfPagenumber(int): type 值为 general、fast 时有效，表示需要识别的 PDF 页面的对应页码，仅支持 PDF 单页识别，当上传文件为 PDF 且 ispdf 参数值为 true 时有效，默认值为1。
+        :param Isword(bool): type 值为 general、accurate 时有效，表示识别后是否需要返回单字信息，有效值为 true 和 false，默认为 false。
+        :param EnableWordPolygon(bool): type 值为 handwriting 时有效，表示是否开启单字的四点定位坐标输出，有效值为 true 和 false，默认值为 false。
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            def ci_ocr_process():
+                # 通用文字识别
+                response = client.ci_ocr_process(
+                    Bucket=bucket_name,
+                    Key='ocr.jpeg',
+                )
+                print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'OCR'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['type'] = Type
+        params['language-type'] = LanguageType
+        params['ispdf'] = str(Ispdf).lower()
+        params['pdf-pagenumber'] = PdfPagenumber
+        params['isword'] = str(Isword).lower()
+        params['enable-word-polygon'] = str(EnableWordPolygon).lower()
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_ocr_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+
+        return data
 
     def ci_image_process(self, Bucket, Key, **kwargs):
         """查询CI image process
@@ -5380,21 +5979,7 @@ class CosS3Client(object):
             'Conf': conf
         }
 
-        lst = [  # 类型为list的标签
-            '<Input>',
-            '<Object>',
-            '<Url>',
-            '<Interval>',
-            '<MaxFrames>',
-            '<DataId>',
-            '</Input>',
-            '</Object>',
-            '</Url>',
-            '</Interval>',
-            '</MaxFrames>',
-            '</DataId>']
-
-        xml_request = format_xml(data=request, root='Request', lst=lst)
+        xml_request = format_xml(data=request, root='Request')
         headers['Content-Type'] = 'application/xml'
 
         path = 'image/auditing'
@@ -5954,7 +6539,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Jobs(dict): 创建任务的配置.
-        :param Lst(dict): 创建任务dict转xml时去除Key数组.
+        :param Lst(dict): 创建任务dict转xml时去除Key数组. TODO 替换成 xmltodict 库后可以将 Lst 参数去掉
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -5981,7 +6566,7 @@ class CosS3Client(object):
         headers = final_headers
 
         params = format_values(params)
-        xml_config = format_xml(data=Jobs, root='Request', lst=Lst)
+        xml_config = format_xml(data=Jobs, root='Request')
         path = "/jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         logger.info("create_media_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
@@ -6008,7 +6593,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Jobs(dict): 创建任务的配置.
-        :param Lst(dict): 创建任务dict转xml时去除Key数组.
+        :param Lst(dict): 创建任务dict转xml时去除Key数组. TODO 替换为 xmltodict 库后可以将 Lst 参数去掉
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -6035,7 +6620,7 @@ class CosS3Client(object):
         headers = final_headers
 
         params = format_values(params)
-        xml_config = format_xml(data=Jobs, root='Request', lst=Lst)
+        xml_config = format_xml(data=Jobs, root='Request')
         path = "/pic_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
         logger.info("create_media_pic_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
@@ -6618,10 +7203,14 @@ class CosS3Client(object):
 
         return response
 
-    def ci_get_doc_queue(self, Bucket, **kwargs):
+    def ci_get_doc_queue(self, Bucket, State='All', QueueIds='', PageNumber=1, PageSize=10, **kwargs):
         """查询文档转码处理队列接口 https://cloud.tencent.com/document/product/460/46946
 
         :param Bucket(string): 存储桶名称.
+        :param QueueIds(string): 队列 ID，以“,”符号分割字符串.
+        :param State(string): 队列状态
+        :param PageNumber(int): 第几页
+        :param PageSize(int): 每页个数
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 查询成功返回的结果,dict类型.
 
@@ -6649,6 +7238,13 @@ class CosS3Client(object):
 
         path = "/docqueue"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{queueIds}&{state}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            queueIds=to_unicode('queueIds='+QueueIds),
+            state=to_unicode('state='+State),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
+        )
         logger.info("get_doc_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -6666,9 +7262,33 @@ class CosS3Client(object):
         format_dict(data, ['QueueList'])
         return data
 
+    def ci_update_doc_queue(self, Bucket, QueueId, Request={}, **kwargs):
+        """ 更新文档预览队列接口
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param Request(dict): 更新队列配置请求体.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新文档预览队列接口
+            response = client.ci_update_doc_queue(
+                Bucket='bucket',
+                QueueId='',
+                Request={},
+            )
+            print response
+        """
+        return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
+                                          Request=Request, UrlPath="/docqueue/", **kwargs)
+
     def ci_create_doc_job(self, Bucket, QueueId, InputObject, OutputBucket, OutputRegion, OutputObject, SrcType=None, TgtType=None,
-                          StartPage=None, EndPage=None, SheetId=None, PaperDirection=None, PaperSize=None, DocPassword=None, Comments=None, PageRanges=None,
-                          ImageParams=None, Quality=None, Zoom=None, ImageDpi=None, PicPagination=None, **kwargs):
+                          StartPage=None, EndPage=-1, SheetId=0, PaperDirection=0, PaperSize=0, DocPassword=None, Comments=None, PageRanges=None,
+                          ImageParams=None, Quality=100, Zoom=100, ImageDpi=96, PicPagination=0, **kwargs):
         """ 创建任务接口 https://cloud.tencent.com/document/product/460/46942
 
         :param Bucket(string): 存储桶名称.
@@ -6918,6 +7538,949 @@ class CosS3Client(object):
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
         format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_doc_preview_process(self, Bucket, Key, SrcType=None, Page=None, DstType=None, PassWord=None, Comment=0, Sheet=1,
+                               ExcelPaperDirection=0, ExcelRow=0, ExcelCol=0, ExcelPaperSize=None, TxtPagination=False,
+                               ImageParams=None, Quality=100, Scale=100, ImageDpi=96, **kwargs):
+        """文档预览同步接口 https://cloud.tencent.com/document/product/460/47074
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param SrcType(string): 源数据的后缀类型，当前文档转换根据 COS 对象的后缀名来确定源数据类型。当 COS 对象没有后缀名时，可以设置该值。
+        :param Page(int):  需转换的文档页码，默认从1开始计数；表格文件中 page 表示转换的第 X 个 sheet 的第 X 张图。
+        :param DstType(string): 转换输出目标文件类型：
+                                                png，转成 png 格式的图片文件
+                                                jpg，转成 jpg 格式的图片文件
+                                                pdf，转成 pdf 格式文件。 无法选择页码，page 参数不生效
+                                                txt，转成 txt 格式文件
+                                                如果传入的格式未能识别，默认使用 jpg 格式。
+        :param PassWord(string): Office 文档的打开密码，如果需要转换有密码的文档，请设置该字段。
+        :param Comment(int): 是否隐藏批注和应用修订，默认为0。0：隐藏批注，应用修订；1：显示批注和修订。
+        :param Sheet(int): 表格文件参数，转换第 X 个表，默认为1。
+        :param ExcelPaperDirection(int): 表格文件转换纸张方向，0代表垂直方向，非0代表水平方向，默认为0。
+        :param ExcelRow(int): 值为1表示将所有列放到1页进行排版，默认值为0。
+        :param ExcelCol(int): 值为1表示将所有行放到1页进行排版，默认值为0。
+        :param ExcelPaperSize(int): 设置纸张（画布）大小，对应信息为： 0 → A4 、 1 → A2 、 2 → A0 ，默认 A4 纸张 （需配合 excelRow 或 excelCol 一起使用）。
+        :param TxtPagination(bool): 是否转换成长文本，设置为 true 时，可以将需要导出的页中的文字合并导出，分页范围可以通过 Ranges 控制。默认值为 false ，按页导出 txt。（ ExportType="txt" 时生效)。
+        :param ImageParams(string): 转换后的图片处理参数，支持 基础图片处理 所有处理参数，多个处理参数可通过 管道操作符 分隔，从而实现在一次访问中按顺序对图片进行不同处理。
+        :param Quality(int): 生成预览图的图片质量，取值范围为 [1, 100]，默认值100。 例如取值为100，代表生成图片质量为100%。
+        :param Scale(int): 预览图片的缩放参数，取值范围为 [10, 200]， 默认值100。 例如取值为200，代表图片缩放比例为200% 即放大两倍。
+        :param ImageDpi(int): 按指定 dpi 渲染图片，该参数与 scale 共同作用，取值范围 96-600 ，默认值为 96 。转码后的图片单边宽度需小于65500像素。
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            def ci_doc_preview_process():
+                # 文档预览同步接口
+                response = client.ci_doc_preview_process(
+                    Bucket=bucket_name,
+                    Key='1.txt',
+                )
+                print(response)
+                response['Body'].get_stream_to_file('result.png')
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'doc-preview'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if SrcType:
+            params['srcType'] = SrcType
+        if Page:
+            params['page'] = Page
+        if DstType:
+            params['dstType'] = DstType
+        if PassWord:
+            params['password'] = PassWord
+        params['comment'] = Comment
+        params['sheet'] = Sheet
+        params['excelPaperDirection'] = ExcelPaperDirection
+        params['excelRow'] = ExcelRow
+        params['excelCol'] = ExcelCol
+        if ExcelPaperSize:
+            params['excelPaperSize'] = ExcelPaperSize
+        params['txtPagination'] = str(TxtPagination).lower()
+        if ImageParams:
+            params['ImageParams'] = ImageParams
+        params['quality'] = Quality
+        params['scale'] = Scale
+        params['imageDpi'] = ImageDpi
+
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_doc_preview_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
+
+    def ci_doc_preview_html_process(self, Bucket, Key, SrcType=None, Copyable='1', DstType='html', HtmlParams=None, HtmlWaterword=None, HtmlFillStyle=None,
+                                    HtmlFront=None, HtmlRotate=None, HtmlHorizontal=None, HtmlVertical=None, **kwargs):
+        """文档转 HTML https://cloud.tencent.com/document/product/460/52518
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param SrcType(string): 源数据的后缀类型，当前文档转换根据 COS 对象的后缀名来确定源数据类型。当 COS 对象没有后缀名时，可以设置该值。
+        :param Copyable(string):  是否可复制。默认为可复制，填入值为1；不可复制，填入值为0。
+        :param DstType(string): 转换输出目标文件类型，文档 HTML 预览固定为 html（需为小写字母）.
+        :param HtmlParams(string): 自定义配置参数，json结构，需要经过 URL 安全 的 Base64 编码，默认配置为：{ commonOptions: { isShowTopArea: true, isShowHeader: true } }。
+        :param HtmlWaterword(string): 水印文字，需要经过 URL 安全 的 Base64 编码，默认为空。
+        :param Htmlfillstyle(string): 水印 RGBA（颜色和透明度），需要经过 URL 安全 的 Base64 编码，默认为：rgba(192,192,192,0.6)。
+        :param HtmlFront(string): 水印文字样式，需要经过 URL 安全 的 Base64 编码，默认为：bold 20px Serif。
+        :param HtmlRotate(string): 水印文字旋转角度，0 - 360，默认315度。
+        :param HtmlHorizontal(string): 水印文字水平间距，单位 px，默认为50。
+        :param HtmlVertical(string): 水印文字垂直间距，单位 px，默认为100。
+        :return(dict): 获取成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_doc_preview_html_process(
+                Bucket=bucket_name,
+                Key='1.txt',
+            )
+            print(response)
+            response['Body'].get_stream_to_file('result.html')
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'doc-preview'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if SrcType:
+            params['srcType'] = SrcType
+        params['copyable'] = Copyable
+        params['dstType'] = DstType
+        if HtmlParams:
+            params['htmlParams'] = HtmlParams
+        if HtmlWaterword:
+            params['htmlwaterword'] = HtmlWaterword
+        if HtmlFillStyle:
+            params['htmlfillstyle'] = HtmlFillStyle
+        if HtmlFront:
+            params['htmlfront'] = HtmlFront
+        if HtmlRotate:
+            params['htmlrotate'] = HtmlRotate
+        if HtmlHorizontal:
+            params['htmlhorizontal'] = HtmlHorizontal
+        if HtmlVertical:
+            params['htmlvertical'] = HtmlVertical
+
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_doc_preview_html_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
+
+    def ci_get_doc_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber=1, PageSize=10, **kwargs):
+        """查询文档预览开通状态接口 https://cloud.tencent.com/document/product/460/46945
+
+        :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
+        :param BucketName(string): 存储桶名称前缀，前缀搜索
+        :param BucketNames(string): 存储桶名称，以“,”分隔，支持多个存储桶，精确搜索
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询文档预览开通状态接口
+            response = client.ci_get_doc_bucket(
+                Regions='ap-chongqing,ap-shanghai',
+                BucketName='demo',
+                BucketNames='demo-1253960454,demo1-1253960454',
+                PageNumber='2'，
+                PageSize='3',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/docbucket"
+        url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            regions=to_unicode('regions='+Regions),
+            bucketNames=to_unicode('bucketNames='+BucketNames),
+            bucketName=to_unicode('bucketName='+BucketName),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
+        )
+        logger.info("ci_get_doc_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=None,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['DocBucketList'])
+        return data
+
+    def ci_get_asr_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
+        """查询语音识别开通状态接口 https://cloud.tencent.com/document/product/460/46232
+
+        :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
+        :param BucketName(string): 存储桶名称前缀，前缀搜索
+        :param BucketNames(string): 存储桶名称，以“,”分隔，支持多个存储桶，精确搜索
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询语音识别开通状态接口
+            response = client.ci_get_asr_bucket(
+                Regions='ap-chongqing,ap-shanghai',
+                BucketName='demo',
+                BucketNames='demo-1253960454,demo1-1253960454',
+                PageNumber='2'，
+                PageSize='3',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/asrbucket"
+        url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            regions=to_unicode('regions='+Regions),
+            bucketNames=to_unicode('bucketNames='+BucketNames),
+            bucketName=to_unicode('bucketName='+BucketName),
+            pageNumber=to_unicode('pageNumber='+PageNumber),
+            pageSize=to_unicode('pageSize='+PageSize),
+        )
+        logger.info("ci_get_asr_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=None,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['AsrBucketList'])
+        return data
+
+    def ci_get_asr_queue(self, Bucket, State='All', QueueIds='', PageNumber=1, PageSize=10, **kwargs):
+        """查询语音识别队列接口 https://cloud.tencent.com/document/product/460/46234
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueIds(string): 队列 ID，以“,”符号分割字符串.
+        :param State(string): 队列状态
+        :param PageNumber(int): 第几页
+        :param PageSize(int): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询语音识别队列接口
+            response = client.ci_get_asr_queue(
+                Bucket='bucket'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/asrqueue"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{queueIds}&{state}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            queueIds=to_unicode('queueIds='+QueueIds),
+            state=to_unicode('state='+State),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
+        )
+        logger.info("get_asr_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['QueueList'])
+        return data
+
+    def ci_update_asr_queue(self, Bucket, QueueId, Request={}, **kwargs):
+        """ 更新语音识别队列接口 https://cloud.tencent.com/document/product/460/46235
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param Request(dict): 更新队列配置请求体.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新语音识别队列接口
+            response = client.ci_update_asr_queue(
+                Bucket='bucket',
+                QueueId='',
+                Request={},
+            )
+            print response
+        """
+        return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
+                                          Request=Request, UrlPath="/asrqueue/", **kwargs)
+
+    def ci_create_asr_job(self, Bucket, QueueId, OutputBucket, OutputRegion, OutputObject, InputObject=None, Url=None, TemplateId=None,
+                          SpeechRecognition=None, CallBack=None, CallBackFormat=None, CallBackType=None, CallBackMqConfig=None, **kwargs):
+        """ 创建语音识别任务接口 https://cloud.tencent.com/document/product/460/78951
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 任务所在的队列 ID.
+        :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param Url(string): 外网可下载的Url.
+        :param OutputBucket(string): 存储结果的存储桶.
+        :param OutputRegion(string): 存储结果的存储桶的地域.
+        :param OutputObject(string): 输出文件路径。
+        :param TemplateId(string): 对应语音识别模板ID.
+        :param SpeechRecognition(dict): 语音识别参数信息，当参数TemplateId 不为空时，此参数无效
+        :param CallBack(string): 任务结束回调，回调Url
+        :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
+        :param CallBackType(string): 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        :param CallBackMqConfig(dict): 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填，详见 https://cloud.tencent.com/document/product/460/78927#CallBackMqConfig
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            body = {
+                'EngineModelType': '16k_zh',
+                'ChannelNum': '1',
+                'ResTextFormat': '1',
+            }
+            response = client.ci_create_asr_job(
+                Bucket=bucket_name,
+                QueueId='s0980xxxxxxxxxxxxxxxxff12',
+                # TemplateId='t1ada6f282d29742db83244e085e920b08',
+                InputObject='normal.mp4',
+                OutputBucket=bucket_name,
+                OutputRegion='ap-chongqing',
+                OutputObject='result.txt',
+                SpeechRecognition=body
+            )
+            print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        body = {
+            'Input': {
+            },
+            'QueueId': QueueId,
+            'Tag': 'SpeechRecognition',
+            'Operation': {
+                'Output': {
+                    'Bucket': OutputBucket,
+                    'Region': OutputRegion,
+                    'Object': OutputObject
+                },
+            }
+        }
+        if InputObject:
+            body['Input']['Object'] = InputObject
+        if Url:
+            body['Input']['Url'] = Url
+        if TemplateId:
+            body['Operation']['TemplateId'] = TemplateId
+        if SpeechRecognition:
+            body['Operation']['SpeechRecognition'] = SpeechRecognition
+        if CallBack:
+            body['Operation']['CallBack'] = CallBack
+        if CallBackFormat:
+            body['Operation']['CallBackFormat'] = CallBackFormat
+        if CallBackMqConfig:
+            body['Operation']['CallBackMqConfig'] = CallBackMqConfig
+        xml_config = format_xml(data=body, root='Request')
+        path = "/asr_jobs"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("create_asr_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_asr_job(self, Bucket, JobID, **kwargs):
+        """ 查询语音识别任务接口 https://cloud.tencent.com/document/product/460/46229
+
+        :param Bucket(string): 存储桶名称.
+        :param JobID(string): 任务ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询任务接口
+            response = client.ci_get_asr_job(
+                Bucket='bucket'
+                JobID='jobid'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        path = "/asr_jobs/" + JobID
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("get_asr_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("ci_get_asr_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_list_asr_jobs(self, Bucket, QueueId, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+        """ 拉取语音识别任务列表接口 https://cloud.tencent.com/document/product/460/46230
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param StartCreationTime(string): 开始时间.
+        :param EndCreationTime(string): 结束时间.
+        :param OrderByTime(string): 排序方式.Desc 或者 Asc。默认为 Desc
+        :param States(string): 拉取该状态的任务，以,分割，支持多状态：All、Submitted、Running、Success、Failed、Pause、Cancel。默认为 All
+        :param Size(string): 拉取的最大任务数。默认为10。最大为100.
+        :param NextToken(string): 请求的上下文，用于翻页.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 拉取语音识别任务列表接口
+            response = client.ci_list_asr_jobs(
+                Bucket='bucket'
+                QueueId='',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        path = "/asr_jobs"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{QueueId}&{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
+            url=to_unicode(url),
+            QueueId=to_unicode('queueId='+QueueId),
+            Tag=to_unicode('tag=SpeechRecognition'),
+            OrderByTime=to_unicode('orderByTime='+OrderByTime),
+            States=to_unicode('states='+States),
+            Size=to_unicode('size='+str(Size)),
+            NextToken=to_unicode('nextToken='+NextToken)
+        )
+        if StartCreationTime is not None:
+            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+        if EndCreationTime is not None:
+            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+        logger.info("list_asr_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("list_asr_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_create_asr_template(self, Bucket, Name, EngineModelType, ChannelNum=None,
+                               ResTextFormat=None, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
+        """ 创建语音识别模板接口 https://cloud.tencent.com/document/product/460/78939
+
+        :param Bucket(string): 存储桶名称.
+        :param Name(string): 模板名称.
+        :param EngineModelType(string): 引擎模型类型，分为电话场景和非电话场景
+                                        电话场景：
+                                            8k_zh：电话 8k 中文普通话通用（可用于双声道音频）。
+                                            8k_zh_s：电话 8k 中文普通话话者分离（仅适用于单声道音频）。
+                                            8k_en：电话 8k 英语。
+                                        非电话场景：
+                                            16k_zh：16k 中文普通话通用。
+                                            16k_zh_video：16k 音视频领域。
+                                            16k_en：16k 英语。
+                                            16k_ca：16k 粤语。
+                                            16k_ja：16k 日语。
+                                            16k_zh_edu：中文教育。
+                                            16k_en_edu：英文教育。
+                                            16k_zh_medical：医疗。
+                                            16k_th：泰语。
+                                            16k_zh_dialect：多方言，支持23种方言。
+        :param ChannelNum(int): 语音声道数：1 表示单声道.EngineModelType为非电话场景仅支持单声道。2 表示双声道（仅支持 8k_zh 引擎模型双声道应分别对应通话双方）。
+        :param ResTextFormat(int): 识别结果返回形式：0 表示识别结果文本（含分段时间戳）。1 词级别粒度的详细识别结果，不含标点，含语速值（词时间戳列表，一般用于生成字幕场景）。2 词级别粒度的详细识别结果（包含标点、语速值）。
+        :param FilterDirty(int): 是否过滤脏词（目前支持中文普通话引擎）：0 表示不过滤脏词。1 表示过滤脏词。2 表示将脏词替换为 *。默认值为0。
+        :param FilterModal(int): 是否过语气词（目前支持中文普通话引擎）：0 表示不过滤语气词。1 表示部分过滤。2 表示严格过滤 。默认值为0。
+        :param ConvertNumMode(int): 是否进行阿拉伯数字智能转换（目前支持中文普通话引擎）：0 表示不转换，直接输出中文数字。1 表示根据场景智能转换为阿拉伯数字。3 表示打开数学相关数字转换。默认值为0。
+        :param SpeakerDiarization(int): 是否开启说话人分离：0 表示不开启。1 表示开启(仅支持8k_zh，16k_zh，16k_zh_video，单声道音频)。默认值为0。注意：8k电话场景建议使用双声道来区分通话双方，设置ChannelNum=2即可，不用开启说话人分离。
+        :param SpeakerNumber(int): 说话人分离人数（需配合开启说话人分离使用），取值范围：0-10。0 代表自动分离（目前仅支持≤6个人），1-10代表指定说话人数分离。默认值为 0。
+        :param FilterPunc(int): 是否过滤标点符号（目前支持中文普通话引擎）：0 表示不过滤。1 表示过滤句末标点。2 表示过滤所有标点。默认值为 0 。
+        :param OutputFileType(string): 输出文件类型，可选 txt、srt。默认为 txt。
+        :param FlashAsr(bool): 是否开启极速ASR，可选true、false。默认为false.
+        :param Format(string): 极速ASR音频格式。支持 wav、pcm、ogg-opus、speex、silk、mp3、m4a、aac 。
+        :param FirstChannelOnly(int): 极速ASR参数。表示是否只识别首个声道，默认为1。0：识别所有声道；1：识别首个声道。
+        :param WordInfo(int): 极速ASR参数。表示是否显示词级别时间戳，默认为0。0：不显示；1：显示，不包含标点时间戳，2：显示，包含标点时间戳。
+        :return(dict): 创建成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建语音识别模板接口
+            response = client.ci_create_asr_template(
+                Bucket=bucket_name,
+                Name='templateName',
+                EngineModelType='16k_zh',
+                ChannelNum=1,
+                ResTextFormat=2,
+            )
+            print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        body = {
+            'Name': Name,
+            'Tag': 'SpeechRecognition',
+            'SpeechRecognition': {
+                'EngineModelType': EngineModelType,
+            }
+        }
+        if ChannelNum:
+            body['SpeechRecognition']['ChannelNum'] = ChannelNum
+        if ResTextFormat:
+            body['SpeechRecognition']['ResTextFormat'] = ResTextFormat
+        body['SpeechRecognition']['FilterDirty'] = FilterDirty
+        body['SpeechRecognition']['FilterModal'] = FilterModal
+        body['SpeechRecognition']['ConvertNumMode'] = ConvertNumMode
+        body['SpeechRecognition']['SpeakerDiarization'] = SpeakerDiarization
+        body['SpeechRecognition']['SpeakerNumber'] = SpeakerNumber
+        body['SpeechRecognition']['FilterPunc'] = FilterPunc
+        body['SpeechRecognition']['OutputFileType'] = OutputFileType
+        body['SpeechRecognition']['FlashAsr'] = str(FlashAsr).lower()
+        if Format:
+            body['SpeechRecognition']['Format'] = Format
+        body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
+        body['SpeechRecognition']['WordInfo'] = WordInfo
+
+        xml_config = format_xml(data=body, root='Request')
+        path = "/template"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_create_asr_template result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_update_asr_template(self, Bucket, TemplateId, Name, EngineModelType, ChannelNum,
+                               ResTextFormat, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
+        """ 更新语音识别模板接口 https://cloud.tencent.com/document/product/460/78942
+
+        :param Bucket(string): 存储桶名称.
+        :param TemplateId(string): 需要更新的模板ID。
+        :param Name(string): 存储桶名称.
+        :param EngineModelType(string): 引擎模型类型，分为电话场景和非电话场景
+                                        电话场景：
+                                            8k_zh：电话 8k 中文普通话通用（可用于双声道音频）。
+                                            8k_zh_s：电话 8k 中文普通话话者分离（仅适用于单声道音频）。
+                                            8k_en：电话 8k 英语。
+                                        非电话场景：
+                                            16k_zh：16k 中文普通话通用。
+                                            16k_zh_video：16k 音视频领域。
+                                            16k_en：16k 英语。
+                                            16k_ca：16k 粤语。
+                                            16k_ja：16k 日语。
+                                            16k_zh_edu：中文教育。
+                                            16k_en_edu：英文教育。
+                                            16k_zh_medical：医疗。
+                                            16k_th：泰语。
+                                            16k_zh_dialect：多方言，支持23种方言。
+        :param ChannelNum(int): 语音声道数：1 表示单声道.EngineModelType为非电话场景仅支持单声道。2 表示双声道（仅支持 8k_zh 引擎模型双声道应分别对应通话双方）。
+        :param ResTextFormat(int): 识别结果返回形式：0 表示识别结果文本（含分段时间戳）。1 词级别粒度的详细识别结果，不含标点，含语速值（词时间戳列表，一般用于生成字幕场景）。2 词级别粒度的详细识别结果（包含标点、语速值）。
+        :param FilterDirty(int): 是否过滤脏词（目前支持中文普通话引擎）：0 表示不过滤脏词。1 表示过滤脏词。2 表示将脏词替换为 *。默认值为0。
+        :param FilterModal(int): 是否过语气词（目前支持中文普通话引擎）：0 表示不过滤语气词。1 表示部分过滤。2 表示严格过滤 。默认值为0。
+        :param ConvertNumMode(int): 是否进行阿拉伯数字智能转换（目前支持中文普通话引擎）：0 表示不转换，直接输出中文数字。1 表示根据场景智能转换为阿拉伯数字。3 表示打开数学相关数字转换。默认值为0。
+        :param SpeakerDiarization(int): 是否开启说话人分离：0 表示不开启。1 表示开启(仅支持8k_zh，16k_zh，16k_zh_video，单声道音频)。默认值为0。注意：8k电话场景建议使用双声道来区分通话双方，设置ChannelNum=2即可，不用开启说话人分离。
+        :param SpeakerNumber(int): 说话人分离人数（需配合开启说话人分离使用），取值范围：0-10。0 代表自动分离（目前仅支持≤6个人），1-10代表指定说话人数分离。默认值为 0。
+        :param FilterPunc(int): 是否过滤标点符号（目前支持中文普通话引擎）：0 表示不过滤。1 表示过滤句末标点。2 表示过滤所有标点。默认值为 0。
+        :param OutputFileType(string): 输出文件类型，可选 txt、srt。默认为 txt。
+        :param FlashAsr(bool): 是否开启极速ASR，可选true、false。默认为false.
+        :param Format(string): 极速ASR音频格式。支持 wav、pcm、ogg-opus、speex、silk、mp3、m4a、aac 。
+        :param FirstChannelOnly(int): 极速ASR参数。表示是否只识别首个声道，默认为1。0：识别所有声道；1：识别首个声道。
+        :param WordInfo(int): 极速ASR参数。表示是否显示词级别时间戳，默认为0。0：不显示；1：显示，不包含标点时间戳，2：显示，包含标点时间戳。
+        :return(dict): 更新成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新语音识别模板接口
+            response = client.ci_update_asr_template(
+                Bucket=bucket_name,
+                TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
+                Name='QueueId1',
+                EngineModelType='16k_zh',
+                ChannelNum=1,
+                ResTextFormat=1,
+            )
+            print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        body = {
+            'Name': Name,
+            'Tag': 'SpeechRecognition',
+            'SpeechRecognition': {
+                'EngineModelType': EngineModelType,
+            }
+        }
+        if ChannelNum:
+            body['SpeechRecognition']['ChannelNum'] = ChannelNum
+        if ResTextFormat:
+            body['SpeechRecognition']['ResTextFormat'] = ResTextFormat
+        body['SpeechRecognition']['FilterDirty'] = FilterDirty
+        body['SpeechRecognition']['FilterModal'] = FilterModal
+        body['SpeechRecognition']['ConvertNumMode'] = ConvertNumMode
+        body['SpeechRecognition']['SpeakerDiarization'] = SpeakerDiarization
+        body['SpeechRecognition']['SpeakerNumber'] = SpeakerNumber
+        body['SpeechRecognition']['FilterPunc'] = FilterPunc
+        body['SpeechRecognition']['OutputFileType'] = OutputFileType
+        body['SpeechRecognition']['FlashAsr'] = str(FlashAsr).lower()
+        if Format:
+            body['SpeechRecognition']['Format'] = Format
+        body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
+        body['SpeechRecognition']['WordInfo'] = WordInfo
+        xml_config = format_xml(data=body, root='Request')
+        path = "/template/" + TemplateId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_update_asr_template result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_asr_template(self, Bucket, Category='Custom', Ids='', Name='', PageNumber=1, PageSize=10, **kwargs):
+        """ 查询语音识别模板接口 https://cloud.tencent.com/document/product/460/46943
+
+        :param Bucket(string): 存储桶名称.
+        :param Category(string): Official（系统预设模板），Custom（自定义模板），默认值：Custom.
+        :param Ids(string): 模板 ID，以,符号分割字符串.
+        :param Name(string): 模板名称前缀.
+        :param PageNumber(string): 第几页，默认值：1.
+        :param PageSize(string): 每页个数，默认值：10.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询语音识别模板接口
+            response = client.ci_get_asr_template(
+                Bucket=bucket_name,
+            )
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/template"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{category}&{ids}&{name}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            category=to_unicode('category='+Category),
+            ids=to_unicode('ids='+Ids),
+            name=to_unicode('name='+Name),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
+        )
+        logger.info("ci_get_asr_template result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['TemplateList'])
+        return data
+
+    def ci_delete_asr_template(self, Bucket, TemplateId, **kwargs):
+        """ 删除语音识别模板接口 https://cloud.tencent.com/document/product/460/46943
+
+        :param Bucket(string): 存储桶名称.
+        :param TemplateId(string): 需要删除的语音识别模板ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除指定语音识别模板
+            response = client.ci_delete_asr_template(
+                Bucket=bucket_name,
+                TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
+            )
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/template/" + TemplateId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+
+        logger.info("ci_delete_asr_template result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
         return data
 
 

@@ -33,14 +33,7 @@ def filter_headers(data):
         "if-unmodified-since",
         "origin",
         "range",
-        "response-cache-control",
-        "response-content-disposition",
-        "response-content-encoding",
-        "response-content-language",
-        "response-content-type",
-        "response-expires",
         "transfer-encoding",
-        "versionid",
     ]
     headers = {}
     for i in data:
@@ -52,8 +45,10 @@ def filter_headers(data):
 class CosS3Auth(AuthBase):
 
     def __init__(self, conf, key=None, params={}, expire=10000, sign_host=None):
-        self._secret_id = conf._secret_id
-        self._secret_key = conf._secret_key
+        self._secret_id = conf._secret_id if conf._secret_id else \
+            (conf._credential_inst.secret_id if conf._credential_inst else None)
+        self._secret_key = conf._secret_key if conf._secret_key else \
+            (conf._credential_inst.secret_key if conf._credential_inst else None)
         self._anonymous = conf._anonymous
         self._expire = expire
         self._params = params

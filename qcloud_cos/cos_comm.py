@@ -12,7 +12,7 @@ import threading
 import xml.dom.minidom
 import xml.etree.ElementTree
 from datetime import datetime
-from dicttoxml import dicttoxml
+from xmltodict import unparse
 from .xml2dict import Xml2Dict
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
@@ -202,14 +202,21 @@ def mapped(headers):
     return _headers
 
 
-def format_xml(data, root, lst=list(), parent_child=False):
+# def format_xml(data, root, lst=list(), parent_child=False):
+#     """将dict转换为xml, xml_config是一个bytes"""
+#     if parent_child:
+#         xml_config = dicttoxml(data, item_func=lambda x: x[:-2], custom_root=root, attr_type=False)
+#     else:
+#         xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
+#     for i in lst:
+#         xml_config = xml_config.replace(to_bytes(i + i), to_bytes(i))
+#     return xml_config
+
+
+def format_xml(data, root):
     """将dict转换为xml, xml_config是一个bytes"""
-    if parent_child:
-        xml_config = dicttoxml(data, item_func=lambda x: x[:-1], custom_root=root, attr_type=False)
-    else:
-        xml_config = dicttoxml(data, item_func=lambda x: x, custom_root=root, attr_type=False)
-    for i in lst:
-        xml_config = xml_config.replace(to_bytes(i + i), to_bytes(i))
+    input_dict = {root: data}
+    xml_config = unparse(input_dict=input_dict).encode('utf-8')
     return xml_config
 
 
