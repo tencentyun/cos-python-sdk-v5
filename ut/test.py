@@ -154,6 +154,10 @@ def gen_file(path, size):
     _file.write('cos')
     _file.close()
 
+def gen_file_small(path, size):
+    _file = open(path, 'w')
+    _file.write('x'*size)
+    _file.close()
 
 def print_error_msg(e):
     print(e.get_origin_msg())
@@ -195,7 +199,7 @@ def test_put_get_delete_object_10MB():
     file_size = 10
     file_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     file_name = "tmp" + file_id + "_" + str(file_size) + "MB"
-    gen_file(file_name, 1)
+    gen_file(file_name, file_size)
     with open(file_name, 'rb') as f:
         etag = get_raw_md5(f.read())
     try:
@@ -865,6 +869,64 @@ def test_upload_file_from_buffer():
         PartSize=1
     )
 
+def test_upload_small_file():
+    """使用高级上传接口上传小文件"""
+    file_name = "file_1M"
+    gen_file_small(file_name, 1*1024*1024)
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=file_name,
+        LocalFilePath=file_name,
+        MAXThread=5,
+        EnableMD5=True
+    )
+    assert response
+    if os.path.exists(file_name):
+        os.remove(file_name)
+    
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=file_name
+    )
+    assert response['Content-Length'] == '1048576'
+
+    file_name = "file_10B"
+    gen_file_small(file_name, 10)
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=file_name,
+        LocalFilePath=file_name,
+        MAXThread=5,
+        EnableMD5=True
+    )
+    assert response
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=file_name
+    )
+    assert response['Content-Length'] == '10'
+
+    file_name = "file_0B"
+    gen_file_small(file_name, 0)
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=file_name,
+        LocalFilePath=file_name,
+        MAXThread=5,
+        EnableMD5=True
+    )
+    assert response
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=file_name
+    )
+    assert response['Content-Length'] == '0'
 
 def test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
@@ -3051,6 +3113,7 @@ def test_ci_auditing_detect_type():
 
 if __name__ == "__main__":
     setUp()
+    test_upload_small_file()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()

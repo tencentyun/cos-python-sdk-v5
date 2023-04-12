@@ -3535,8 +3535,8 @@ class CosS3Client(object):
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
                     **kwargs):
-        """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
 
+        """
         :param Bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
         :param LocalFilePath(string): 本地文件路径名.
@@ -3561,7 +3561,7 @@ class CosS3Client(object):
             )
         """
         file_size = os.path.getsize(LocalFilePath)
-        if file_size <= 1024 * 1024 * 20:
+        if file_size <= 1024 * 1024 * PartSize:
             with open(LocalFilePath, 'rb') as fp:
                 rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, EnableMD5=EnableMD5, **kwargs)
             return rt
