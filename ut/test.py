@@ -2053,10 +2053,10 @@ def test_get_object_url():
 
 def test_qrcode():
     """二维码图片上传时识别"""
-    file_name = 'format.png'
+    file_name = 'lena.png'
     with open(file_name, 'rb') as fp:
         # fp验证
-        opts = '{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"QRcode/cover/1"}]}'
+        opts = '{"is_pic_info":1,"rules":[{"fileid":"lena.png","rule":"QRcode/cover/1"}]}'
         response, data = client.ci_put_object_from_local_file_and_get_qrcode(
             Bucket=ci_bucket_name,
             LocalFilePath=file_name,
@@ -3092,11 +3092,11 @@ def test_pic_process_when_download_object():
 
 
 def test_pic_process_when_put_object():
-    operations = '{"is_pic_info":1,"rules":[{"fileid": "format.png",' \
+    operations = '{"is_pic_info":1,"rules":[{"fileid": "lena.png",' \
                  '"rule": "imageMogr2/quality/60" }]}'
     response, data = client.ci_put_object_from_local_file(
         Bucket=ci_bucket_name,
-        LocalFilePath=ci_test_image,
+        LocalFilePath='lena.png',
         Key=ci_test_image,
         # pic operation json struct
         PicOperations=operations,
@@ -3108,11 +3108,11 @@ def test_pic_process_when_put_object():
 
 
 def test_process_on_cloud():
-    operations = '{"is_pic_info":1,"rules":[{"fileid": "format.png",' \
+    operations = '{"is_pic_info":1,"rules":[{"fileid": "lena.png",' \
                  '"rule": "imageMogr2/quality/60" }]}'
     response, data = client.ci_image_process(
         Bucket=ci_bucket_name,
-        Key=ci_test_image,
+        Key='lena.png',
         # pic operation json struct
         PicOperations=operations,
         ContentType='application/xml'
@@ -3369,4 +3369,5 @@ if __name__ == "__main__":
     test_ci_auditing_virus_submit()
     test_sse_c_file()
     """
+    test_qrcode()
     tearDown()
