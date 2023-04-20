@@ -1566,6 +1566,52 @@ def test_select_object():
     event_stream = response['Payload']
     for event in event_stream:
         print(event)
+    
+    # test EventStream.get_select_result
+    response = client.select_object_content(
+        Bucket=test_bucket,
+        Key=select_obj,
+        Expression='Select * from COSObject',
+        ExpressionType='SQL',
+        InputSerialization={
+            'CompressionType': 'NONE',
+            'JSON': {
+                'Type': 'LINES'
+            }
+        },
+        OutputSerialization={
+            'CSV': {
+                'RecordDelimiter': '\n'
+            }
+        }
+    )
+    event_stream = response['Payload']
+    data = event_stream.get_select_result()
+    print(data)
+
+    # test EventStream.get_select_result_to_file
+    response = client.select_object_content(
+        Bucket=test_bucket,
+        Key=select_obj,
+        Expression='Select * from COSObject',
+        ExpressionType='SQL',
+        InputSerialization={
+            'CompressionType': 'NONE',
+            'JSON': {
+                'Type': 'LINES'
+            }
+        },
+        OutputSerialization={
+            'CSV': {
+                'RecordDelimiter': '\n'
+            }
+        }
+    )
+    event_stream = response['Payload']
+    file_name = 'select.tmp'
+    event_stream.get_select_result_to_file(file_name)
+    if os.path.exists(file_name):
+        os.remove(file_name)
 
 
 def test_get_object_sensitive_content_recognition():
@@ -3113,7 +3159,6 @@ def test_ci_auditing_detect_type():
 
 if __name__ == "__main__":
     setUp()
-    test_upload_small_file()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
