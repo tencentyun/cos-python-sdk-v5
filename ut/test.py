@@ -2053,7 +2053,7 @@ def test_get_object_url():
 
 def test_qrcode():
     """二维码图片上传时识别"""
-    file_name = './format.png'
+    file_name = 'format.png'
     with open(file_name, 'rb') as fp:
         # fp验证
         opts = '{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"QRcode/cover/1"}]}'
