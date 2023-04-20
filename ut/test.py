@@ -193,6 +193,91 @@ def setUp():
 def tearDown():
     print("function teardown")
 
+def test_cos_comm_format_region():
+    from qcloud_cos.cos_comm import format_region
+    try:
+        r = format_region(10, u'cos.', False, False)
+    except Exception as e:
+        print(e)
+
+    try:
+        r = format_region('', u'cos.', False, False)
+    except Exception as e:
+        print(e)
+
+    try:
+        r = format_region('ap_beijing', u'cos.', False, False)
+    except Exception as e:
+        print(e)
+    
+    r = format_region('cos.ap-beijing', u'cos.', False, False)
+    assert r == 'cos.ap-beijing'
+
+    r = format_region('cn-north', u'cos.', False, False)
+    assert r == 'cn-north'
+
+    r = format_region('cn-south', u'cos.', False, False)
+    assert r == 'cn-south'
+
+    r = format_region('cn-south-2', u'cos.', False, False)
+    assert r == 'cn-south-2'
+
+    r = format_region('cn-southwest', u'cos.', False, False)
+    assert r == 'cn-southwest'
+
+    r = format_region('cn-east', u'cos.', False, False)
+    assert r == 'cn-east'
+    
+    r = format_region('sg', u'cos.', False, False)
+    assert r == 'sg'
+
+    r = format_region('ap-beijing', u'cos.', EnableOldDomain=False, EnableInternalDomain=True)
+    assert r == 'cos-internal.ap-beijing'
+
+    regionMap = [
+        ['cossh', 'ap-shanghai'],
+        ['cosgz', 'ap-guangzhou'],
+        ['cosbj', 'ap-beijing'],
+        ['costj', 'ap-beijing-1'],
+        ['coscd', 'ap-chengdu'],
+        ['cossgp', 'ap-singapore'],
+        ['coshk', 'ap-hongkong'],
+        ['cosca', 'na-toronto'],
+        ['cosger', 'eu-frankfurt']
+    ]
+    for data in regionMap:
+        r = format_region(data[0], u'cos.', False, False)
+        assert r == 'cos.' + data[1]
+    
+def test_cos_comm_format_bucket():
+    from qcloud_cos.cos_comm import format_bucket
+
+    try:
+        r = format_bucket(10, '1250000000')
+    except Exception as e:
+        print(e)
+
+    try:
+        r = format_bucket('', '1250000000')
+    except Exception as e:
+        print(e)
+
+    try:
+        r = format_bucket('test_bucket', '1250000000')
+    except Exception as e:
+        print(e)
+
+    try:
+        r = format_bucket('test-bucket', 10)
+    except Exception as e:
+        print(e)
+    
+    r = format_bucket('test-bucket-1250000000', '1250000000')
+    assert r == 'test-bucket-1250000000'
+
+    r = format_bucket('test-bucket', '1250000000')
+    assert r == 'test-bucket-1250000000'
+
 
 def test_put_get_delete_object_10MB():
     """简单上传下载删除10MB小文件"""
@@ -3284,4 +3369,5 @@ if __name__ == "__main__":
     test_ci_auditing_virus_submit()
     test_sse_c_file()
     """
+    test_cos_comm_format_dict_or_list()
     tearDown()
