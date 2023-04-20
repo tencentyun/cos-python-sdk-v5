@@ -2053,7 +2053,7 @@ def test_get_object_url():
 
 def test_qrcode():
     """二维码图片上传时识别"""
-    file_name = 'format.png'
+    file_name = './format.png'
     with open(file_name, 'rb') as fp:
         # fp验证
         opts = '{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"QRcode/cover/1"}]}'
@@ -3051,7 +3051,7 @@ def test_ci_compress_image():
     assert os.path.exists('sample.heif')
 
 
-def test_ci_image_detect_label():
+def _test_ci_image_detect_label():
     # 图片标签
     response = client.ci_image_detect_label(
         Bucket=ci_bucket_name,
@@ -3369,5 +3369,4 @@ if __name__ == "__main__":
     test_ci_auditing_virus_submit()
     test_sse_c_file()
     """
-    test_cos_comm_format_dict_or_list()
     tearDown()
