@@ -3157,7 +3157,7 @@ def test_pic_process_when_put_object():
                  '"rule": "imageMogr2/quality/60" }]}'
     response, data = client.ci_put_object_from_local_file(
         Bucket=ci_bucket_name,
-        LocalFilePath=ci_test_image,
+        LocalFilePath='format.png',
         Key=ci_test_image,
         # pic operation json struct
         PicOperations=operations,
@@ -3437,4 +3437,5 @@ if __name__ == "__main__":
     test_ci_auditing_virus_submit()
     test_sse_c_file()
     """
+    test_pic_process_when_download_object()
     tearDown()
