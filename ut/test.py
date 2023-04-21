@@ -3357,11 +3357,12 @@ def test_put_get_async_fetch_task():
             'Key': test_object,
         },
     )
-    response = tmp_client.get_async_fetch_task(
+    time.sleep(3)
+    response2 = tmp_client.get_async_fetch_task(
         Bucket=test_bucket,
         TaskId=response['data']['taskid'],
     )
-    assert response['message'] == 'SUCCESS'
+    assert response2['message'] == 'SUCCESS'
 
 
 def test_get_rtmp_signed_url():
@@ -3410,10 +3411,41 @@ def test_update_object_meta():
     assert response['x-cos-meta-key1'] == 'value1'
     assert response['x-cos-meta-key2'] == 'value2'
 
+def test_cos_comm_misc():
+    from qcloud_cos.cos_comm import format_dict_or_list, get_date, client_can_retry, format_path
+    data = [
+        {'aaa': '111'},
+        {'bbb': '222'},
+    ]
+    data = format_dict_or_list(data, ['aaa', 'bbb'])
+    print(data)
+
+    r = get_date(2022, 5, 30)
+    assert r == '2022-05-30T00:00:00+08:00'
+
+    with open("tmp_test", 'w') as f:
+        r = client_can_retry(0, data=f)
+        assert r
+    if os.path.exists("tmp_test"):
+        os.remove("tmp_test")
+    
+    try:
+        r = format_path('')
+    except Exception as e:
+        print(e)
+
+    try:
+        r = format_path(0)
+    except Exception as e:
+        print(e)
+    
+    r = format_path('/test/path/to')
+    assert r == 'test/path/to'
+
 
 if __name__ == "__main__":
     setUp()
-    test_update_object_meta() 
+    test_cos_comm_misc()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
