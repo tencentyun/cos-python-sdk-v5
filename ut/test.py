@@ -2070,8 +2070,8 @@ def test_live_channel():
     response = client.get_vod_playlist(
         Bucket=test_bucket,
         ChannelName=channel_name,
-        StartTime=0,
-        EndTime=datetime.now().timestamp()
+        StartTime=int(datetime.now().timestamp()-100000),
+        EndTime=int(datetime.now().timestamp())
     )
 
     print("delete live channel...")
@@ -3442,10 +3442,13 @@ def test_cos_comm_misc():
     r = format_path('/test/path/to')
     assert r == 'test/path/to'
 
+def test_cosconfig_misc():
+    test_conf = CosConfig(Access_id=SECRET_ID, Access_key=SECRET_KEY)
+    test_conf.set_ip_port('10.0.0.1', 80)
+    test_conf.set_credential(SecretId=SECRET_ID, SecretKey=SECRET_KEY, Token=None)
 
 if __name__ == "__main__":
     setUp()
-    test_cos_comm_misc()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
