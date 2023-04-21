@@ -7016,9 +7016,9 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url), StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url), EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("ci_list_workflowexecution result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7522,9 +7522,11 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_doc_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8134,9 +8136,11 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_asr_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,

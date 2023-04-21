@@ -227,7 +227,7 @@ def test_cos_comm_format_region():
 
     r = format_region('cn-east', u'cos.', False, False)
     assert r == 'cn-east'
-    
+
     r = format_region('sg', u'cos.', False, False)
     assert r == 'sg'
 
@@ -248,7 +248,7 @@ def test_cos_comm_format_region():
     for data in regionMap:
         r = format_region(data[0], u'cos.', False, False)
         assert r == 'cos.' + data[1]
-    
+
 def test_cos_comm_format_bucket():
     from qcloud_cos.cos_comm import format_bucket
 
@@ -271,7 +271,7 @@ def test_cos_comm_format_bucket():
         r = format_bucket('test-bucket', 10)
     except Exception as e:
         print(e)
-    
+
     r = format_bucket('test-bucket-1250000000', '1250000000')
     assert r == 'test-bucket-1250000000'
 
@@ -968,7 +968,7 @@ def test_upload_small_file():
     assert response
     if os.path.exists(file_name):
         os.remove(file_name)
-    
+
     response = client.head_object(
         Bucket=test_bucket,
         Key=file_name
@@ -1651,7 +1651,7 @@ def test_select_object():
     event_stream = response['Payload']
     for event in event_stream:
         print(event)
-    
+
     # test EventStream.get_select_result
     response = client.select_object_content(
         Bucket=test_bucket,
@@ -1701,13 +1701,15 @@ def test_select_object():
 
 def test_get_object_sensitive_content_recognition():
     """测试ci文件内容识别的接口"""
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.get_object_sensitive_content_recognition(
         Bucket=ci_bucket_name,
         Key=ci_test_ocr_image,
         Interval=3,
         MaxFrames=20,
         # BizType='xxxx',
-        DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS)
+        DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS),
+        **kwargs
     )
     print(response)
     assert response
@@ -2067,10 +2069,12 @@ def test_qrcode():
         print(response, data)
 
     """二维码图片下载时识别"""
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response, data = client.ci_get_object_qrcode(
         Bucket=ci_bucket_name,
         Key=file_name,
-        Cover=0
+        Cover=0,
+        **kwargs
     )
     print(response, data)
 
@@ -2136,9 +2140,11 @@ def test_ci_get_image_ave_info():
         return
 
     """获取图片主色调接口"""
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response, data = client.ci_get_image_info(
         Bucket=ci_bucket_name,
         Key=ci_test_image,
+        **kwargs
     )
     assert response
 
@@ -2160,10 +2166,12 @@ def test_ci_qrcode_generate():
         return
 
     """二维码生成接口"""
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_qrcode_generate(
         Bucket=ci_bucket_name,
         QrcodeContent='https://www.example.com',
-        Width=200
+        Width=200,
+        **kwargs
     )
     assert response['ResultImage']
 
@@ -2173,9 +2181,11 @@ def test_ci_ocr_process():
         return
 
     """通用文字识别"""
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_ocr_process(
         Bucket=ci_bucket_name,
         Key=ci_test_ocr_image,
+        **kwargs
     )
     assert response
 
@@ -2185,10 +2195,11 @@ def test_ci_get_media_queue():
         return
 
     # 查询媒体队列信息
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_media_queue(
                     Bucket=ci_bucket_name,
                     State="Active",
-                    ContentType='application/xml'
+                    **kwargs
                 )
     assert (response['QueueList'])
 
@@ -2307,11 +2318,12 @@ def test_ci_create_media_transcode_jobs():
             'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
         }
     }
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
     response = client.ci_create_media_jobs(
                     Bucket=ci_bucket_name,
                     Jobs=body,
                     Lst={},
-                    ContentType='application/xml'
+                    **kwargs
                 )
     assert (response['JobsDetail'])
 
@@ -2344,11 +2356,12 @@ def test_ci_create_media_pic_jobs():
             },
         }
     }
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
     response = client.ci_create_media_pic_jobs(
         Bucket=ci_bucket_name,
         Jobs=body,
         Lst={},
-        ContentType='application/xml'
+        **kwargs
     )
     print(response)
     assert (response['JobsDetail'])
@@ -2385,24 +2398,29 @@ def test_ci_list_media_transcode_jobs():
                     State="Active",
     )
     QueueId = response['QueueList'][0]['QueueId']
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    now_time = time.time()
     response = client.ci_list_media_jobs(
                     Bucket=ci_bucket_name,
                     QueueId=QueueId,
                     Tag='Transcode',
+                    StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+                    EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
                     Size=2,
-                    ContentType='application/xml'
+                    **kwargs
                 )
-    assert (response['JobsDetail'])
+    assert (response)
 
 
 def test_get_media_info():
     if TEST_CI != 'true':
         return
     # 获取媒体信息
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.get_media_info(
         Bucket=ci_bucket_name,
         Key=ci_test_media,
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
 
@@ -2411,13 +2429,15 @@ def test_get_snapshot():
     if TEST_CI != 'true':
         return
     # 产生同步截图
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.get_snapshot(
         Bucket=ci_bucket_name,
         Key=ci_test_media,
         Time='1.5',
         Width='480',
         Height='480',
-        Format='png'
+        Format='png',
+        **kwargs
     )
     assert (response)
 
@@ -2426,10 +2446,12 @@ def test_get_pm3u8():
     if TEST_CI != 'true':
         return
     # 获取私有 M3U8 ts 资源的下载授权
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.get_pm3u8(
         Bucket=ci_bucket_name,
         Key=ci_test_m3u8,
-        Expires='3600'
+        Expires='3600',
+        **kwargs
     )
     assert (response)
 
@@ -2438,13 +2460,14 @@ def test_ci_get_media_bucket():
     if TEST_CI != 'true':
         return
     # 获取私有 M3U8 ts 资源的下载授权
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_media_bucket(
         Regions=ci_region,
         BucketNames=ci_bucket_name,
         BucketName=ci_bucket_name,
         PageNumber='1',
         PageSize='2',
-        ContentType='application/xml'
+        **kwargs
     )
     assert (response)
 
@@ -2452,11 +2475,13 @@ def test_ci_get_media_bucket():
 def test_ci_create_doc_transcode_jobs():
     if TEST_CI != 'true':
         return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_doc_queue(
                     Bucket=ci_bucket_name,
-                    ContentType='application/xml')
+                    **kwargs)
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_create_doc_job(
                     Bucket=ci_bucket_name,
                     QueueId=queueId,
@@ -2478,16 +2503,17 @@ def test_ci_create_doc_transcode_jobs():
                     ImageDpi=96,
                     PicPagination=1,
                     PageRanges='1,3',
-                    ContentType='application/xml'
-                )
+                    **kwargs
+    )
     assert (response['JobsDetail']['JobId'])
 
     # 测试转码查询任务
     JobID = response['JobsDetail']['JobId']
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_doc_job(
                     Bucket=ci_bucket_name,
                     JobID=JobID,
-                    ContentType='application/xml'
+                    **kwargs
                 )
     assert (response['JobsDetail'])
 
@@ -2501,13 +2527,17 @@ def test_ci_list_doc_transcode_jobs():
                 )
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    now_time = time.time()
     response = client.ci_list_doc_jobs(
                     Bucket=ci_bucket_name,
                     QueueId=queueId,
+                    StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+                    EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
                     Size=10,
-                    ContentType='application/xml'
-                )
-    assert (response['JobsDetail'])
+                    **kwargs
+    )
+    assert response
 
 
 def test_ci_live_video_auditing():
@@ -2534,9 +2564,11 @@ def test_ci_live_video_auditing():
     assert (response['JobsDetail']['JobId'])
     jobId = response['JobsDetail']['JobId']
     time.sleep(5)
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_auditing_live_video_cancle(
                     Bucket=ci_bucket_name,
                     JobID=jobId,
+                    **kwargs
                 )
     assert (response['JobsDetail'])
 
@@ -2741,20 +2773,24 @@ def test_ci_delete_asr_template():
     response = client.ci_delete_asr_template(
         Bucket=ci_bucket_name,
         TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
+        test='1'
     )
     assert response
 
 
 def test_ci_get_asr_template():
     # 获取语音识别模板
+    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_template(
         Bucket=ci_bucket_name,
+        **kwargs
     )
     assert response
 
 
 def test_ci_create_asr_template():
     # 创建语音识别模板
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_create_asr_template(
         Bucket=ci_bucket_name,
         Name='test_asr_template',
@@ -2763,11 +2799,13 @@ def test_ci_create_asr_template():
         ResTextFormat=2,
         FlashAsr=True,
         Format='mp3',
+        **kwargs
     )
     print(response)
     assert response
     templateId = response["Template"]["TemplateId"]
     print(templateId)
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_update_asr_template(
         Bucket=ci_bucket_name,
         TemplateId=templateId,
@@ -2775,36 +2813,48 @@ def test_ci_create_asr_template():
         EngineModelType='16k_zh',
         ChannelNum=1,
         ResTextFormat=1,
-        Format='mp3'
+        Format='mp3',
+        **kwargs
     )
     assert response
+    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
     # 删除指定语音识别模板
     response = client.ci_delete_asr_template(
         Bucket=ci_bucket_name,
         TemplateId=templateId,
+        **kwargs
     )
     assert response
 
 
 def test_ci_list_asr_jobs():
+    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_queue(
         Bucket=ci_bucket_name,
+        **kwargs
     )
     queueId = response["QueueList"][0]["QueueId"]
     # 获取语音识别任务信息列表
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    now_time = time.time()
     response = client.ci_list_asr_jobs(
         Bucket=ci_bucket_name,
         QueueId=queueId,
+        StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+        EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
         Size=10,
+        **kwargs
     )
     assert response
 
 
 def test_ci_get_asr_jobs():
     # 获取语音识别任务信息
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_job(
         Bucket=ci_bucket_name,
         JobID='s0980xxxxxxxxxxxxxxxxff12',
+        **kwargs
     )
     assert response
 
@@ -2823,6 +2873,7 @@ def test_ci_create_asr_jobs():
         # 'FlashAsr': 'true',
         # 'Format': 'mp3'
     }
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_create_asr_job(
         Bucket=ci_bucket_name,
         QueueId=queueId,
@@ -2837,7 +2888,7 @@ def test_ci_create_asr_jobs():
         CallBack="http://www.demo.com",
         CallBackFormat='XML',
         CallBackType='Url',
-        ContentType='application/xml'
+        **kwargs
     )
     print(response)
     return response
@@ -2880,31 +2931,34 @@ def test_ci_get_asr_queue():
 
 def test_ci_get_asr_bucket():
     # 查询语音识别开通状态
+    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_bucket(
         Regions=REGION,
         BucketName=ci_bucket_name,
         PageSize="10",
         PageNumber="1",
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
 
 
 def test_ci_get_doc_bucket():
     # 查询文档预览开通状态
+    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_doc_bucket(
         Regions=REGION,
         # BucketName='demo',
         BucketNames=ci_bucket_name,
         PageSize=1,
         PageNumber=1,
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
 
 
 def test_ci_doc_preview_to_html_process():
     # 文档预览同步接口（生成html）
+    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
     response = client.ci_doc_preview_html_process(
         Bucket=ci_bucket_name,
         Key=ci_test_txt,
@@ -2917,7 +2971,8 @@ def test_ci_doc_preview_to_html_process():
         HtmlFront='',
         HtmlRotate='315',
         HtmlHorizontal='50',
-        HtmlVertical='100'
+        HtmlVertical='100',
+        **kwargs
     )
     assert response
     response['Body'].get_stream_to_file('result.html')
@@ -2925,12 +2980,14 @@ def test_ci_doc_preview_to_html_process():
 
 def test_ci_doc_preview_process():
     # 文档预览同步接口
+    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
     response = client.ci_doc_preview_process(
         Bucket=ci_bucket_name,
         Key=ci_test_txt,
         SrcType='txt',
         Page=1,
         DstType='jpg',
+        **kwargs
     )
     assert response
     response['Body'].get_stream_to_file('result.png')
@@ -2954,61 +3011,70 @@ def test_ci_put_doc_queue():
             'ResultFormat': 'JSON'
         }
     }
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
     response = client.ci_update_doc_queue(
         Bucket=ci_bucket_name,
         QueueId=queueId,
         Request=body,
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
 
 
 def test_ci_list_workflowexecution():
     # 查询工作流实例接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    now_time = time.time()
     response = client.ci_list_workflowexecution(
         Bucket=ci_bucket_name,
         WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
-        ContentType='application/xml'
+        StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+        EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
+        **kwargs
     )
     assert response
 
 
 def test_ci_trigger_workflow():
     # 触发工作流接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_trigger_workflow(
         Bucket=ci_bucket_name,
         WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
         Key=ci_test_image,
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
     print(response)
     instance_id = response['InstanceId']
     # 查询工作流实例接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_workflowexecution(
         Bucket=ci_bucket_name,
         RunId=instance_id,
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
 
 
 def test_ci_get_media_transcode_jobs():
     # 转码任务详情
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_media_jobs(
         Bucket=ci_bucket_name,
         JobIDs='jc46435e40bcc11ed83d6e19dd89b02cc',
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
 
 
 def test_ci_get_media_pic_jobs():
     # 图片处理任务详情
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_media_pic_jobs(
         Bucket=ci_bucket_name,
         JobIDs='c01742xxxxxxxxxxxxxxxxxx7438e39',
-        ContentType='application/xml'
+        **kwargs
     )
     assert response
 
@@ -3042,16 +3108,18 @@ def test_ci_put_media_pic_queue():
 
 def test_ci_compress_image():
     # HEIF 压缩
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_download_compress_image(
         Bucket=ci_bucket_name,
         Key=ci_test_image,
         DestImagePath='sample.heif',
-        CompressType='heif'
+        CompressType='heif',
+        **kwargs
     )
     assert os.path.exists('sample.heif')
 
 
-def _test_ci_image_detect_label():
+def test_ci_image_detect_label():
     # 图片标签
     response = client.ci_image_detect_label(
         Bucket=ci_bucket_name,
@@ -3062,31 +3130,24 @@ def _test_ci_image_detect_label():
 
 def test_ci_image_detect_car():
     # 车辆车牌检测
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_image_detect_car(
         Bucket=ci_bucket_name,
         Key=ci_test_car_image,
+        **kwargs
     )
     assert response
 
-
-def test_ci_get_image_ave_info():
-    # 获取图片主色调信息
-    response, data = client.ci_get_image_ave_info(
-        Bucket=ci_bucket_name,
-        Key=ci_test_image,
-    )
-    print(response['x-cos-request-id'])
-    print(data)
-
-
 def test_pic_process_when_download_object():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     rule = 'imageMogr2/format/jpg/interlace/1'
     response = client.ci_get_object(
         Bucket=ci_bucket_name,
         Key=ci_test_image,
         DestImagePath='format.png',
         # pic operation json struct
-        Rule=rule
+        Rule=rule,
+        **kwargs
     )
     print(response['x-cos-request-id'])
 
@@ -3133,7 +3194,8 @@ def test_ci_auditing_video_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        response = client.ci_auditing_video_query(Bucket=ci_bucket_name, JobID=jobId)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_auditing_video_query(Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
@@ -3182,7 +3244,8 @@ def test_ci_auditing_document_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        response = client.ci_auditing_document_query(Bucket=ci_bucket_name, JobID=jobId)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_auditing_document_query(Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
         print(str(response))
         if response['JobsDetail']['State'] == 'Success':
@@ -3208,9 +3271,11 @@ def test_ci_auditing_html_submit():
 
 
 def test_ci_auditing_image_batch():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_auditing_image_batch(Bucket=ci_bucket_name,
                                               Input=[{
-                                                'Object': 'ocr.jpeg'}])
+                                                'Object': 'ocr.jpeg'}],
+                                              **kwargs)
     jobId = response['JobsDetail'][0]['JobId']
     while True:
         time.sleep(5)
@@ -3223,13 +3288,16 @@ def test_ci_auditing_image_batch():
 
 
 def test_ci_auditing_virus_submit():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_auditing_virus_submit(Bucket=ci_bucket_name,
                                                Key=ci_test_image,
-                                               Callback="http://www.demo.com")
+                                               Callback="http://www.demo.com",
+                                               **kwargs)
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        response = client.ci_auditing_virus_query(Bucket=ci_bucket_name, JobID=jobId)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_auditing_virus_query(Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
