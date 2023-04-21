@@ -1865,6 +1865,29 @@ def test_aes_client():
 
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
+def test_aes_client2():
+    """测试aes加密客户端的上传下载操作"""
+    aes_dir = os.path.expanduser('~/.cos_local_aes')
+    key_path = os.path.join(aes_dir, '.aes_key.pem')
+    aes_provider = AESProvider(aes_key_path=key_path)
+    client_for_aes = CosEncryptionClient(conf, aes_provider)
+
+    content = '123456' * 1024 + '1'
+    client_for_aes.delete_object(test_bucket, 'test_for_aes')
+    client_for_aes.put_object(test_bucket, content, 'test_for_aes')
+
+    # 测试整个文件的md5
+    response = client_for_aes.get_object(test_bucket, 'test_for_aes')
+    response['Body'].get_stream_to_file('test_for_aes_local')
+    local_file_md5 = None
+    content_md5 = None
+    with open('test_for_aes_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    content_md5 = get_raw_md5(content.encode("utf-8"))
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_aes_local'):
+        os.remove('test_for_aes_local')
+
 
 def test_rsa_client():
     """测试rsa加密客户端的上传下载操作"""
@@ -3412,7 +3435,7 @@ def test_update_object_meta():
     assert response['x-cos-meta-key2'] == 'value2'
 
 def test_cos_comm_misc():
-    from qcloud_cos.cos_comm import format_dict_or_list, get_date, client_can_retry, format_path
+    from qcloud_cos.cos_comm import format_dict_or_list, get_date, get_raw_md5, client_can_retry, format_path
     data = [
         {'aaa': '111'},
         {'bbb': '222'},
@@ -3422,6 +3445,9 @@ def test_cos_comm_misc():
 
     r = get_date(2022, 5, 30)
     assert r == '2022-05-30T00:00:00+08:00'
+
+    r = get_raw_md5(b'12345'*1024)
+    assert r
 
     with open("tmp_test", 'w') as f:
         r = client_can_retry(0, data=f)
@@ -3446,6 +3472,15 @@ def test_cosconfig_misc():
     test_conf = CosConfig(Access_id=SECRET_ID, Access_key=SECRET_KEY)
     test_conf.set_ip_port('10.0.0.1', 80)
     test_conf.set_credential(SecretId=SECRET_ID, SecretKey=SECRET_KEY, Token=None)
+
+def test_cos_exception_unknow():
+    msg = '<Error></Error>'
+    e = CosServiceError('GET', msg, '400')
+    assert e.get_error_code() == 'Unknown'
+    assert e.get_error_msg() == 'Unknown'
+    assert e.get_resource_location() == 'Unknown'
+    assert e.get_trace_id() == 'Unknown'
+    assert e.get_request_id() == 'Unknown'
 
 if __name__ == "__main__":
     setUp()
