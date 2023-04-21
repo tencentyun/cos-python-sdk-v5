@@ -1915,6 +1915,33 @@ def test_rsa_client():
 
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
+def test_rsa_client2():
+    """测试rsa加密客户端的上传下载操作"""
+    rsa_dir = os.path.expanduser('~/.cos_local_rsa')
+    public_key_path = os.path.join(rsa_dir, '.public_key.pem')
+    private_key_path = os.path.join(rsa_dir, '.private_key.pem')
+    rsa_provider = RSAProvider(key_pair_info=RSAProvider.get_rsa_key_pair_path(public_key_path, private_key_path))
+    client_for_rsa = CosEncryptionClient(conf, rsa_provider)
+
+    with open('test_rsa_file', 'w') as f:
+        f.write('123456' * 1024 + '1')
+    with open('test_rsa_file', 'rb') as f:
+        client_for_rsa.delete_object(test_bucket, 'test_for_rsa')
+        client_for_rsa.put_object(test_bucket, f, 'test_for_rsa')
+    # 测试整个文件的md5
+    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa')
+    response['Body'].get_stream_to_file('test_for_rsa_local')
+    local_file_md5 = None
+    content_md5 = None
+    with open('test_for_rsa_local', 'rb') as f:
+        local_file_md5 = get_raw_md5(f.read())
+    with open('test_rsa_file', 'rb') as f:
+        content_md5 = get_raw_md5(f.read())
+    assert local_file_md5 and content_md5 and local_file_md5 == content_md5
+    if os.path.exists('test_for_rsa_local'):
+        os.remove('test_for_rsa_local')
+    if os.path.exists('test_rsa_file'):
+        os.remove('test_rsa_file')
 
 def test_live_channel():
     if TEST_CI != 'true':
@@ -2038,6 +2065,14 @@ def test_live_channel():
         Bucket=test_bucket,
         Key=channel_name + '/test.m3u8')
     assert (response)
+
+    from datetime import datetime
+    response = client.get_vod_playlist(
+        Bucket=test_bucket,
+        ChannelName=channel_name,
+        StartTime=0,
+        EndTime=datetime.now().timestamp()
+    )
 
     print("delete live channel...")
     response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
@@ -3123,7 +3158,7 @@ def test_ci_image_detect_label():
     # 图片标签
     response = client.ci_image_detect_label(
         Bucket=ci_bucket_name,
-        Key=ci_test_image,
+        Key=ci_test_car_image,
     )
     assert response
 
@@ -3309,9 +3344,76 @@ def test_ci_auditing_detect_type():
     detect_type = CiDetectType.get_detect_type_str(127)
     assert detect_type
 
+def test_put_get_async_fetch_task():
+    from copy import deepcopy
+    tmp_conf = deepcopy(conf)
+    tmp_conf._scheme = 'http'
+    tmp_client = CosS3Client(tmp_conf)
+    url = "{}://{}/{}".format(tmp_conf._scheme, tmp_conf.get_host(test_bucket), test_object)
+    response = tmp_client.put_async_fetch_task(
+        Bucket=test_bucket,
+        FetchTaskConfiguration={
+            'Url': url,
+            'Key': test_object,
+        },
+    )
+    response = tmp_client.get_async_fetch_task(
+        Bucket=test_bucket,
+        TaskId=response['data']['taskid'],
+    )
+    assert response['message'] == 'SUCCESS'
+
+
+def test_get_rtmp_signed_url():
+    response = client.get_rtmp_signed_url(
+        Bucket=test_bucket,
+        ChannelName='ch1'
+    )
+    assert response
+
+def test_change_object_storage_class():
+    response = client.change_object_storage_class(
+        Bucket=test_bucket,
+        Key=test_object,
+        StorageClass='STANDARD_IA'
+    )
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert response['x-cos-storage-class'] == 'STANDARD_IA'
+
+    response = client.change_object_storage_class(
+        Bucket=test_bucket,
+        Key=test_object,
+        StorageClass='STANDARD'
+    )
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert 'x-cos-storage-class' not in response
+
+def test_update_object_meta():
+    response = client.update_object_meta(
+        Bucket=test_bucket,
+        Key=test_object,
+        Metadata={
+            'x-cos-meta-key1': 'value1',
+            'x-cos-meta-key2': 'value2'
+        }
+    )
+    response = client.head_object(
+        Bucket=test_bucket,
+        Key=test_object
+    )
+    assert response['x-cos-meta-key1'] == 'value1'
+    assert response['x-cos-meta-key2'] == 'value2'
+
 
 if __name__ == "__main__":
     setUp()
+    test_update_object_meta() 
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
@@ -3437,5 +3539,4 @@ if __name__ == "__main__":
     test_ci_auditing_virus_submit()
     test_sse_c_file()
     """
-    test_pic_process_when_download_object()
     tearDown()
