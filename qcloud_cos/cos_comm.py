@@ -178,13 +178,13 @@ def xml_to_dict(data, origin_str="", replace_str=""):
     return xmldict
 
 
-def get_id_from_xml(data, name):
-    """解析xml中的特定字段"""
-    tree = xml.dom.minidom.parseString(data)
-    root = tree.documentElement
-    result = root.getElementsByTagName(name)
-    # use childNodes to get a list, if has no child get itself
-    return result[0].childNodes[0].nodeValue
+# def get_id_from_xml(data, name):
+#     """解析xml中的特定字段"""
+#     tree = xml.dom.minidom.parseString(data)
+#     root = tree.documentElement
+#     result = root.getElementsByTagName(name)
+#     # use childNodes to get a list, if has no child get itself
+#     return result[0].childNodes[0].nodeValue
 
 
 def mapped(headers):
