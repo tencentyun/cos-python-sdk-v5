@@ -1277,7 +1277,7 @@ class CosS3Client(object):
         return data
 
     # s3 bucket interface begin
-    def create_bucket(self, Bucket, BucketAZConfig=None, **kwargs):
+    def create_bucket(self, Bucket, BucketAZConfig=None, BucketArchConfig=None, **kwargs):
         """创建一个bucket
 
         :param Bucket(string): 存储桶名称. 存储桶名称不支持大写字母，COS 后端会将用户传入的大写字母自动转换为小写字母用于创建存储桶.
@@ -1301,11 +1301,16 @@ class CosS3Client(object):
         """
         headers = mapped(kwargs)
         xml_config = None
+        bucket_config = dict()
         if BucketAZConfig == 'MAZ':
-            bucket_config = {'BucketAZConfig': 'MAZ'}
+            bucket_config.update({'BucketAZConfig': 'MAZ'})
+        if BucketArchConfig == 'OFS':
+            bucket_config.update({'BucketArchConfig': 'OFS'})
+        if len(bucket_config) != 0:
             xml_config = format_xml(data=bucket_config, root='CreateBucketConfiguration')
             headers['Content-MD5'] = get_md5(xml_config)
             headers['Content-Type'] = 'application/xml'
+
         url = self._conf.uri(bucket=Bucket)
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,

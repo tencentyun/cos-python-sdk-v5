@@ -562,13 +562,14 @@ def test_create_head_delete_bucket():
         Bucket=bucket_name
     )
 
-def test_create_head_delete_maz_bucket():
-    """创建一个多AZ bucket,head它是否存在,最后删除一个空bucket"""
+def test_create_head_delete_maz_ofs_bucket():
+    """创建一个多AZ OFS bucket,head它是否存在,最后删除一个空bucket"""
     bucket_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
-    bucket_name = 'buckettest-maz' + bucket_id + '-' + APPID
+    bucket_name = 'buckettest-maz-ofs' + bucket_id + '-' + APPID
     response = client.create_bucket(
         Bucket=bucket_name,
         BucketAZConfig='MAZ',
+        BucketArchConfig='OFS',
         ACL='public-read'
     )
     response = client.head_bucket(
@@ -577,6 +578,7 @@ def test_create_head_delete_maz_bucket():
     response = client.delete_bucket(
         Bucket=bucket_name
     )
+
 
 def test_put_bucket_acl():
     """正常设置bucket ACL"""
