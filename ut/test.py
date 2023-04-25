@@ -3470,11 +3470,6 @@ def test_cos_comm_misc():
     r = format_path('/test/path/to')
     assert r == 'test/path/to'
 
-def test_cosconfig_misc():
-    test_conf = CosConfig(Access_id=SECRET_ID, Access_key=SECRET_KEY)
-    test_conf.set_ip_port('10.0.0.1', 80)
-    test_conf.set_credential(SecretId=SECRET_ID, SecretKey=SECRET_KEY, Token=None)
-
 def test_cos_exception_unknow():
     msg = '<Error></Error>'
     e = CosServiceError('GET', msg, '400')
@@ -3483,6 +3478,52 @@ def test_cos_exception_unknow():
     assert e.get_resource_location() == 'Unknown'
     assert e.get_trace_id() == 'Unknown'
     assert e.get_request_id() == 'Unknown'
+
+def test_check_multipart_upload():
+    test_key = 'test_key'
+    test_data = 'x'*1024*1024
+    with open(test_key, 'w') as f:
+        f.write(test_data)
+    response = client.create_multipart_upload(
+        Bucket=test_bucket,
+        Key=test_key,
+    )
+    uploadId = response['UploadId']
+    response = client.upload_part(
+        Bucket=test_bucket,
+        Key=test_key,
+        Body=test_data,
+        PartNumber=1,
+        UploadId=uploadId
+    )
+    response = client.list_parts(
+        Bucket=test_bucket,
+        Key=test_key,
+        UploadId=uploadId
+    )
+
+    tmp_file = 'tmp_file'
+    record = {'bucket': test_bucket, 'key': test_key, 'tmp_filename': tmp_file,
+              'mtime': response['Part'][0]['LastModified'], 'etag': response['Part'][0]['ETag'],
+              'file_size': response['Part'][0]['Size'], 'part_size': response['Part'][0]['Size'], 'parts': []}
+    with open(tmp_file, 'w') as f:
+        json.dump(record, f)
+    r = client._check_all_upload_parts(
+        bucket=test_bucket,
+        key=test_key,
+        uploadid=uploadId,
+        local_path=test_key,
+        parts_num=1,
+        part_size=int(response['Part'][0]['Size']),
+        last_size=int(response['Part'][0]['Size']),
+        already_exist_parts={}
+    )
+    assert r
+    response = client.abort_multipart_upload(
+        Bucket=test_bucket,
+        Key=test_key,
+        UploadId=uploadId
+    )
 
 if __name__ == "__main__":
     setUp()
