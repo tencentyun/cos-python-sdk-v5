@@ -3470,6 +3470,10 @@ def test_cos_comm_misc():
     r = format_path('/test/path/to')
     assert r == 'test/path/to'
 
+def test_cosconfig_misc():
+    test_conf = CosConfig(Access_id=SECRET_ID, Access_key=SECRET_KEY)
+    test_conf.set_ip_port('10.0.0.1', 80)
+    test_conf.set_credential(SecretId=SECRET_ID, SecretKey=SECRET_KEY, Token=None)
 
 def test_cos_exception_unknow():
     msg = '<Error></Error>'
