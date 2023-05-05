@@ -8001,11 +8001,11 @@ class CosS3Client(object):
         if SpeechRecognition:
             body['Operation']['SpeechRecognition'] = SpeechRecognition
         if CallBack:
-            body['Operation']['CallBack'] = CallBack
+            body['CallBack'] = CallBack
         if CallBackFormat:
-            body['Operation']['CallBackFormat'] = CallBackFormat
+            body['CallBackFormat'] = CallBackFormat
         if CallBackMqConfig:
-            body['Operation']['CallBackMqConfig'] = CallBackMqConfig
+            body['CallBackMqConfig'] = CallBackMqConfig
         xml_config = format_xml(data=body, root='Request')
         path = "/asr_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
@@ -8482,6 +8482,343 @@ class CosS3Client(object):
 
         data = xml_to_dict(rt.content)
         return data
+
+    def file_hash(self, Bucket, Key, Type, AddToHeader=False, **kwargs):
+        """以同步请求的方式进行文件哈希值计算，实时返回计算得到的哈希值 https://cloud.tencent.com/document/product/436/83107
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Type(string): 支持的哈希算法类型，有效值：md5、sha1、sha256.
+        :param AddToHeader(bool): 是否将计算得到的哈希值，自动添加至文件的自定义header，格式为：x-cos-meta-md5/sha1/sha256; 有效值： True、False，不填则默认为False.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于获取COS文件某个时间的截图
+            response = client.file_hash(Bucket=bucket_name, Key="mytest.mp4", Type='md5')
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'filehash'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['type'] = Type
+        params['addtoheader'] = str(AddToHeader).lower()
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("file_hash, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def _ci_create_file_process_job(self, Bucket, Body=None, **kwargs):
+        """ 创建文件处理公共接口
+        :param Bucket(string): 存储桶名称.
+        :param Body(dict): 文件处理参数信息.
+        :return(dict): 查询成功返回的结果,dict类型.
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        xml_config = format_xml(data=Body, root='Request')
+        path = "/file_jobs"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("_ci_create_file_job result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_create_file_hash_job(self, Bucket, InputObject,
+        FileHashCodeConfig, QueueId=None, CallBack=None, CallBackFormat=None,
+        CallBackType=None, CallBackMqConfig=None, UserData=None, **kwargs):
+        """ 创建哈希值计算任务接口 https://cloud.tencent.com/document/product/436/83108
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 任务所在的队列 ID.
+        :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param FileHashCodeConfig(dict): 指定哈希值计算的处理规则.
+        :param CallBack(string): 任务结束回调，回调Url
+        :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
+        :param CallBackType(string): 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        :param CallBackMqConfig(dict): 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填，详见 https://cloud.tencent.com/document/product/460/78927#CallBackMqConfig
+        :param UserData(string): 透传用户信息, 可打印的 ASCII 码, 长度不超过1024.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            body = {
+                    'Type': 'MD5',
+            }
+            response = client.ci_create_file_hash_job(
+                Bucket=bucket_name,
+                InputObject="mytest.mp4",
+                FileHashCodeConfig=body
+            )
+            print(response)
+            return response
+        """
+        body = {
+            'Input': {
+                'Object': InputObject
+            },
+            'Tag': 'FileHashCode',
+            'Operation': {
+                'FileHashCodeConfig': FileHashCodeConfig,
+            }
+        }
+        if QueueId:
+            body['QueueId'] = QueueId
+        if CallBack:
+            body['CallBack'] = CallBack
+        if CallBackFormat:
+            body['CallBackFormat'] = CallBackFormat
+        if CallBackMqConfig:
+            body['CallBackMqConfig'] = CallBackMqConfig
+        if CallBackType:
+            body['CallBackType'] = CallBackType
+        if UserData:
+            body['Operation']['UserData'] = UserData
+
+        return self._ci_create_file_process_job(Bucket, Body=body, **kwargs)
+
+    def ci_create_file_uncompress_job(self, Bucket, InputObject,
+        FileUncompressConfig, QueueId=None, CallBack=None, CallBackFormat=None,
+        CallBackType=None, CallBackMqConfig=None, UserData=None, **kwargs):
+        """ 创建文件解压任务接口 https://cloud.tencent.com/document/product/436/83110
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 任务所在的队列 ID.
+        :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param FileUncompressConfig(dict): 指定文件解压的处理规则.
+        :param CallBack(string): 任务结束回调，回调Url
+        :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
+        :param CallBackType(string): 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        :param CallBackMqConfig(dict): 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填，详见 https://cloud.tencent.com/document/product/460/78927#CallBackMqConfig
+        :param UserData(string): 透传用户信息, 可打印的 ASCII 码, 长度不超过1024.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            body = {
+                'Prefix': 'output/',
+            }
+            response = client.ci_create_file_uncompress_job(
+                Bucket=bucket_name,
+                InputObject='test.zip',
+                FileUncompressConfig=body
+            )
+            print(response)
+            return response
+        """
+        body = {
+            'Input': {
+                'Object': InputObject
+            },
+            'Tag': 'FileUncompress',
+            'Operation': {
+                'FileUncompressConfig': FileUncompressConfig,
+            }
+        }
+        if QueueId:
+            body['QueueId'] = QueueId
+        if CallBack:
+            body['CallBack'] = CallBack
+        if CallBackFormat:
+            body['CallBackFormat'] = CallBackFormat
+        if CallBackMqConfig:
+            body['CallBackMqConfig'] = CallBackMqConfig
+        if CallBackType:
+            body['CallBackType'] = CallBackType
+        if UserData:
+            body['Operation']['UserData'] = UserData
+
+        return self._ci_create_file_process_job(Bucket, Body=body, **kwargs)
+
+    def ci_create_file_compress_job(self, Bucket, OutputBucket, OutputRegion, OutputObject,
+        FileCompressConfig, QueueId=None, CallBack=None, CallBackFormat=None,
+        CallBackType=None, CallBackMqConfig=None, UserData=None, **kwargs):
+        """ 创建多文件打包压缩任务接口 https://cloud.tencent.com/document/product/436/83112
+
+        :param Bucket(string): 存储桶名称.
+        :param OutputBucket(string): 存储结果的存储桶.
+        :param OutputRegion(string): 存储结果的存储桶的地域.
+        :param OutputObject(string): 输出文件路径。
+        :param QueueId(string): 任务所在的队列 ID.
+        :param FileCompressConfig(dict): 指定文件打包的处理规则.
+        :param CallBack(string): 任务结束回调，回调Url
+        :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
+        :param CallBackType(string): 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        :param CallBackMqConfig(dict): 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填，详见 https://cloud.tencent.com/document/product/460/78927#CallBackMqConfig
+        :param UserData(string): 透传用户信息, 可打印的 ASCII 码, 长度不超过1024.
+        :return(dict): 任务返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            body = {
+                'Flatten': '0',
+                'Format': 'zip',
+                'Prefix': '/',
+            }
+            response = client.ci_create_file_compress_job(
+                Bucket=bucket_name,
+                OutputBucket=bucket_name,
+                OutputRegion='ap-guangzhou',
+                OutputObject='result.zip',
+                FileCompressConfig=body
+            )
+            print(response)
+            return response
+        """
+        body = {
+            'Tag': 'FileCompress',
+            'Operation': {
+                'FileCompressConfig': FileCompressConfig,
+                'Output': {
+                    'Bucket': OutputBucket,
+                    'Region': OutputRegion,
+                    'Object': OutputObject
+                },
+            }
+        }
+        if QueueId:
+            body['QueueId'] = QueueId
+        if CallBack:
+            body['CallBack'] = CallBack
+        if CallBackFormat:
+            body['CallBackFormat'] = CallBackFormat
+        if CallBackMqConfig:
+            body['CallBackMqConfig'] = CallBackMqConfig
+        if CallBackType:
+            body['CallBackType'] = CallBackType
+        if UserData:
+            body['Operation']['UserData'] = UserData
+
+        return self._ci_create_file_process_job(Bucket, Body=body, **kwargs)
+
+    def ci_get_file_process_jobs(self, Bucket, JobIDs, **kwargs):
+        """ 查询文件处理任务接口
+
+        :param Bucket(string): 存储桶名称.
+        :param JobIDs(string): 任务ID，以,分割多个任务ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_get_file_process_jobs(
+                Bucket='bucket'
+                JobIDs={}
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/file_jobs/" + JobIDs
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_get_file_process_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers)
+        logger.debug("ci_get_file_process_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_file_zip_preview(self, Bucket, Key, **kwargs):
+        """ci_file_zip_preview 压缩文件预览接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 预览结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_file_zip_preview(
+                Bucket='bucket',
+                Key='test.zip',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "zippreview", **kwargs)
 
 
 if __name__ == "__main__":
