@@ -42,7 +42,7 @@ class CosConfig(object):
 
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, CredentialInstance=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
-                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
+                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
                  PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True):
         """初始化，保存用户的信息
 
@@ -65,6 +65,7 @@ class CosConfig(object):
         :param Proxies(dict):  使用代理来访问COS
         :param Domain(string):  使用自定义的域名来访问COS
         :param ServiceDomain(string):  使用自定义的域名来访问cos service
+        :param KeepAlive(bool):       是否使用长连接
         :param PoolConnections(int):  连接池个数
         :param PoolMaxSize(int):      连接池中最大连接数
         :param AllowRedirects(bool):  是否重定向
@@ -87,6 +88,7 @@ class CosConfig(object):
         self._proxies = Proxies
         self._domain = Domain
         self._service_domain = ServiceDomain
+        self._keep_alive = KeepAlive
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
@@ -332,6 +334,8 @@ class CosS3Client(object):
                 kwargs['headers']['Host'] = self._conf._domain
             elif bucket is not None:
                 kwargs['headers']['Host'] = self._conf.get_host(bucket)
+        if self._conf._keep_alive == False:
+            kwargs['headers']['Connection'] = 'close'
         kwargs['headers'] = format_values(kwargs['headers'])
 
         file_position = None
@@ -1273,7 +1277,7 @@ class CosS3Client(object):
         return data
 
     # s3 bucket interface begin
-    def create_bucket(self, Bucket, BucketAZConfig=None, **kwargs):
+    def create_bucket(self, Bucket, BucketAZConfig=None, BucketArchConfig=None, **kwargs):
         """创建一个bucket
 
         :param Bucket(string): 存储桶名称. 存储桶名称不支持大写字母，COS 后端会将用户传入的大写字母自动转换为小写字母用于创建存储桶.
@@ -1297,11 +1301,16 @@ class CosS3Client(object):
         """
         headers = mapped(kwargs)
         xml_config = None
+        bucket_config = dict()
         if BucketAZConfig == 'MAZ':
-            bucket_config = {'BucketAZConfig': 'MAZ'}
+            bucket_config.update({'BucketAZConfig': 'MAZ'})
+        if BucketArchConfig == 'OFS':
+            bucket_config.update({'BucketArchConfig': 'OFS'})
+        if len(bucket_config) != 0:
             xml_config = format_xml(data=bucket_config, root='CreateBucketConfiguration')
             headers['Content-MD5'] = get_md5(xml_config)
             headers['Content-Type'] = 'application/xml'
+
         url = self._conf.uri(bucket=Bucket)
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -3531,8 +3540,8 @@ class CosS3Client(object):
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
                     **kwargs):
-        """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
 
+        """
         :param Bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
         :param LocalFilePath(string): 本地文件路径名.
@@ -3557,7 +3566,7 @@ class CosS3Client(object):
             )
         """
         file_size = os.path.getsize(LocalFilePath)
-        if file_size <= 1024 * 1024 * 20:
+        if file_size <= 1024 * 1024 * PartSize:
             with open(LocalFilePath, 'rb') as fp:
                 rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, EnableMD5=EnableMD5, **kwargs)
             return rt
@@ -7012,9 +7021,9 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url), StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url), EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("ci_list_workflowexecution result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7518,9 +7527,11 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_doc_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8130,9 +8141,11 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_asr_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
