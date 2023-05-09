@@ -2833,7 +2833,6 @@ def test_ci_delete_asr_template():
     response = client.ci_delete_asr_template(
         Bucket=ci_bucket_name,
         TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
-        test='1'
     )
     assert response
 
@@ -3527,6 +3526,7 @@ def test_check_multipart_upload():
 
 if __name__ == "__main__":
     setUp()
+    test_ci_delete_asr_template()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
