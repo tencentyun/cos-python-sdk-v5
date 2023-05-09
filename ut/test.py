@@ -2216,7 +2216,7 @@ def test_ci_image_assess_quality():
     """图片质量评估接口"""
     response = client.ci_image_assess_quality(
         Bucket=ci_bucket_name,
-        Key=ci_test_image,
+        Key=ci_test_car_image,
     )
     assert response
 
@@ -3527,7 +3527,6 @@ def test_check_multipart_upload():
 
 if __name__ == "__main__":
     setUp()
-    test_live_channel()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
