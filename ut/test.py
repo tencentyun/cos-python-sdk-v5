@@ -2095,7 +2095,7 @@ def test_live_channel():
     response = client.get_vod_playlist(
         Bucket=test_bucket,
         ChannelName=channel_name,
-        StartTime=int(datetime.now().timestamp()-100000),
+        StartTime=int(datetime.now().timestamp()-10000),
         EndTime=int(datetime.now().timestamp())
     )
 
@@ -3527,6 +3527,7 @@ def test_check_multipart_upload():
 
 if __name__ == "__main__":
     setUp()
+    test_live_channel()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
