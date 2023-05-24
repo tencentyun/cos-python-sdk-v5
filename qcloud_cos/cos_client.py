@@ -3345,7 +3345,7 @@ class CosS3Client(object):
         return data
 
     # service interface begin
-    def list_buckets(self, **kwargs):
+    def list_buckets(self, Marker="", MaxKeys=2000, **kwargs):
         """列出所有bucket
 
         :return(dict): 账号下bucket相关信息.
@@ -3366,11 +3366,16 @@ class CosS3Client(object):
 
         if self._conf._service_domain is not None:
             url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
+        params = {
+            'marker': Marker,
+            'max-keys': MaxKeys,
+        }
         rt = self.send_request(
             method='GET',
             url=url,
             bucket=None,
             headers=headers,
+            params=params,
             auth=CosS3Auth(self._conf),
         )
         data = xml_to_dict(rt.content)
