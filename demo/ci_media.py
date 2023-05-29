@@ -1029,6 +1029,50 @@ def ci_create_quality_estimate_jobs():
     return response
 
 
+def ci_create_segment_video_body_jobs():
+    # 创建视频人像抠图任务
+    body = {
+        # 待操作的对象信息
+        'Input': {
+            # 输入文件路径
+            'Object': 'gaobai.mp4'
+        },
+        # 任务类型，固定值 SegmentVideoBody
+        'Tag': 'SegmentVideoBody',
+        # 操作规则
+        'Operation': {
+            # 视频人像抠图配置
+            'SegmentVideoBody': {
+                # 抠图模式 Mask Foreground Combination
+                'Mode': 'Mask'
+            },
+            # 输出配置
+            'Output': {
+                # 输出桶信息
+                'Bucket': bucket_name,
+                # 输出地域信息
+                'Region': region,
+                # 输出文件路径信息
+                'Object': 'result.mp4'
+            },
+            # 非必选
+            "UserData": "This is my data",
+        },
+        # 非必选 回调URL
+        # 'CallBack': 'http://callback.demo.com',
+        # 非必选 回调信息格式 支持JSON/XML
+        # 'CallBackFormat': 'JSON'
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
 if __name__ == "__main__":
     # ci_get_media_queue()
     # ci_get_media_transcode_jobs()
@@ -1065,4 +1109,5 @@ if __name__ == "__main__":
     # ci_list_media_pic_jobs()
     # ci_get_media_pic_queue()
     # ci_put_media_pic_queue()
-    ci_create_quality_estimate_jobs()
+    # ci_create_quality_estimate_jobs()
+    ci_create_segment_video_body_jobs()

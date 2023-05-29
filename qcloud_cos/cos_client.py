@@ -5628,7 +5628,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_text_submit(self, Bucket, Key, DetectType=None, Content=None, Callback=None,  BizType=None, Url=None, UserInfo=None, DataId=None, **kwargs):
+    def ci_auditing_text_submit(self, Bucket, Key=None, DetectType=None, Content=None, Callback=None,  BizType=None, Url=None, UserInfo=None, DataId=None, **kwargs):
         """提交文本审核任务接口 https://cloud.tencent.com/document/product/460/56285
 
         :param Bucket(string): 存储桶名称.
