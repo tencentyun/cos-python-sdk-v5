@@ -52,6 +52,7 @@ class CosS3Auth(AuthBase):
         self._anonymous = conf._anonymous
         self._expire = expire
         self._params = params
+        self._sign_params = conf._sign_params
 
         # 如果API指定了是否签名host，则以具体API为准，如果未指定则以配置为准
         if sign_host is not None:
@@ -77,7 +78,9 @@ class CosS3Auth(AuthBase):
             return r
 
         path = self._path
-        uri_params = self._params
+        uri_params = {}
+        if self._sign_params:
+            uri_params = self._params
         headers = filter_headers(r.headers)
 
         # 如果headers中不包含host头域，则从url中提取host，并且加入签名计算
