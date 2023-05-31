@@ -687,11 +687,49 @@ def test_get_bucket_location():
 
 
 def test_get_service():
-    return  # TODO: 测试账号的桶太多了导致列举超时，暂时屏蔽掉
-
     """列出账号下所有的bucket信息"""
     response = client.list_buckets()
     assert response
+
+    # 创建一个桶, 打tag
+    test_tagging_bucket = 'test-tagging-bucket-' + APPID
+    client.create_bucket(Bucket=test_tagging_bucket)
+    client.put_bucket_tagging(
+        Bucket=test_tagging_bucket,
+        Tagging={
+            'TagSet': {
+                'Tag': [
+                    {
+                        'Key': 'tagKey',
+                        'Value': 'tagValue'
+                    }
+                ]
+            }
+        }
+    )
+    response = client.list_buckets(Region=REGION, TagKey='tagKey', TagValue='tagValue')
+    for bucket in response['Buckets']['Bucket']:
+        tag = client.get_bucket_tagging(Bucket=bucket['Name'])
+        assert tag['TagSet']['Tag'][0]['Key'] == 'tagKey'
+        assert tag['TagSet']['Tag'][0]['Value'] == 'tagValue'
+    
+    time.sleep(3)
+    client.delete_bucket(Bucket=test_tagging_bucket)
+
+    from datetime import datetime
+    marker = ""
+    list_over = False
+    while list_over is False:
+        create_time = 1514736000
+        response = client.list_buckets(Region='ap-beijing', CreateTime=create_time, Range='gt', Marker=marker)
+        for bucket in response['Buckets']['Bucket']:
+            ctime = int(time.mktime(datetime.strptime(bucket['CreationDate'], '%Y-%m-%dT%H:%M:%SZ').timetuple()))
+            assert ctime > create_time
+            assert bucket['Location'] == 'ap-beijing'
+
+        marker = response['Marker']
+        if response['IsTruncated'] == 'false':
+            list_over = True
 
 
 def test_put_get_delete_cors():
@@ -3526,7 +3564,6 @@ def test_check_multipart_upload():
 
 if __name__ == "__main__":
     setUp()
-    test_ci_delete_asr_template()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
