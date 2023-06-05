@@ -3318,7 +3318,7 @@ class CosS3Client(object):
     def get_bucket_intelligenttiering(self, Bucket, **kwargs):
         """获取存储桶智能分层配置
         :param Bucket(string): 存储桶名称.
-        :param IntelligentTieringConfiguration(dict): 只能分层配置
+        :param IntelligentTieringConfiguration(dict): 智能分层配置
         :param kwargs(dict): 设置请求headers.
         :return(dict): 智能分层配置.
 
@@ -3346,7 +3346,15 @@ class CosS3Client(object):
 
     # service interface begin
     def list_buckets(self, TagKey=None, TagValue=None, Region=None, CreateTime=None, Range=None, Marker="", MaxKeys=2000, **kwargs):
-        """列出所有bucket
+        """列出符合条件的bucket
+        :param Bucket(string): 存储桶名称
+        :param TagKey(string): 标签键
+        :param TagValue(string): 标签值
+        :param Region(string): 地域名称
+        :param CreateTime(Timestamp): GMT时间戳, 和 Range 参数一起使用, 支持根据创建时间过滤存储桶
+        :param Range(string): 和 CreateTime 参数一起使用, 支持根据创建时间过滤存储桶，支持枚举值 lt（创建时间早于 create-time）、gt（创建时间晚于 create-time）、lte（创建时间早于或等于 create-time）、gte（创建时间晚于或等于create-time）
+        :param Marker(string): 起始标记, 从该标记之后（不含）按照 UTF-8 字典序返回存储桶条目
+        :param MaxKeys(int): 单次返回最大的条目数量，默认值为2000，最大为2000
 
         :return(dict): 账号下bucket相关信息.
 
