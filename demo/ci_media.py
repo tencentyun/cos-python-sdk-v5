@@ -1043,8 +1043,21 @@ def ci_create_segment_video_body_jobs():
         'Operation': {
             # 视频人像抠图配置
             'SegmentVideoBody': {
-                # 抠图模式 Mask Foreground Combination
-                'Mode': 'Mask'
+                # 抠图模式 当前只支持
+                # Mask (输出alpha通道结果) 、
+                # Foreground（输出前景视频）、
+                # Combination（输出抠图后的前景与自定义背景合成后的视频）
+                'Mode': 'Mask',
+                # 非必选 抠图模式，当前支持 HumanSeg、GreenScreenSeg。 默认值 HumanSeg
+                # 'SegmentType': 'GreenScreenSeg',
+                # 非必选 mode为Foreground时可指定此参数，背景颜色为蓝色，取值范围为0-255, 默认值为0
+                # 'BackgroundBlue': '255',
+                # 非必选 mode为Foreground时可指定此参数，背景颜色为红色，取值范围为0-255, 默认值为0
+                # 'BackgroundRed': '255',
+                # 非必选 mode为Foreground时可指定此参数，背景颜色为绿色，取值范围为0-255, 默认值为0
+                # 'BackgroundGreen': '255',
+                # 非必选 mode为Combination时，必需指定此参数，传入背景文件，背景文件需与object在同存储桶下
+                # 'BackgroundLogoUrl': 'http://testpic-1253960454.cos.ap-chongqing.myqcloud.com'
             },
             # 输出配置
             'Output': {
