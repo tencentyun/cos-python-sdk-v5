@@ -1,4 +1,7 @@
 # -*- coding=utf-8
+from urllib.parse import quote, urlencode
+
+from qcloud_cos.cos_comm import to_bytes
 from qcloud_cos.streambody import StreamBody
 
 from qcloud_cos import CosConfig
@@ -573,6 +576,21 @@ def ci_image_detect_label():
     print(response)
 
 
+def ci_recognize_logo_process():
+    url = u"{scheme}://{endpoint}/{path}".format(
+        scheme="https",
+        endpoint="demo-1250000000.ci.ap-chongqing.myqcloud.com",
+        path=quote(to_bytes("demo.png"), b'/-_.~')
+    )
+    params = {
+        "1": "2",
+        "测试": "参数"
+    }
+    url = url + str('?') + urlencode(params)
+    response = client.ci_recognize_logo_process(bucket_name, Url=url)
+    print(response)
+
+
 if __name__ == '__main__':
     # format.png
     # thumbnail_when_put_object()
@@ -623,7 +641,7 @@ if __name__ == '__main__':
     # ci_image_assess_quality()
     # ci_qrcode_generate()
     # qr_code_identify_when_put_object()
-    qr_code_identify_when_download_object()
+    # qr_code_identify_when_download_object()
     # ci_image_detect_car()
     # ci_ocr_process()
     # ci_get_image_info()
@@ -640,4 +658,5 @@ if __name__ == '__main__':
     # ci_get_image_style()
     # ci_delete_image_style()
     # ci_image_detect_label()
+    ci_recognize_logo_process()
 
