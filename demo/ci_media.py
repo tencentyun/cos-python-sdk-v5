@@ -1,12 +1,10 @@
 # -*- coding=utf-8
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
-from qcloud_cos.cos_comm import CiDetectType
 
 import sys
 import logging
 import os
-import time
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
@@ -411,42 +409,67 @@ def ci_create_media_animation_jobs():
 
 
 def ci_create_media_concat_jobs():
-    # 创建拼接任务
+    # 创建拼接任务，以下示例仅展示部分参数，更详细参数详见API文档
+    # API文档：https://cloud.tencent.com/document/product/460/84788
     body = {
-        'Input': {
-            'Object': 'demo.mp4'
-        },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
+        # 任务类型，拼接任务为Concat
         'Tag': 'Concat',
         'Operation': {
+            # 拼接参数
             "ConcatTemplate": {
+                # 拼接节点
                 "ConcatFragment": [
                     {
-                        "Url": "http://demo-1xxxxxxxxx.cos.ap-chongqing.myqcloud.com/1.mp4"
+                        # 拼接对象地址
+                        "Url": "http://demo-1xxxxxxxxx.cos.ap-chongqing.myqcloud.com/1.mp4",
+                        # 拼接对象的索引位置, 非必传参数，默认为0
+                        "FragmentIndex": "0",
+                        # 开始/结束时间,表示截取 StartTime - EndTime的视频段进行拼接，非必传参数，
+                        # Request.Operation.ConcatTemplate.DirectConcat 为 true 时不生效
+                        # 此示例表示截取1.mp4的0-1s的视频段进行拼接
+                        "StartTime": "0",
+                        "EndTime": "1"
                     },
                     {
-                        "Url": "http://demo-1xxxxxxxxx.cos.ap-chongqing.myqcloud.com/2.mp4"
+                        "Url": "http://demo-1xxxxxxxxx.cos.ap-chongqing.myqcloud.com/2.mp4",
+                        "FragmentIndex": "1",
                     }
                 ],
+                # 目标文件的音频配置，非必传参数
                 "Audio": {
                     "Codec": "mp3"
                 },
+                # 目标文件的视频配置，非必传参数
                 "Video": {
                     "Codec": "H.264",
                     "Bitrate": "1000",
                     "Width": "1280",
                     "Fps": "30"
                 },
+                # 目标文件的封装格式
                 "Container": {
+                    # 封装格式：mp4，flv，hls，ts, mp3, aac
                     "Format": "mp4"
-                }
+                },
+                # 转场参数
+                "SceneChangeInfo": {
+                    # 转场模式
+                    # Default：不添加转场特效
+                    # FADE：淡入淡出
+                    # GRADIENT：渐变
+                    "Mode": "Default",
+                    # 转场时长 非必传参数，单位秒， 默认为3秒
+                    # 取值范围：(0, 5], 支持小数
+                    "Time": "3",
+                },
+                # 简单拼接方式（不转码直接拼接），若值为true，以上视频和音频参数失效
+                "DirectConcat": "false",
             },
             'Output': {
                 'Bucket': bucket_name,
                 'Region': region,
                 'Object': 'concat-result.mp4'
             },
-            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
         }
     }
     lst = ['<ConcatFragment>', '</ConcatFragment>']
@@ -1058,6 +1081,8 @@ def ci_create_segment_video_body_jobs():
                 # 'BackgroundGreen': '255',
                 # 非必选 mode为Combination时，必需指定此参数，传入背景文件，背景文件需与object在同存储桶下
                 # 'BackgroundLogoUrl': 'http://testpic-1253960454.cos.ap-chongqing.myqcloud.com'
+                # 非必选 阈值 可以调整alpha通道的边缘，调整抠图的边缘位置 取值范围为0-255, 默认值为0
+                # 'BinaryThreshold': '200'
             },
             # 输出配置
             'Output': {
