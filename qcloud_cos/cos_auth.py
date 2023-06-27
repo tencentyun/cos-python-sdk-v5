@@ -52,6 +52,7 @@ class CosS3Auth(AuthBase):
         self._anonymous = conf._anonymous
         self._expire = expire
         self._params = params
+        self._excluded_sign_headers = conf._excluded_sign_headers
 
         # 如果API指定了是否签名host，则以具体API为准，如果未指定则以配置为准
         if sign_host is not None:
@@ -99,6 +100,8 @@ class CosS3Auth(AuthBase):
         # reserved keywords in headers urlencode are -_.~, notice that / should be encoded and space should not be encoded to plus sign(+)
         headers = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
                         headers.items()])  # headers中的key转换为小写，value进行encode
+        # filter headers
+        # headers = dict([(k, v) for k, v in headers.items() if k not in self._excluded_sign_headers])
         uri_params = dict([(quote(to_bytes(to_str(k)), '-_.~').lower(), quote(to_bytes(to_str(v)), '-_.~')) for k, v in
                            uri_params.items()])
         format_str = u"{method}\n{host}\n{params}\n{headers}\n".format(

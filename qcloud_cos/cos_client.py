@@ -43,7 +43,8 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, CredentialInstance=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True,
+                 ExcludedSignHeaders=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -96,6 +97,7 @@ class CosConfig(object):
         self._copy_part_threshold_size = SINGLE_UPLOAD_LENGTH
         self._enable_old_domain = EnableOldDomain
         self._enable_internal_domain = EnableInternalDomain
+        self._excluded_sign_headers = ExcludedSignHeaders
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnableInternalDomain)
