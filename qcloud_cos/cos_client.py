@@ -8952,6 +8952,56 @@ class CosS3Client(object):
 
         return data
 
+    def ci_cancel_jobs(self, Bucket, JobID, **kwargs):
+        """取消媒体处理任务接口 https://cloud.tencent.com/document/product/436/85082
+
+        :param Bucket(string): 存储桶名称.
+        :param JobID(string): 任务id.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 取消任务
+            response = client.ci_cancel_jobs(
+                Bucket='bucket',
+                JobID='v11122zxxxazzz',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = '/jobs/' + JobID
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url += "?cancel"
+        logger.info("ci_cancel_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        logger.debug("ci_cancel_jobs:%s", rt.content)
+        return ''
+
 
 if __name__ == "__main__":
     pass

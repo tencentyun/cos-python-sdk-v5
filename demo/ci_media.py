@@ -1,4 +1,6 @@
 # -*- coding=utf-8
+import time
+
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
 
@@ -182,7 +184,7 @@ def ci_create_media_transcode_with_watermark_jobs():
                     'StartTime': '0',
                     'EndTime': '1000.5',
                     'Image': {
-                        'Url': 'http://'+bucket_name+".cos."+region+".myqcloud.com/watermark.png",
+                        'Url': 'http://' + bucket_name + ".cos." + region + ".myqcloud.com/watermark.png",
                         'Mode': 'Fixed',
                         'Width': '128',
                         'Height': '128',
@@ -269,7 +271,6 @@ def ci_create_media_transcode_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxx8bf047454',
         'Tag': 'Transcode',
         'Operation': {
             "Transcode": {
@@ -326,7 +327,6 @@ def ci_create_media_snapshot_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'Snapshot',
         'Operation': {
             'Snapshot': {
@@ -733,7 +733,7 @@ def ci_create_media_extract_digital_watermark_jobs():
 def ci_create_media_super_resolution_jobs():
     # 创建超分任务
     body = {
-        'Input':{
+        'Input': {
             'Object': 'demo.mp4'
         },
         'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
@@ -764,7 +764,7 @@ def ci_create_media_super_resolution_jobs():
 def ci_create_media_video_tag_jobs():
     # 创建视频标签任务
     body = {
-        'Input':{
+        'Input': {
             'Object': 'demo.mp4'
         },
         'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
@@ -1111,6 +1111,86 @@ def ci_create_segment_video_body_jobs():
     return response
 
 
+def ci_create_and_get_live_recognition_jobs():
+    # 创建直播流识别任务
+    body = {
+        # 待操作的直播流信息
+        'Input': {
+            # 直播流拉流地址
+            'Url': 'http://3891.liveplay.myqcloud.com/live/3891_user_c3ae08c7_38a2.m3u8',
+            # 输入类型，直播流固定为LiveStream
+            'SourceType': 'LiveStream'
+        },
+        # 任务类型，固定值 VideoTargetRec
+        'Tag': 'VideoTargetRec',
+        # 操作规则
+        'Operation': {
+            # 识别配置
+            'VideoTargetRec': {
+                # 直播流识别任务必选且值设置为true
+                'CarPlate': 'true',
+                # 截图时间间隔，单位为秒，非必选，默认为1，取值范围：[1, 300]
+                'SnapshotTimeInterval': '1',
+            },
+            # 输出配置，直播流转存至cos的配置信息，转存为hls格式，ts分片时长为3s
+            'Output': {
+                # 输出桶信息
+                'Bucket': bucket_name,
+                # 输出地域信息
+                'Region': region,
+                # 输出文件路径信息
+                'Object': 'nowresult.m3u8'
+            },
+            # 非必选
+            "UserData": "This is my data",
+        },
+        # 非必选 回调URL
+        'CallBack': 'https://www.callback.com',
+        # 非必选 回调信息格式 支持JSON/XML
+        # 'CallBackFormat': 'JSON'
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    print("create job success")
+    job_id = response['JobsDetail'][0]['JobId']
+    while True:
+        time.sleep(5)
+        response = client.ci_get_media_jobs(
+            Bucket=bucket_name,
+            JobIDs=job_id,
+            ContentType='application/xml'
+        )
+        if 'VideoTargetRecResult' in response['JobsDetail'][0]["Operation"]:
+            if 'CarPlateRecognition' in response['JobsDetail'][0]["Operation"][
+                "VideoTargetRecResult"] \
+                and \
+                response['JobsDetail'][0]["Operation"]["VideoTargetRecResult"][
+                    "CarPlateRecognition"]['CarPlateInfo'] is not None:
+                print(response)
+        else:
+            print("don't have result: " + str(response))
+        state = response['JobsDetail'][0]['State']
+        if state == 'Success' or state == 'Failed' or state == 'Cancel':
+            print(response)
+            break
+
+
+def ci_cancel_jobs():
+    # 转码任务详情
+    response = client.ci_cancel_jobs(
+        Bucket=bucket_name,
+        JobID='a65xxxxxxxxxxxxxxxx1f213dcd0151',
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
 if __name__ == "__main__":
     # ci_get_media_queue()
     # ci_get_media_transcode_jobs()
@@ -1148,4 +1228,6 @@ if __name__ == "__main__":
     # ci_get_media_pic_queue()
     # ci_put_media_pic_queue()
     # ci_create_quality_estimate_jobs()
-    ci_create_segment_video_body_jobs()
+    # ci_create_segment_video_body_jobs()
+    ci_create_and_get_live_recognition_jobs()
+    # ci_cancel_jobs()
