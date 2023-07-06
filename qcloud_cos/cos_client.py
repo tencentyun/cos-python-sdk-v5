@@ -504,7 +504,7 @@ class CosS3Client(object):
 
         return response
 
-    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None,
+    def get_object_sensitive_content_recognition(self, Bucket, Key=None, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None,
                                                  DataId=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
@@ -8898,6 +8898,109 @@ class CosS3Client(object):
             print response
         """
         return self.ci_process(Bucket, Key, "zippreview", **kwargs)
+
+    def ci_recognize_logo_process(self, Bucket, Key=None, Url=None, **kwargs):
+        """Logo 识别
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 对象文件名，例如：folder/document.jpg.
+        :param Url(string): 公网可访问的图片链接. Key与Url参数不可同时传入，根据需求选择其中一个
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            def ci_recognize_logo_process():
+                # 通用文字识别
+                response = client.ci_recognize_logo_process(
+                    Bucket=bucket_name,
+                    Key='demo.jpeg',
+                )
+                print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'RecognizeLogo'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if Url:
+            params['detect-url'] = Url
+        params = format_values(params)
+        url = self._conf.uri(bucket=Bucket)
+        cos_s3_auth = CosS3Auth(self._conf, params=params)
+        if Key:
+            url = self._conf.uri(bucket=Bucket, path=Key)
+            cos_s3_auth = CosS3Auth(self._conf, Key, params=params)
+        logger.info("ci_recognize_logo_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=cos_s3_auth,
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+
+        return data
+
+    def ci_cancel_jobs(self, Bucket, JobID, **kwargs):
+        """取消媒体处理任务接口 https://cloud.tencent.com/document/product/436/85082
+
+        :param Bucket(string): 存储桶名称.
+        :param JobID(string): 任务id.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 取消任务
+            response = client.ci_cancel_jobs(
+                Bucket='bucket',
+                JobID='v11122zxxxazzz',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = '/jobs/' + JobID
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url += "?cancel"
+        logger.info("ci_cancel_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        logger.debug("ci_cancel_jobs:%s", rt.content)
+        return ''
 
 
 if __name__ == "__main__":
