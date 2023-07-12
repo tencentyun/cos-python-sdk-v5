@@ -115,7 +115,6 @@ def ci_create_media_transcode_with_digital_watermark_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bcxxxxxxxxxxxxxxxx047454',
         'Tag': 'Transcode',
         'Operation': {
             'Output': {
@@ -148,7 +147,6 @@ def ci_create_media_transcode_with_watermark_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bc6xxxxxxxxxxxxxxxxxxbf047454',
         'Tag': 'Transcode',
         'Operation': {
             'Output': {
@@ -217,7 +215,6 @@ def ci_create_media_hls_transcode_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135xxxxxxxxxxxxxxxxxxxxx047454',
         'Tag': 'Transcode',
         'Operation': {
             "Transcode": {
@@ -372,7 +369,6 @@ def ci_create_media_animation_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'Animation',
         'Operation': {
             "Animation": {
@@ -489,7 +485,6 @@ def ci_create_media_smart_cover_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'SmartCover',
         'Operation': {
             'SmartCover': {
@@ -523,7 +518,6 @@ def ci_create_media_video_process_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'VideoProcess',
         'Operation': {
             "VideoProcess": {
@@ -563,7 +557,6 @@ def ci_create_media_video_montage_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'VideoMontage',
         'Operation': {
             "VideoMontage": {
@@ -613,7 +606,6 @@ def ci_create_media_voice_separate_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'VoiceSeparate',
         'Operation': {
             "VoiceSeparate": {
@@ -650,7 +642,6 @@ def ci_create_media_sdr2hdr_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'SDRtoHDR',
         'Operation': {
             "SDRtoHDR": {
@@ -680,7 +671,6 @@ def ci_create_media_digital_watermark_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'DigitalWatermark',
         'Operation': {
             "DigitalWatermark": {
@@ -711,7 +701,6 @@ def ci_create_media_extract_digital_watermark_jobs():
         'Input': {
             'Object': 'digital.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'ExtractDigitalWatermark',
         'Operation': {
             "ExtractDigitalWatermark": {
@@ -736,7 +725,6 @@ def ci_create_media_super_resolution_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'SuperResolution',
         'Operation': {
             "SuperResolution": {
@@ -767,7 +755,6 @@ def ci_create_media_video_tag_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'VideoTag',
         'Operation': {
             "VideoTag": {
@@ -791,7 +778,6 @@ def ci_create_media_segment_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'Segment',
         'Operation': {
             "Segment": {
@@ -821,7 +807,6 @@ def ci_create_multi_jobs():
         'Input': {
             'Object': '117374C.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Operation': [
             {
                 'Tag': 'Segment',
@@ -866,7 +851,6 @@ def ci_create_get_media_info_jobs():
         'Input': {
             'Object': 'demo.mp4'
         },
-        'QueueId': 'p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
         'Tag': 'MediaInfo',
     }
     response = client.ci_create_media_jobs(
@@ -885,7 +869,6 @@ def ci_create_media_pic_jobs():
         'Input': {
             'Object': '1.png'
         },
-        'QueueId': 'peb83bdbxxxxxxxxxxxxxxxxxxxa21c7d68',
         'Tag': 'PicProcess',
         'Operation': {
             "PicProcess": {
@@ -913,7 +896,6 @@ def ci_list_media_transcode_jobs():
     # 转码任务列表
     response = client.ci_list_media_jobs(
                     Bucket=bucket_name,
-                    QueueId='p5135bxxxxxxxxxxxxxxxxxxxc8bf047454',
                     Tag='DigitalWatermark',
                     ContentType='application/xml',
                     StartCreationTime='2022-05-27T00:00:00+0800',
@@ -939,7 +921,6 @@ def ci_list_media_pic_jobs():
     # 图片处理任务列表
     response = client.ci_list_media_pic_jobs(
         Bucket=bucket_name,
-        QueueId='peb83bdbxxxxxxxxxxxxxxxxxxxa21c7d68',
         Tag='PicProcess',
         ContentType='application/xml',
         StartCreationTime='2022-05-30T23:30:00+0800',
@@ -1031,7 +1012,6 @@ def ci_create_quality_estimate_jobs():
         'Input': {
             'Object': 'gaobai.mp4'
         },
-        'QueueId': 'peb83bdbxxxxxxxxxxxxxxxxxxxa21c7d68',
         'Tag': 'QualityEstimate',
         'Operation': {
             # 非必选
@@ -1117,7 +1097,7 @@ def ci_create_and_get_live_recognition_jobs():
         # 待操作的直播流信息
         'Input': {
             # 直播流拉流地址
-            'Url': 'http://3891.liveplay.myqcloud.com/live/3891_user_c3ae08c7_38a2.m3u8',
+            'Url': 'http://demo.liveplay.com/demo.m3u8',
             # 输入类型，直播流固定为LiveStream
             'SourceType': 'LiveStream'
         },
@@ -1139,7 +1119,7 @@ def ci_create_and_get_live_recognition_jobs():
                 # 输出地域信息
                 'Region': region,
                 # 输出文件路径信息
-                'Object': 'nowresult.m3u8'
+                'Object': 'result.m3u8'
             },
             # 非必选
             "UserData": "This is my data",
@@ -1167,13 +1147,14 @@ def ci_create_and_get_live_recognition_jobs():
         )
         if 'VideoTargetRecResult' in response['JobsDetail'][0]["Operation"]:
             if 'CarPlateRecognition' in response['JobsDetail'][0]["Operation"][
-                "VideoTargetRecResult"] \
+                "VideoTargetRecResult"] and response['JobsDetail'][0]["Operation"]["VideoTargetRecResult"][
+                "CarPlateRecognition"] is not None \
                 and \
                 response['JobsDetail'][0]["Operation"]["VideoTargetRecResult"][
                     "CarPlateRecognition"]['CarPlateInfo'] is not None:
-                print(response)
-        else:
-            print("don't have result: " + str(response))
+                print("result:" + str(response['JobsDetail'][0]["Operation"]["VideoTargetRecResult"]["CarPlateRecognition"]))
+            else:
+                print("don't have result: " + str(response['JobsDetail'][0]["Operation"]["VideoTargetRecResult"]))
         state = response['JobsDetail'][0]['State']
         if state == 'Success' or state == 'Failed' or state == 'Cancel':
             print(response)

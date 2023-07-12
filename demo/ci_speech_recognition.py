@@ -83,7 +83,6 @@ def ci_create_asr_jobs():
     }
     response = client.ci_create_asr_job(
         Bucket=bucket_name,
-        QueueId='s0980xxxxxxxxxxxxxxxxff12',
         # TemplateId='t1ada6f282d29742db83244e085e920b08',
         InputObject='normal.mp4',
         OutputBucket=bucket_name,
@@ -109,7 +108,6 @@ def ci_list_asr_jobs():
     # 获取语音识别任务信息列表
     response = client.ci_list_asr_jobs(
         Bucket=bucket_name,
-        QueueId='p7369exxxxxxxxxxxxxxxxf5a',
         Size=10,
     )
     print(response)
@@ -145,7 +143,7 @@ def ci_update_asr_template():
     response = client.ci_update_asr_template(
         Bucket=bucket_name,
         TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
-        Name='QueueId1',
+        Name='Template1',
         EngineModelType='16k_zh',
         ChannelNum=1,
         ResTextFormat=1,
@@ -168,7 +166,7 @@ if __name__ == '__main__':
     # ci_get_asr_bucket()
     # ci_get_asr_queue()
     # ci_put_asr_queue()
-    # ci_create_asr_template()
+    ci_create_asr_template()
     # ci_get_asr_template()
     # ci_update_asr_template()
     # ci_delete_asr_template()
