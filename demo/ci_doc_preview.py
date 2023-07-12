@@ -107,7 +107,6 @@ def ci_list_doc_jobs():
     # 获取文档预览异步任务信息列表
     response = client.ci_list_doc_jobs(
         Bucket=bucket_name,
-        QueueId='p4bdxxxxxxxxxxxxxxxxxxxx57f1',
         Size=10,
     )
     print(response)
