@@ -980,7 +980,7 @@ def ci_trigger_workflow():
     response = client.ci_trigger_workflow(
                     Bucket=bucket_name,
                     WorkflowId='w1b4ffd6900a343c3a2fe5b92b1fb7ff6',
-                    Key='117374C.mp4'
+                    Key='test.mp4'
                 )
     print(response)
     return response
@@ -1172,6 +1172,328 @@ def ci_cancel_jobs():
     return response
 
 
+def ci_create_workflow_image_inspect():
+    # 创建异常图片检测工作流
+
+    # 工作流配置详情
+    body = {
+        # 工作流节点 固定值传入即可
+        'MediaWorkflow': {
+            # 创建的工作流名称，可自定义输入名称
+            # 支持中文、英文、数字、—和_，长度限制128字符
+            # 必传参数
+            'Name': 'image-inspect',
+            # 工作流状态，表示创建时是否开启COS上传对象事件通知
+            # 支持 Active / Paused
+            # 非必选，默认Paused 不开启
+            'State': 'Active',
+            # 工作流拓扑结构
+            # 必传参数
+            'Topology': {
+                # 工作流节点依赖关系
+                # 必传参数
+                'Dependencies': {
+                    # Start 工作流开始节点，用于存储工作流回调，前缀，后缀等配置信息，只有一个开始节点
+                    # End 工作流结束节点
+                    # ImageInspectNode 异常图片检测节点信息
+                    # 此示例表示 Start -> ImageInspectNode -> End 的依赖关系
+                    'Start': 'ImageInspectNode',
+                    'ImageInspectNode': 'End',
+                },
+                # 工作流各节点的详细配置信息
+                # 必传参数
+                'Nodes': {
+                    # 工作流开始节点配置信息
+                    'Start': {
+                        # 节点类型，开始节点固定为 Start
+                        # 必传参数
+                        'Type': 'Start',
+                        # 工作流的输入信息
+                        # 必传参数
+                        'Input': {
+                            # Object 前缀，COS上传对象的前缀，只有当前缀匹配时，才会触发该工作流
+                            # 如该示例，会触发以test为前缀的对象
+                            # 必传参数
+                            'ObjectPrefix': 'test',
+                            # 工作流自定义回调配置信息，当配置了该项后，当工作流执行完成或工作流中的子节点中的任务执行完成，会发送回调给指定Url或tdmq
+                            # 非必传配置
+                            'NotifyConfig': {
+                                # 回调类型，支持Url TDMQ两种类型
+                                'Type': 'Url',
+                                # 回调地址，当回调类型为Url时有效
+                                'Url': 'http://www.callback.com',
+                                # 回调事件 支持多种事件，以逗号分割
+                                'Event': 'WorkflowFinish,TaskFinish',
+                                # 回调信息格式，支持XML JSON两种格式，非必传，默认为XML
+                                'ResultFormat': '',
+                                # TDMQ 所属园区，当回调类型为TDMQ时有效，支持园区详见https://cloud.tencent.com/document/product/406/12667
+                                'MqRegion': '',
+                                # TDMQ 使用模式，当回调类型为TDMQ时有效
+                                # Topic：主题订阅
+                                # Queue：队列服务
+                                'MqMode': '',
+                                # TDMQ 主题名称，当回调类型为TDMQ时有效
+                                'MqName': '',
+                            },
+                            # 文件后缀过滤器，当需要只处理部分后缀文件时，可配置此项
+                            # 非必传配置
+                            'ExtFilter': {
+                                # 是否开始后缀过滤，On/Off，非必选，默认为Off
+                                'State': '',
+                                # 打开视频后缀限制，false/true，非必选，默认为false
+                                'Video': '',
+                                # 打开音频后缀限制，false/true，非必选，默认为false
+                                'Audio': '',
+                                # 打开图片后缀限制，false/true，非必选，默认为false
+                                'Image': '',
+                                # 打开 ContentType 限制，false/true，非必选，默认为false
+                                'ContentType': '',
+                                # 打开自定义后缀限制，false/true，非必选，默认为false
+                                'Custom': '',
+                                # 自定义后缀，当Custom为true时有效，多种文件后缀以/分隔，后缀个数不超过10个
+                                'CustomExts': 'jpg/png',
+                                # 所有文件，false/true，非必选，默认为false
+                                'AllFile': '',
+                            }
+                        }
+                    },
+                    # 异常图片检测节点配置信息
+                    'ImageInspectNode': {
+                        # 节点类型，异常图片检测固定为ImageInspect
+                        'Type': 'ImageInspect',
+                        # 节点执行操作集合
+                        # 非必选配置
+                        'Operation': {
+                            # 异常图片检测配置详情
+                            'ImageInspect': {
+                                # 是否开启检测到异常图片检测后自动对图片进行处理的动作，false/true，非必选，默认false
+                                'AutoProcess': 'true',
+                                # 在检测到为异常图片后的处理动作，有效值为：
+                                # BackupObject：移动图片到固定目录下，目录名为abnormal_images_backup/，由后台自动创建
+                                # SwitchObjectToPrivate：将图片权限设置为私有
+                                # DeleteObject：删除图片
+                                # 非必选参数，默认值为BackupObject
+                                'ProcessType': 'BackupObject'
+                            }
+                        }
+                    },
+                },
+            },
+        },
+    }
+    response = client.ci_create_workflow(
+        Bucket=bucket_name,  # 桶名称
+        Body=body,  # 工作流配置信息
+        ContentType='application/xml'
+    )
+    print(response)
+    print("workflowId is: " + response['MediaWorkflow']['WorkflowId'])
+    return response
+
+
+def ci_update_workflow():
+    # 更新工作流配置信息，仅当工作流状态为Paused时支持更新配置信息，故在更新信息前，需要将工作流状态为Paused
+
+    # 工作流配置详情
+    body = {
+        # 工作流节点 固定值传入即可
+        'MediaWorkflow': {
+            # 工作流名称，可自定义输入名称
+            # 支持中文、英文、数字、—和_，长度限制128字符
+            # 必传参数
+            'Name': 'image-inspect',
+            # 工作流状态，表示创建时是否开启COS上传对象事件通知
+            # 支持 Active / Paused
+            # 非必选，默认Paused 不开启
+            'State': 'Active',
+            # 工作流拓扑结构
+            # 必传参数
+            'Topology': {
+                # 工作流节点依赖关系
+                # 必传参数
+                'Dependencies': {
+                    # Start 工作流开始节点，用于存储工作流回调，前缀，后缀等配置信息，只有一个开始节点
+                    # End 工作流结束节点
+                    # ImageInspectNode 异常图片检测节点信息
+                    # 此示例表示 Start -> ImageInspectNode -> End 的依赖关系
+                    'Start': 'ImageInspectNode',
+                    'ImageInspectNode': 'End',
+                },
+                # 工作流各节点的详细配置信息
+                # 必传参数
+                'Nodes': {
+                    # 工作流开始节点配置信息
+                    'Start': {
+                        # 节点类型，开始节点固定为 Start
+                        # 必传参数
+                        'Type': 'Start',
+                        # 工作流的输入信息
+                        # 必传参数
+                        'Input': {
+                            # Object 前缀，COS上传对象的前缀，只有当前缀匹配时，才会触发该工作流
+                            # 如该示例，会触发以test为前缀的对象
+                            # 必传参数
+                            'ObjectPrefix': 'test',
+                            # 工作流自定义回调配置信息，当配置了该项后，当工作流执行完成或工作流中的子节点中的任务执行完成，会发送回调给指定Url或tdmq
+                            # 非必传配置
+                            'NotifyConfig': {
+                                # 回调类型，支持Url TDMQ两种类型
+                                'Type': 'Url',
+                                # 回调地址，当回调类型为Url时有效
+                                'Url': 'http://www.callback.com',
+                                # 回调事件 支持多种事件，以逗号分割
+                                'Event': 'WorkflowFinish,TaskFinish',
+                                # 回调信息格式，支持XML JSON两种格式，非必传，默认为XML
+                                'ResultFormat': '',
+                                # TDMQ 所属园区，当回调类型为TDMQ时有效，支持园区详见https://cloud.tencent.com/document/product/406/12667
+                                'MqRegion': '',
+                                # TDMQ 使用模式，当回调类型为TDMQ时有效
+                                # Topic：主题订阅
+                                # Queue：队列服务
+                                'MqMode': '',
+                                # TDMQ 主题名称，当回调类型为TDMQ时有效
+                                'MqName': '',
+                            },
+                            # 文件后缀过滤器，当需要只处理部分后缀文件时，可配置此项
+                            # 非必传配置
+                            'ExtFilter': {
+                                # 是否开始后缀过滤，On/Off，非必选，默认为Off
+                                'State': 'On',
+                                # 打开视频后缀限制，false/true，非必选，默认为false
+                                'Video': '',
+                                # 打开音频后缀限制，false/true，非必选，默认为false
+                                'Audio': '',
+                                # 打开图片后缀限制，false/true，非必选，默认为false
+                                'Image': 'true',
+                                # 打开 ContentType 限制，false/true，非必选，默认为false
+                                'ContentType': '',
+                                # 打开自定义后缀限制，false/true，非必选，默认为false
+                                'Custom': '',
+                                # 自定义后缀，当Custom为true时有效，多种文件后缀以/分隔，后缀个数不超过10个
+                                'CustomExts': 'jpg/png',
+                                # 所有文件，false/true，非必选，默认为false
+                                'AllFile': '',
+                            }
+                        }
+                    },
+                    # 异常图片检测节点配置信息
+                    'ImageInspectNode': {
+                        # 节点类型，异常图片检测固定为ImageInspect
+                        'Type': 'ImageInspect',
+                        # 节点执行操作集合
+                        # 非必选配置
+                        'Operation': {
+                            # 异常图片检测配置详情
+                            'ImageInspect': {
+                                # 是否开启检测到异常图片检测后自动对图片进行处理的动作，false/true，非必选，默认false
+                                'AutoProcess': 'true',
+                                # 在检测到为异常图片后的处理动作，有效值为：
+                                # BackupObject：移动图片到固定目录下，目录名为abnormal_images_backup/，由后台自动创建
+                                # SwitchObjectToPrivate：将图片权限设置为私有
+                                # DeleteObject：删除图片
+                                # 非必选参数，默认值为BackupObject
+                                'ProcessType': 'SwitchObjectToPrivate'
+                            }
+                        }
+                    },
+                },
+            },
+        },
+    }
+    response = client.ci_update_workflow(
+        Bucket=bucket_name,  # 桶名称
+        WorkflowId='wd34ca394909xxxxxxxxxxxx4d',  # 需要更新的工作流ID
+        Body=body,  # 工作流配置详情
+        ContentType='application/xml'
+    )
+    print(response)
+    print("workflowId is: " + response['MediaWorkflow']['WorkflowId'])
+    return response
+
+
+def ci_update_workflow_state():
+    # 更新工作流状态
+
+    response = client.ci_update_workflow_state(
+        Bucket=bucket_name,  # 桶名称
+        WorkflowId='wd34ca3949090xxxxxxxxxx44d',  # 需要更新的工作流ID
+        UpdateState='paused',  # 需要更新至的工作流状态，支持 active 开启 / paused 关闭
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_get_workflow():
+    # 获取工作流配置详情
+
+    response = client.ci_get_workflow(
+        Bucket=bucket_name,  # 桶名称
+        Ids='wd34ca394909xxxxxxxxxxxx4d',  # 需要查询的工作流ID，支持传入多个，以","分隔
+        Name='image-inspect',  # 需要查询的工作流名称
+        # PageNumber='6',  # 分页查询使用，第几页
+        # PageSize='3', # 分页查询使用，每页个数
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_delete_workflow():
+    # 删除指定的工作流
+
+    response = client.ci_delete_workflow(
+        Bucket=bucket_name,  # 桶名称
+        WorkflowId='wd34ca39490904xxxxxxxxxx744d',  # 需要删除的工作流ID
+    )
+    print(response)
+    return response
+
+
+def ci_create_image_inspect_jobs():
+    # 创建异常图片检测任务
+
+    body = {
+        # 待操作的对象信息
+        'Input': {
+            # 输入文件路径
+            'Object': 'heichan.png'
+        },
+        # 任务类型，固定值 ImageInspect
+        'Tag': 'ImageInspect',
+        # 操作规则
+        # 非必选
+        'Operation': {
+            # 异常图片检测配置
+            # 非必选
+            'ImageInspect': {
+                # 是否开启检测到异常图片检测后自动对图片进行处理的动作，false/true，非必选，默认false
+                'AutoProcess': 'true',
+                # 在检测到为异常图片后的处理动作，有效值为：
+                # BackupObject：移动图片到固定目录下，目录名为abnormal_images_backup/，由后台自动创建
+                # SwitchObjectToPrivate：将图片权限设置为私有
+                # DeleteObject：删除图片
+                # 非必选参数，默认值为BackupObject
+                'ProcessType': 'SwitchObjectToPrivate'
+            },
+            # 非必选
+            "UserData": "This is my data",
+        },
+        # 非必选 回调URL
+        # 'CallBack': 'http://callback.demo.com',
+        # 非必选 回调信息格式 支持JSON/XML
+        # 'CallBackFormat': 'JSON'
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
 if __name__ == "__main__":
     # ci_get_media_queue()
     # ci_get_media_transcode_jobs()
@@ -1210,5 +1532,11 @@ if __name__ == "__main__":
     # ci_put_media_pic_queue()
     # ci_create_quality_estimate_jobs()
     # ci_create_segment_video_body_jobs()
-    ci_create_and_get_live_recognition_jobs()
+    # ci_create_and_get_live_recognition_jobs()
     # ci_cancel_jobs()
+    # ci_create_workflow_image_inspect()
+    # ci_get_workflow()
+    # ci_update_workflow()
+    # ci_update_workflow_state()
+    # ci_delete_workflow()
+    ci_create_image_inspect_jobs()
