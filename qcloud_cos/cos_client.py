@@ -6905,6 +6905,274 @@ class CosS3Client(object):
         format_dict(data, ['JobsDetail'])
         return data
 
+    def ci_create_workflow(self, Bucket, Body, **kwargs):
+        """ 创建工作流接口 https://cloud.tencent.com/document/product/460/76856
+
+        :param Bucket(string): 存储桶名称.
+        :param Body(dict): 创建工作流的配置信息.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建工作流接口
+            response = client.ci_create_workflow(
+                Bucket='bucket'
+                Body={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        xml_config = format_xml(data=Body, root='Request')
+        path = "/workflow"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_create_workflow result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_update_workflow_state(self, Bucket, WorkflowId, UpdateState, **kwargs):
+        """ 更新工作流接口 https://cloud.tencent.com/document/product/460/76861
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string): 需要更新状态的工作流ID.
+        :param UpdateState(string): 更新工作流的状态,有效值为active、paused
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新工作流状态接口
+            response = client.ci_update_workflow_state(
+                Bucket='bucket'
+                WorkflowId='',
+                UpdateState='active'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/workflow/" + WorkflowId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = url + '?' + UpdateState
+        logger.info("ci_update_workflow_state result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        return data
+
+    def ci_update_workflow(self, Bucket, WorkflowId, Body, **kwargs):
+        """ 更新工作流接口 https://cloud.tencent.com/document/product/460/76861
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string): 需要更新状态的工作流ID.
+        :param Body(dict): 更新工作流的配置信息.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_update_workflow(
+                Bucket='bucket'
+                Body={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        xml_config = format_xml(data=Body, root='Request')
+        path = "/workflow/" + WorkflowId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_update_workflow result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_workflow(self, Bucket, Ids='', Name='', PageNumber='', PageSize='', **kwargs):
+        """ 获取工作流详情接口 https://cloud.tencent.com/document/product/460/76857
+
+        :param Bucket(string): 存储桶名称.
+        :param Ids(string): 需要查询的工作流 ID，可传入多个，以,符号分割字符串.
+        :param Name(string): 需要查询的工作流名称.
+        :param PageNumber(string): 第几页.
+        :param PageSize(string): 每页个数.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_get_workflow(
+                Bucket='bucket'
+                Body={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/workflow"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{ids}&{name}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            ids=to_unicode('ids='+Ids),
+            name=to_unicode('name='+Name),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
+        )
+        logger.info("ci_get_workflow result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['MediaWorkflowList'])
+        return data
+
+    def ci_delete_workflow(self, Bucket, WorkflowId, **kwargs):
+        """ 删除工作流接口 https://cloud.tencent.com/document/product/460/76860
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string): 需要删除的工作流ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除指定工作流
+            response = client.ci_delete_workflow(
+                Bucket=bucket_name,
+                WorkflowId='w1bdxxxxxxxxxxxxxxxxx94a9',
+            )
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/workflow/" + WorkflowId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+
+        logger.info("ci_delete_workflow result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
     def ci_trigger_workflow(self, Bucket, WorkflowId, Key, **kwargs):
         """ 触发工作流接口 https://cloud.tencent.com/document/product/436/54641
 
@@ -8706,14 +8974,17 @@ class CosS3Client(object):
 
         return self._ci_create_file_process_job(Bucket, Body=body, **kwargs)
 
-    def ci_create_file_uncompress_job(self, Bucket, InputObject,
-        FileUncompressConfig, QueueId=None, CallBack=None, CallBackFormat=None,
-        CallBackType=None, CallBackMqConfig=None, UserData=None, **kwargs):
+    def ci_create_file_uncompress_job(self, Bucket, InputObject, OutputBucket,
+        OutputRegion, FileUncompressConfig, QueueId=None, CallBack=None,
+        CallBackFormat=None, CallBackType=None, CallBackMqConfig=None,
+        UserData=None, **kwargs):
         """ 创建文件解压任务接口 https://cloud.tencent.com/document/product/436/83110
 
         :param Bucket(string): 存储桶名称.
         :param QueueId(string): 任务所在的队列 ID.
         :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param OutputBucket(string): 存储结果的存储桶.
+        :param OutputRegion(string): 存储结果的存储桶的地域.
         :param FileUncompressConfig(dict): 指定文件解压的处理规则.
         :param CallBack(string): 任务结束回调，回调Url
         :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
@@ -8745,6 +9016,10 @@ class CosS3Client(object):
             'Tag': 'FileUncompress',
             'Operation': {
                 'FileUncompressConfig': FileUncompressConfig,
+                'Output': {
+                    'Bucket': OutputBucket,
+                    'Region': OutputRegion,
+                }
             }
         }
         if QueueId:
@@ -8880,7 +9155,7 @@ class CosS3Client(object):
         return data
 
     def ci_file_zip_preview(self, Bucket, Key, **kwargs):
-        """ci_file_zip_preview 压缩文件预览接口
+        """ci_file_zip_preview 压缩文件预览接口 https://cloud.tencent.com/document/product/436/93032
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
