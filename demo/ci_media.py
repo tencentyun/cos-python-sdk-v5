@@ -906,8 +906,8 @@ def ci_list_media_transcode_jobs():
     return response
 
 
-def ci_get_media_transcode_jobs():
-    # 转码任务详情
+def ci_get_media_jobs():
+    # 查询任务详情
     response = client.ci_get_media_jobs(
                     Bucket=bucket_name,
                     JobIDs='jc46435e40bcc11ed83d6e19dd89b02cc',
@@ -1606,9 +1606,55 @@ def ci_delete_inventory_trigger_jobs():
     return response
 
 
+def ci_create_sound_hound_jobs():
+    # 创建听歌识曲任务
+    
+    body = {
+        # 待操作的对象信息
+        'Input': {
+            # 输入文件路径
+            'Object': '1.mp3'
+        },
+        # 任务类型，固定值 SoundHound
+        'Tag': 'SoundHound',
+        # 操作规则
+        # 非必选
+        'Operation': {
+            # 非必选 透传用户信息, 可打印的 ASCII 码, 长度不超过1024
+            "UserData": "This is my data",
+        },
+        # 非必选 回调URL
+        # 'CallBack': 'http://callback.demo.com',
+        # 非必选 回调信息格式 支持JSON/XML
+        # 'CallBackFormat': 'JSON'
+        # 非必选 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        # 'CallBackType': 'Url',
+        # 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填
+        # 'CallBackMqConfig': {
+        #     # TDMQ回调信息配置
+        #     
+        #     # 消息队列所属园区
+        #     # 必选。目前支持园区 sh（上海）、bj（北京）、gz（广州）、cd（成都）、hk（中国香港）
+        #     'MqRegion': 'bj',
+        #     # 消息队列使用模式
+        #     # 必选。主题订阅：Topic 队列服务: Queue
+        #     'MqMode': 'Queue',
+        #     # TDMQ 主题名称 必选。
+        #     'MqName': 'queueName'
+        # },
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
 if __name__ == "__main__":
     # ci_get_media_queue()
-    # ci_get_media_transcode_jobs()
+    # ci_get_media_jobs()
     # ci_create_media_transcode_jobs()
     # get_media_info()
     # get_snapshot()
@@ -1651,4 +1697,5 @@ if __name__ == "__main__":
     # ci_update_workflow()
     # ci_update_workflow_state()
     # ci_delete_workflow()
-    ci_create_image_inspect_jobs()
+    # ci_create_image_inspect_jobs()
+    ci_create_sound_hound_jobs()
