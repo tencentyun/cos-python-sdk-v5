@@ -27,7 +27,7 @@ config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Toke
 client = CosS3Client(config)
 
 
-bucket_name = 'demo-1253960454'
+bucket_name = 'demo-1250000000'
 
 
 def ci_get_media_bucket():
@@ -1051,7 +1051,7 @@ def ci_create_segment_video_body_jobs():
                 # Foreground（输出前景视频）、
                 # Combination（输出抠图后的前景与自定义背景合成后的视频）
                 'Mode': 'Mask',
-                # 非必选 抠图模式，当前支持 HumanSeg、GreenScreenSeg。 默认值 HumanSeg
+                # 非必选 抠图模式，当前支持 HumanSeg（人像抠图）、GreenScreenSeg（绿幕抠图）、SolidColorSeg（纯色背景抠图）。 默认值 HumanSeg
                 # 'SegmentType': 'GreenScreenSeg',
                 # 非必选 mode为Foreground时可指定此参数，背景颜色为蓝色，取值范围为0-255, 默认值为0
                 # 'BackgroundBlue': '255',
@@ -1062,7 +1062,13 @@ def ci_create_segment_video_body_jobs():
                 # 非必选 mode为Combination时，必需指定此参数，传入背景文件，背景文件需与object在同存储桶下
                 # 'BackgroundLogoUrl': 'http://testpic-1253960454.cos.ap-chongqing.myqcloud.com'
                 # 非必选 阈值 可以调整alpha通道的边缘，调整抠图的边缘位置 取值范围为0-255, 默认值为0
-                # 'BinaryThreshold': '200'
+                # 'BinaryThreshold': '200',
+                # 非必选 纯色背景抠图的背景色（红）, 当 SegmentType 为 SolidColorSeg 生效，取值范围为0-255，默认值为 0
+                # 'RemoveRed': '200',
+                # 非必选 纯色背景抠图的背景色（绿）, 当 SegmentType 为 SolidColorSeg 生效，取值范围为0-255，默认值为 0
+                # 'RemoveGreen': '200',
+                # 非必选 纯色背景抠图的背景色（蓝）, 当 SegmentType 为 SolidColorSeg 生效，取值范围为0-255，默认值为 0
+                # 'RemoveBlue': '200'
             },
             # 输出配置
             'Output': {
@@ -1489,6 +1495,112 @@ def ci_create_image_inspect_jobs():
         Jobs=body,
         Lst={},
         ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_image_inspect_batch_jobs():
+    # 创建异常图片检测批量处理任务
+    body = {
+        # 批量任务名称
+        # 存量触发任务名称，支持中文、英文、数字、—和_，长度限制128字符
+        # 必选
+        'Name': 'image-inspect-auto-move-batch-process',
+        # 批量处理任务类型：
+        # 支持 Job（独立异步任务） Workflow（工作流）
+        'Type': 'Job',
+        # 待操作的对象信息
+        # 必传参数
+        'Input': {
+            # 'UrlFile': 'https://ziroom-tech-1255976291.cos.ap-beijing.myqcloud.com/ci_ziroom-tech_scankey_url.txt',
+            # Object 前缀
+            'Prefix': '/',
+        },
+        # 操作规则
+        # 必传参数
+        'Operation': {
+            # 按对象的last modify时间过滤的触发范围，若传入此参数，则当前任务仅处理指定事件范围内的对象
+            # 非必传
+            # 创建的任务类型，此处固定值为ImageInspect
+            # 必传参数
+            'Tag': 'ImageInspect',
+            # 任务参数集合
+            # 必传参数
+            'JobParam': {
+                # 异常图片检测配置
+                # 非必选
+                'ImageInspect': {
+                    # 是否开启检测到异常图片检测后自动对图片进行处理的动作，false/true，非必选，默认false
+                    'AutoProcess': 'true',
+                    # 在检测到为异常图片后的处理动作，有效值为：
+                    # BackupObject：移动图片到固定目录下，目录名为abnormal_images_backup/，由后台自动创建
+                    # SwitchObjectToPrivate：将图片权限设置为私有
+                    # DeleteObject：删除图片
+                    # 非必选参数，默认值为BackupObject
+                    'ProcessType': 'BackupObject'
+                },
+            },
+
+        },
+
+    }
+    response = client.ci_create_inventory_trigger_jobs(
+        Bucket=bucket_name,
+        JobBody=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_image_inspect_workflow_batch_jobs():
+    # 创建异常图片检测工作流批量处理任务
+
+    body = {
+        # 批量任务名称
+        # 存量触发任务名称，支持中文、英文、数字、—和_，长度限制128字符
+        # 必选
+        'Name': 'image-inspect-auto-move-batch-process',
+        # 批量处理任务类型：
+        # 支持 Job（独立异步任务） Workflow（工作流）
+        'Type': 'Workflow',
+        # 待操作的对象信息
+        # 必传参数
+        'Input': {
+            # 'UrlFile': 'https://ziroom-tech-1255976291.cos.ap-beijing.myqcloud.com/ci_ziroom-tech_scankey_url.txt',
+            # Object 前缀
+            'Prefix': '/',
+        },
+        # 操作规则
+        # 必传参数
+        'Operation': {
+            # 按对象的last modify时间过滤的触发范围，若传入此参数，则当前任务仅处理指定事件范围内的对象
+            # 非必传
+            'TimeInterval': {
+                'Start': '2023-05-01T00:00:00+0800',
+                'End': '2023-06-01T00:00:00+0800'
+            },
+            # 创建的任务类型，此处固定值为ImageInspect
+            # 必传参数
+            'WorkflowIds': 'w2504f47ad46exxxxxxxxxxxxxx',
+        },
+
+    }
+    response = client.ci_create_inventory_trigger_jobs(
+        Bucket=bucket_name,
+        JobBody=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_delete_inventory_trigger_jobs():
+    # 删除指定的批量处理任务
+    response = client.ci_delete_inventory_trigger_jobs(
+        Bucket=bucket_name,  # 桶名称
+        JobId='b97c37f492adf11xxxxxxxxxxxx',  # 需要删除的工作流ID
     )
     print(response)
     return response
