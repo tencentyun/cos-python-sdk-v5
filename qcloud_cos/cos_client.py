@@ -9277,6 +9277,107 @@ class CosS3Client(object):
         logger.debug("ci_cancel_jobs:%s", rt.content)
         return ''
 
+    def ci_create_inventory_trigger_jobs(self, Bucket, JobBody, **kwargs):
+        """ 创建批量处理任务接口 https://cloud.tencent.com/document/product/460/80155
+        :param Bucket(string): 存储桶名称.
+        :param JobBody(dict): 创建批量处理任务的配置.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_create_inventory_trigger_jobs(
+                Bucket='bucket'
+                JobBody={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
 
+        params = format_values(params)
+        xml_config = format_xml(data=JobBody, root='Request')
+        path = "/inventorytriggerjob"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_create_inventory_trigger_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_delete_inventory_trigger_jobs(self, Bucket, JobId, **kwargs):
+        """ 取消指定批量任务接口 https://cloud.tencent.com/document/product/460/76892
+
+        :param Bucket(string): 存储桶名称.
+        :param JobId(string): 需要取消的批量任务ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新工作流状态接口
+            response = client.ci_delete_inventory_trigger_jobs(
+                Bucket='bucket'
+                JobId='',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/inventorytriggerjob/" + JobId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = url + '?cancel'
+        logger.info("ci_delete_inventory_trigger_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        return data
+
+    
 if __name__ == "__main__":
     pass
