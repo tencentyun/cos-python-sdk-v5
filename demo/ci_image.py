@@ -1,4 +1,5 @@
 # -*- coding=utf-8
+import json
 from urllib.parse import quote, urlencode
 
 from qcloud_cos.cos_comm import to_bytes
@@ -32,6 +33,19 @@ client = CosS3Client(config)
 bucket_name = 'examplebucket-1250000000'
 watermark_url = 'http://{bucket}.cos.{region}.tencentcos.cn/watermark.png'.format(bucket=bucket_name, region=region)
 watermark_url_base64 = bytes.decode(base64.b64encode(str.encode(watermark_url)))
+
+
+def ci_image_inspect():
+    # 车辆车牌检测
+    response = client.ci_process(
+        Bucket=bucket_name,
+        Key='heichan.png',
+        CiProcess='ImageInspect'
+    )
+    result = json.loads(response)
+    if result["suspicious"]:
+        print("ok")
+    print(response)
 
 
 def when_put_object(local_file, key, pic_operations):
@@ -93,7 +107,8 @@ def add_blind_watermark_process_on_cloud():
     process_on_cloud('format.png', operations)
 
 
-sample_url = 'http://{bucket}.cos.{region}.tencentcos.cn/sample.png'.format(bucket=bucket_name, region=region)
+sample_url = 'http://{bucket}.cos.{region}.tencentcos.cn/sample.png'.format(
+    bucket=bucket_name, region=region)
 sample_url_base64 = bytes.decode(base64.b64encode(str.encode(sample_url)))
 
 
@@ -337,7 +352,8 @@ def image_watermark_process_on_cloud():
     process_on_cloud('format.png', operations)
 
 
-text_watermark_base64 = bytes.decode(base64.b64encode(str.encode("testWaterMark")))
+text_watermark_base64 = bytes.decode(
+    base64.b64encode(str.encode("testWaterMark")))
 text_color_base64 = bytes.decode(base64.b64encode(str.encode("#3D3D3D")))
 
 
@@ -658,5 +674,5 @@ if __name__ == '__main__':
     # ci_get_image_style()
     # ci_delete_image_style()
     # ci_image_detect_label()
-    ci_recognize_logo_process()
-
+    # ci_recognize_logo_process()
+    ci_image_inspect()
