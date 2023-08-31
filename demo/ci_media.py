@@ -52,6 +52,65 @@ def ci_get_media_queue():
     return response
 
 
+def ci_get_pic_bucket():
+    # 查询图片处理异步服务开通状态
+    response = client.ci_get_pic_bucket(
+        Regions=region,
+        BucketName='demo',
+        BucketNames=bucket_name,
+        PageSize="1",
+        PageNumber="1"
+    )
+    print(response)
+    return response
+
+
+def ci_get_ai_bucket():
+    # 查询ai处理异步服务开通状态
+    response = client.ci_get_ai_bucket(
+        Regions=region,
+        BucketName='demo',
+        BucketNames=bucket_name,
+        PageSize="1",
+        PageNumber="1"
+    )
+    print(response)
+    return response
+
+
+def ci_get_ai_queue():
+    # 查询ai处理队列信息
+    response = client.ci_get_ai_queue(
+        Bucket=bucket_name,
+    )
+    print(response)
+    return response
+
+
+def ci_put_ai_queue():
+    # 更新ai队列信息
+    body = {
+        'Name': 'ai-queue',
+        'QueueID': 'pa2c2afbe68xxxxxxxxxxxxxxxxxxxxxx',
+        'State': 'Active',
+        'NotifyConfig': {
+            'Type': 'Url',
+            'Url': 'http://www.demo.callback.com',
+            'Event': 'TaskFinish',
+            'State': 'On',
+            'ResultFormat': 'JSON',
+        }
+    }
+    response = client.ci_update_ai_queue(
+        Bucket=bucket_name,
+        QueueId='pa2c2afbe68c44xxxxxxxxxxxxxxxxxxxx',
+        Request=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
 def ci_get_media_pic_queue():
     # 查询图片处理队列信息
     response = client.ci_get_media_pic_queue(
@@ -72,7 +131,16 @@ def ci_put_media_queue():
             'Url': 'http://www.demo.callback.com',
             'Event': 'TaskFinish',
             'State': 'On',
-            'ResultFormat': 'JSON'
+            'ResultFormat': 'JSON',
+            # TDMQ回调信息配置
+            # 消息队列所属园区
+            # 必选。目前支持园区 sh（上海）、bj（北京）、gz（广州）、cd（成都）、hk（中国香港）
+            # 'MqRegion': 'bj',
+            # # 消息队列使用模式
+            # # 必选。主题订阅：Topic 队列服务: Queue
+            # 'MqMode': 'Queue',
+            # # TDMQ 主题名称 必选。
+            # 'MqName': 'queueName'
         }
     }
     response = client.ci_update_media_queue(
@@ -305,6 +373,7 @@ def ci_create_media_transcode_jobs():
                 'Region': region,
                 'Object': 'transcode_output.mp4'
             },
+            # 'FreeTranscode': 'true',
             # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
         }
     }
@@ -1596,6 +1665,25 @@ def ci_create_image_inspect_workflow_batch_jobs():
     return response
 
 
+def ci_list_inventory_trigger_jobs():
+    # 查询批量处理任务列表
+    response = client.ci_list_inventory_trigger_jobs(
+        Bucket=bucket_name,  # 桶名称
+    )
+    print(response)
+    return response
+
+
+def ci_get_inventory_trigger_jobs():
+    # 查询指定批量处理任务
+    response = client.ci_get_inventory_trigger_jobs(
+        Bucket=bucket_name,  # 桶名称
+        JobID='bb16331089f7c11ecb10252540019ee59',
+    )
+    print(response)
+    return response
+
+
 def ci_delete_inventory_trigger_jobs():
     # 删除指定的批量处理任务
     response = client.ci_delete_inventory_trigger_jobs(
@@ -1652,6 +1740,187 @@ def ci_create_sound_hound_jobs():
     return response
 
 
+def ci_create_noise_reduction_jobs():
+    # 创建音频降噪任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp3'
+        },
+        'Tag': 'NoiseReduction',
+        'Operation': {
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'noise_reduction_result.mp3',
+            },
+            # 'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_stream_extract_jobs():
+    # 创建流分离任务
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'Tag': 'StreamExtract',
+        'Operation': {
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'StreamExtract': [
+                    {
+                        'Index': '0',
+                        'Object': 'stream-1.mp4'
+                    },
+                    {
+                        'Index': '1',
+                        'Object': 'stream-2.mp4'
+                    }
+                ]
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_tts_jobs():
+    # 创建语音合成任务
+    body = {
+        'Tag': 'Tts',
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'Operation': {
+            'TtsTpl': {
+                # 处理模式，Asyc（异步合成）、Sync（同步合成）
+                # 当选择 Asyc 时，codec 只支持 pcm
+                # 默认值 Asyc
+                'Mode': '',
+                # 音频格式，wav、mp3、pcm
+                # 默认值 wav（同步）/pcm（异步）
+                'Codec': '',
+                # 音色
+                # 默认值 ruxue
+                'VoiceType': '',
+                # 音量
+                # 取值范围：[-10,10]
+                # 默认值0
+                'Volume': '',
+                # 语速
+                # 取值范围：[50,200]
+                # 默认值100
+                'Speed': '',
+            },
+            'TemplateId': '',
+            'TtsConfig': {
+                'InputType': 'Text',
+                'Input': '床前明月光，疑是地上霜',
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'result.mp3'
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_translation_jobs():
+    # 创建翻译任务
+    body = {
+        'Tag': 'Translation',
+        'Input': {
+            'Object': 'demo.txt',
+            'Lang': 'en',
+            'Type': 'txt',
+            #   'BasicType': ''
+        },
+        'Operation': {
+            'Translation': {
+                'Lang': 'zh',
+                'Type': 'txt',
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'result.txt'
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_words_generalize_jobs():
+    # 创建分词任务
+    body = {
+        'Tag': 'WordsGeneralize',
+        'Input': {
+            'Object': 'demo.txt',
+        },
+        'Operation': {
+            'WordsGeneralize': {
+                'NerMethod': 'DL',
+                'SegMethod': 'MIX',
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_get_presigned_download_url():
+    param = {
+        "object": "test.gif",
+        "format": "mp4"
+    }
+    url = client.get_presigned_download_url(
+        Bucket=bucket_name,
+        Key='/convert',
+        Expired=3600,
+        Params=param,
+        UseCiEndPoint=True,
+    )
+    print(url)
+
+
 if __name__ == "__main__":
     # ci_get_media_queue()
     # ci_get_media_jobs()
@@ -1698,4 +1967,16 @@ if __name__ == "__main__":
     # ci_update_workflow_state()
     # ci_delete_workflow()
     # ci_create_image_inspect_jobs()
-    ci_create_sound_hound_jobs()
+    # ci_create_sound_hound_jobs()
+    # ci_list_inventory_trigger_jobs()
+    # ci_get_pic_bucket()
+    # ci_get_inventory_trigger_jobs()
+    # ci_get_ai_bucket()
+    # ci_get_ai_queue()
+    # ci_put_ai_queue()
+    # ci_create_noise_reduction_jobs()
+    # ci_create_stream_extract_jobs()
+    # ci_create_tts_jobs()
+    # ci_create_translation_jobs()
+    # ci_create_words_generalize_jobs()
+    ci_get_presigned_download_url()
