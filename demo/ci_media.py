@@ -1908,16 +1908,33 @@ def ci_create_words_generalize_jobs():
 
 def ci_get_presigned_download_url():
     param = {
-        "object": "test.gif",
-        "format": "mp4"
+        # 想要处理的文件路径
+        # 支持cos对象的绝对路径
+        # 必选参数
+        "object": "test1026.gif",
+        # 转码后的视频流格式
+        # 当前仅支持mp4
+        # 必选参数
+        "format": "mp4",
+        # 转码后视频的宽
+        # 取值范围：(0,4096]。默认为0
+        # 非必传参数
+        # "width": "200",
+        # 转码后视频的高
+        # 取值范围：(0,4096]。默认为0
+        # 非必传参数
+        # 当 width 和 height 都为0时，表示使用视频的宽高。如果单个为0，则以另外一个值按视频宽高比例自动适应
+        # "heigth": "200"
     }
     url = client.get_presigned_download_url(
-        Bucket=bucket_name,
-        Key='/convert',
-        Expired=3600,
-        Params=param,
-        UseCiEndPoint=True,
+        Bucket=bucket_name,  # 存储桶名称
+        Key="/convert",  # 请求uri 同步转码固定为/convert
+        Expired=3600,    # 预签名超时时间
+        Params=param,    # 请求处理参数
+        UseCiEndPoint=True,  # 是否使用数据万象的请求域名
     )
+    if token is not None:
+        url = url + "&x-cos-security-token=" + token
     print(url)
 
 

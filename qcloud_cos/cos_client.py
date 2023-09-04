@@ -5965,7 +5965,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_image_batch(self, Bucket, Input, DetectType=None, BizType=None, **kwargs):
+    def ci_auditing_image_batch(self, Bucket, Input, DetectType=None, BizType=None, Async=0, Callback=None, Freeze=None, **kwargs):
         """图片同步批量审核接口 https://cloud.tencent.com/document/product/436/63593
 
         :param Bucket(string): 存储桶名称.
@@ -5983,6 +5983,11 @@ class CosS3Client(object):
                             UserInfo: 用户业务字段。
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param Async(string): 是否异步进行审核，0：同步返回结果，1：异步进行审核。默认值为 0。
+        :param Callback(string): 审核结果（Detail版本）以回调形式发送至您的回调地址，异步审核时生效，支持以 http:// 或者 https:// 开头的地址，例如：http://www.callback.com。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对图片进行自动冻结，仅当 input 中审核的图片为 object 时有效。
+                            PornScore: 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AdsScore: 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict):任务提交成功返回的结果,dict类型.
 
@@ -6019,6 +6024,12 @@ class CosS3Client(object):
         if DetectType is not None:
             detect_type = CiDetectType.get_detect_type_str(DetectType)
             conf['DetectType'] = detect_type
+        if Async == 0:
+            conf['Async'] = Async
+        if Callback is not None:
+            conf["Callback"] = Callback
+        if Freeze is not None:
+            conf["Freeze"] = Freeze
         request = {
             'Input': Input,
             'Conf': conf
