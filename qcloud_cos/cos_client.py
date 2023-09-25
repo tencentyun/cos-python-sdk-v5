@@ -508,7 +508,7 @@ class CosS3Client(object):
         return response
 
     def get_object_sensitive_content_recognition(self, Bucket, Key=None, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None,
-                                                 DataId=None, **kwargs):
+                                                 DataId=None, Async=0, CallBack=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
@@ -522,6 +522,8 @@ class CosS3Client(object):
         :param LargeImageDetect(int): 对于超过大小限制的图片是否进行压缩后再审核，取值为： 0（不压缩），1（压缩）。默认为0。
             注：压缩最大支持32M的图片，且会收取压缩费用。
         :param DataId(string): 图片标识，该字段在结果中返回原始内容，长度限制为512字节.
+        :param Async(int): 是否异步进行审核，取值 0：同步返回结果，1：异步进行审核，默认为0。
+        :param Callback(string): 审核结果（Detail版本）以回调形式发送至您的回调地址，异步审核时生效，支持以 http:// 或者 https:// 开头的地址，例如： http://www.callback.com。
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -585,6 +587,10 @@ class CosS3Client(object):
             params['large-image-detect'] = LargeImageDetect
         if DataId:
             params['dataid'] = DataId
+        if Async is not 0:
+            params['async'] = Async
+        if CallBack:
+            params['callback'] = CallBack
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -5297,7 +5303,7 @@ class CosS3Client(object):
         data = xml_to_dict(rt.content)
         return response, data
 
-    def ci_auditing_submit_common(self, Bucket, Key, DetectType, Type, Url=None, BizType=None, Conf={}, Input=None, UserInfo=None, DataId=None, RequestType=None, **kwargs):
+    def ci_auditing_submit_common(self, Bucket, Key, DetectType, Type, Url=None, BizType=None, Conf={}, Input=None, UserInfo=None, DataId=None, RequestType=None, StorageConf=None, Encryption=None, **kwargs):
         """通用提交审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
@@ -5310,6 +5316,7 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param StorageConf(dict): 包含直播流转存的配置信息。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -5359,9 +5366,12 @@ class CosS3Client(object):
             request['Input']['UserInfo'] = UserInfo
         if DataId:
             request['Input']['DataId'] = DataId
+        if Encryption:
+            request['Input']['Encryption'] = Encryption
         if RequestType:
             request['Type'] = RequestType
-
+        if StorageConf:
+            request['StorageConf'] = StorageConf
         xml_request = format_xml(data=request, root='Request')
         headers['Content-Type'] = 'application/xml'
 
@@ -5443,8 +5453,9 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_video_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', DetectContent=0, Mode='Interval', Count=100, TimeInterval=1.0,
-                                 BizType=None, DataId=None, UserInfo=None, **kwargs):
+    def ci_auditing_video_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple',
+                                 CallbackType=None, DetectContent=0, Mode='Interval', Count=100, TimeInterval=1.0,
+                                 BizType=None, DataId=None, UserInfo=None, Freeze=None, Encryption=None, **kwargs):
         """提交video审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
@@ -5453,6 +5464,7 @@ class CosS3Client(object):
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param CallbackVersion(string): 回调内容的结构，有效值：Simple（回调内容包含基本信息）、Detail（回调内容包含详细信息）。默认为 Simple。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部截帧和音频片段）、2（回调违规截帧和音频片段）。默认为 1。
         :param DetectContent(int): 用于指定是否审核视频声音，当值为0时：表示只审核视频画面截图；值为1时：表示同时审核视频画面截图和视频声音。默认值为0。
         :param Mode(string): 截帧模式。Interval 表示间隔模式；Average 表示平均模式；Fps 表示固定帧率模式。
                             Interval 模式：TimeInterval，Count 参数生效。当设置 Count，未设置 TimeInterval 时，表示截取所有帧，共 Count 张图片。
@@ -5463,6 +5475,15 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param Freeze(dict): 自动冻结配置项，可配置指定审核分数的结果进行自动冻结。
+                            PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+        :param Encryption(dict):
+                            Algorithm(string): 当前支持`aes-256-ctr、aes-256-cfb、aes-256-ofb、aes-192-ctr、aes-192-cfb、aes-192-ofb、aes-128-ctr、aes-128-cfb、aes-128-ofb`，不区分大小写。以`aes-256-ctr`为例，`aes`代表加密算法，`256`代表密钥长度，`ctr`代表加密模式。
+                            Key(string): 文件加密使用的密钥的值，需进行 Base64 编码。当KeyType值为1时，需要将Key进行指定的加密后再做Base64 编码。Key的长度与使用的算法有关，详见`Algorithm`介绍，如：使用`aes-256-ctr`算法时，需要使用256位密钥，即32个字节。
+                            IV(string): 初始化向量，需进行 Base64 编码。AES算法要求IV长度为128位，即16字节。
+                            KeyId(string): 当KeyType值为1时，该字段表示RSA加密密钥的版本号，当前支持`1.0`。默认值为`1.0`。
+                            KeyType(int): 指定加密算法的密钥（参数Key）的传输模式，有效值：0（明文传输）、1（RSA密文传输，使用OAEP填充模式），默认值为0。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -5495,6 +5516,11 @@ class CosS3Client(object):
         if CallbackVersion:
             conf['CallbackVersion'] = CallbackVersion
 
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+
+        if Freeze:
+            conf['Freeze'] = Freeze
         return self.ci_auditing_submit_common(
             Bucket=Bucket,
             Key=Key,
@@ -5505,6 +5531,7 @@ class CosS3Client(object):
             DetectType=DetectType,
             UserInfo=UserInfo,
             DataId=DataId,
+            Encryption=Encryption,
             **kwargs
         )
 
@@ -5573,7 +5600,7 @@ class CosS3Client(object):
         return data
 
     def ci_auditing_audio_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', BizType=None, UserInfo=None,
-                                 DataId=None, **kwargs):
+                                 DataId=None, CallbackType=None, Freeze=None, **kwargs):
         """提交音频审核任务接口 https://cloud.tencent.com/document/product/460/53395
 
         :param Bucket(string): 存储桶名称.
@@ -5585,6 +5612,10 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部音频片段）、2（回调违规音频片段）。默认为 1。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对音频文件进行自动冻结，仅当input中审核的音频为object时有效。
+                             PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                             AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -5610,6 +5641,11 @@ class CosS3Client(object):
         if CallbackVersion:
             conf['CallbackVersion'] = CallbackVersion
 
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+
+        if Freeze:
+            conf['Freeze'] = Freeze
         return self.ci_auditing_submit_common(
             Bucket=Bucket,
             Key=Key,
@@ -5664,7 +5700,8 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_text_submit(self, Bucket, Key=None, DetectType=None, Content=None, Callback=None,  BizType=None, Url=None, UserInfo=None, DataId=None, **kwargs):
+    def ci_auditing_text_submit(self, Bucket, Key=None, DetectType=None, Content=None,
+        Callback=None,  BizType=None, Url=None, UserInfo=None, DataId=None, CallbackVersion=None, CallbackType=None, Freeze=None, **kwargs):
         """提交文本审核任务接口 https://cloud.tencent.com/document/product/460/56285
 
         :param Bucket(string): 存储桶名称.
@@ -5676,6 +5713,13 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param CallbackVersion(string): 回调内容的结构，有效值：Simple（回调内容包含基本信息）、Detail（回调内容包含详细信息）。默认为 Simple。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部文本片段）、2（回调违规文本片段）。默认为 1。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对文本文件进行自动冻结，仅当 input 中审核的文本为 object 时有效。
+                            PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            IllegalScore(int): 取值为[0,100]，表示当违法审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AbuseScore(int): 取值为[0,100]，表示当谩骂审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -5706,7 +5750,12 @@ class CosS3Client(object):
 
         if Callback:
             conf['Callback'] = Callback
-
+        if CallbackVersion:
+            conf['CallbackVersion'] = CallbackVersion
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+        if Freeze:
+            conf['Freeze'] = Freeze
         data = self.ci_auditing_submit_common(
             Bucket=Bucket,
             Key=Key,
@@ -5765,9 +5814,13 @@ class CosS3Client(object):
         :param Type(string): 指定文档文件的类型，如未指定则默认以文件的后缀为类型。
                              如果文件没有后缀，该字段必须指定，否则会审核失败。例如：doc、docx、ppt、pptx 等
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部音频片段）、2（回调违规音频片段）。默认为1。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对文档进行自动冻结。仅当 input 中审核的文档为 object 时有效。
+                               PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                               AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict):任务提交成功返回的结果,dict类型.
 
@@ -5971,9 +6024,10 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称.
         :param Input(dict array): 需要审核的图片信息,每个array元素为dict类型，支持的参数如下:
                             Object: 存储在 COS 存储桶中的图片文件名称，例如在目录 test 中的文件 image.jpg，则文件名称为 test/image.jpg。
-                                Object 和 Url 只能选择其中一种。
+                                传入多个时仅一个生效，按 Content，Object， Url 顺序。
                             Url: 图片文件的链接地址，例如 http://a-1250000.cos.ap-shanghai.tencentcos.cn/image.jpg。
-                                Object 和 Url 只能选择其中一种。
+                                传入多个时仅一个生效，按 Content，Object， Url 顺序。
+                            Content: 图片文件的内容，需要先经过 base64 编码。Content，Object 和 Url 只能选择其中一种，传入多个时仅一个生效，按 Content，Object， Url 顺序。
                             Interval: 截帧频率，GIF 图检测专用，默认值为5，表示从第一帧（包含）开始每隔5帧截取一帧
                             MaxFrames: 最大截帧数量，GIF 图检测专用，默认值为5，表示只截取 GIF 的5帧图片进行审核，必须大于0
                             DataId: 图片标识，该字段在结果中返回原始内容，长度限制为512字节
@@ -5981,6 +6035,12 @@ class CosS3Client(object):
                                 注：压缩最大支持32M的图片，且会收取压缩费用。
                             DataId: 图片标识，该字段在结果中返回原始内容，长度限制为512字节
                             UserInfo: 用户业务字段。
+                            Encryption(dict): 文件加密信息。如果图片未做加密则不需要使用该字段，如果设置了该字段，则会按设置的信息解密后再做审核。
+                                            Algorithm(string): 当前支持`aes-256-ctr、aes-256-cfb、aes-256-ofb、aes-192-ctr、aes-192-cfb、aes-192-ofb、aes-128-ctr、aes-128-cfb、aes-128-ofb`，不区分大小写。以`aes-256-ctr`为例，`aes`代表加密算法，`256`代表密钥长度，`ctr`代表加密模式。
+                                            Key(string): 文件加密使用的密钥的值，需进行 Base64 编码。当KeyType值为1时，需要将Key进行指定的加密后再做Base64 编码。Key的长度与使用的算法有关，详见`Algorithm`介绍，如：使用`aes-256-ctr`算法时，需要使用256位密钥，即32个字节。
+                                            IV(string): 初始化向量，需进行 Base64 编码。AES算法要求IV长度为128位，即16字节。
+                                            KeyId(string): 当KeyType值为1时，该字段表示RSA加密密钥的版本号，当前支持`1.0`。默认值为`1.0`。
+                                            KeyType(int): 指定加密算法的密钥（参数Key）的传输模式，有效值：0（明文传输）、1（RSA密文传输，使用OAEP填充模式），默认值为0。
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param Async(string): 是否异步进行审核，0：同步返回结果，1：异步进行审核。默认值为 0。
@@ -6131,11 +6191,10 @@ class CosS3Client(object):
         return data
 
     def ci_auditing_live_video_submit(self, Bucket, BizType, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
-                                      UserInfo=None, **kwargs):
+                                      UserInfo=None, StorageConf=None, **kwargs):
         """提交直播流审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
-        :param Key(string): COS路径.
         :param Url(string): 支持直接传非cos上url过来审核
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
@@ -6143,6 +6202,10 @@ class CosS3Client(object):
         :param CallbackType(int): 回调片段类型，有效值：1（回调全部截帧和音频片段）、2（回调违规截帧和音频片段）。默认为 1。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
+        :param StorageConf(dict): 包含直播流转存的配置信息。
+                                Path(string): 表示直播流所要转存的路径，直播流的 ts 文件和 m3u8 文件将保存在本桶该目录下。
+                                              m3u8 文件保存文件名为 Path/{$JobId}.m3u8，ts 文件的保存文件名为
+                                              Path/{$JobId}-{$Realtime}.ts，其中 Realtime 为17位年月日时分秒毫秒时间。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -6363,6 +6426,85 @@ class CosS3Client(object):
             for detectItem in data['JobsDetail']['DetectDetail']:
                 if 'Result' in detectItem:
                     format_dict(detectItem, ['Result'])
+
+        return data
+
+    def ci_auditing_report_badcase(self, Bucket, ContentType, Label, SuggestedLabel, Text=None, Url=None, JobId=None, ModerationTime=None, **kwargs):
+        """审核结果反馈
+
+        :param Bucket(string): 存储桶名称.
+        :param ContentType(int): 需要反馈的数据类型，取值为：1-文本，2-图片。
+        :param Label(string): 审核给出的有问题的结果标签。
+        :param SuggestedLabel(string): 期望的正确处置标签，正常则填Normal。
+        :param Text(dic): 文本的Badcase，需要填写base64的文本内容，ContentType为1时必填。
+        :param Url(dic): 图片的Badcase，需要填写图片的url链接，ContentType为2时必填。
+        :param JobId(string): 该Case对应的审核任务ID，有助于定位审核记录。
+        :param ModerationTime(dict): 该Case的审核时间，有助于定位审核记录。格式为 2021-08-07T12:12:12+08:00
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 识别cos上的视频
+            response = client.ci_auditing_report_badcase(
+                Bucket='bucket',
+                ContentType=1,
+                Label='test.mp4',
+                SuggestedLabel='Normal'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        request = {
+            'ContentType': ContentType,
+            'Label': Label,
+            'SuggestedLabel': SuggestedLabel
+        }
+        if Text:
+            request['Text'] = Text
+        if Url:
+            request['Url'] = Url
+        if JobId:
+            request['JobId'] = JobId
+        if ModerationTime:
+            request['ModerationTime'] = ModerationTime
+
+        xml_request = format_xml(data=request, root='Request')
+        headers['Content-Type'] = 'application/xml'
+
+        path = '/report/badcase'
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.debug("ci_auditing_report_badcase, url=:{url} ,headers=:{headers}, params=:{params}, request=:{request}, ci_endpoint=:{ci_endpoint}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            request=request,
+            ci_endpoint=self._conf._endpoint_ci))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_request,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        logger.debug("ci auditing rsp:%s", rt.content)
+        data = xml_to_dict(rt.content)
 
         return data
 
