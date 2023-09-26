@@ -587,7 +587,7 @@ class CosS3Client(object):
             params['large-image-detect'] = LargeImageDetect
         if DataId:
             params['dataid'] = DataId
-        if Async is not 0:
+        if Async != 0:
             params['async'] = Async
         if CallBack:
             params['callback'] = CallBack
@@ -5804,7 +5804,8 @@ class CosS3Client(object):
             format_dict(data['JobsDetail'], ['Section'])
         return data
 
-    def ci_auditing_document_submit(self, Bucket, Url=None, DetectType=None, Key=None, Type=None, Callback=None,  BizType=None, UserInfo=None, DataId=None, **kwargs):
+    def ci_auditing_document_submit(self, Bucket, Url=None, DetectType=None, Key=None, Type=None,
+        Callback=None,  BizType=None, UserInfo=None, DataId=None, CallbackType=None, Freeze=None, **kwargs):
         """提交文档审核任务接口 https://cloud.tencent.com/document/product/460/59380
 
         :param Bucket(string): 存储桶名称.
@@ -5850,6 +5851,10 @@ class CosS3Client(object):
 
         if Callback:
             conf['Callback'] = Callback
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+        if Freeze:
+            conf['Freeze'] = Freeze
 
         return self.ci_auditing_submit_common(
             Bucket=Bucket,
