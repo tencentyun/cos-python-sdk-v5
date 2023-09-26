@@ -607,6 +607,24 @@ def ci_recognize_logo_process():
     print(response)
 
 
+def ci_super_resolution_process():
+    url = u"{scheme}://{endpoint}/{path}".format(
+        scheme="https",
+        endpoint="demo-1250000000.ci.ap-chongqing.myqcloud.com",
+        path=quote(to_bytes("demo.png"), b'/-_.~')
+    )
+    params = {
+        "1": "2",
+        "测试": "参数"
+    }
+    url = url + str('?') + urlencode(params)
+    response = client.ci_super_resolution_process(bucket_name,
+                                                  Key='test.jpg',
+                                                  # Url=url
+                                                  )
+    response['Body'].get_stream_to_file('super-resolution-result.jpg')
+
+
 if __name__ == '__main__':
     # format.png
     # thumbnail_when_put_object()
@@ -675,4 +693,5 @@ if __name__ == '__main__':
     # ci_delete_image_style()
     # ci_image_detect_label()
     # ci_recognize_logo_process()
-    ci_image_inspect()
+    # ci_image_inspect()
+    ci_super_resolution_process()

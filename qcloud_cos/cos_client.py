@@ -9447,6 +9447,61 @@ class CosS3Client(object):
 
         return data
 
+    def ci_super_resolution_process(self, Bucket, Key=None, Url=None, **kwargs):
+        """图像超分 https://cloud.tencent.com/document/product/460/83793#1.-.E4.B8.8B.E8.BD.BD.E6.97.B6.E5.A4.84.E7.90.86
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 对象文件名，例如：folder/document.jpg.
+        :param Url(string): 您可以通过填写 Url 处理任意公网可访问的图片链接。不填写 detect-url 时，后台会默认处理 ObjectKey ，填写了 detect-url 时，后台会处理 detect-url 链接，无需再填写 ObjectKey，detect-url 示例：http://www.example.com/abc.jpg ，需要进行 UrlEncode，处理后为http%25253A%25252F%25252Fwww.example.com%25252Fabc.jpg。
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            def ci_super_resolution_process():
+                # 图像超分
+                response = client.ci_super_resolution_process(
+                    Bucket=bucket_name,
+                    Key='demo.jpeg',
+                )
+                print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'AISuperResolution'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if Url:
+            params['detect-url'] = Url
+        params = format_values(params)
+        url = self._conf.uri(bucket=Bucket)
+        cos_s3_auth = CosS3Auth(self._conf, params=params)
+        if Key:
+            url = self._conf.uri(bucket=Bucket, path=Key)
+            cos_s3_auth = CosS3Auth(self._conf, Key, params=params)
+        logger.info("ci_super_resolution_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=cos_s3_auth,
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
+
     def ci_cancel_jobs(self, Bucket, JobID, **kwargs):
         """取消媒体处理任务接口 https://cloud.tencent.com/document/product/436/85082
 
