@@ -42,8 +42,8 @@ class CosConfig(object):
 
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, CredentialInstance=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
-                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True):
+                 Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True, SignParams=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -65,6 +65,7 @@ class CosConfig(object):
         :param Proxies(dict):  使用代理来访问COS
         :param Domain(string):  使用自定义的域名来访问COS
         :param ServiceDomain(string):  使用自定义的域名来访问cos service
+        :param KeepAlive(bool):       是否使用长连接
         :param PoolConnections(int):  连接池个数
         :param PoolMaxSize(int):      连接池中最大连接数
         :param AllowRedirects(bool):  是否重定向
@@ -72,6 +73,7 @@ class CosConfig(object):
         :param EndpointCi(string):  ci的endpoint
         :param EnableOldDomain(bool):  是否使用旧的myqcloud.com域名访问COS
         :param EnableInternalDomain(bool):  是否使用内网域名访问COS
+        :param SignParams(bool): 是否将请求参数算入签名
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -87,6 +89,7 @@ class CosConfig(object):
         self._proxies = Proxies
         self._domain = Domain
         self._service_domain = ServiceDomain
+        self._keep_alive = KeepAlive
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
         self._allow_redirects = AllowRedirects
@@ -94,6 +97,7 @@ class CosConfig(object):
         self._copy_part_threshold_size = SINGLE_UPLOAD_LENGTH
         self._enable_old_domain = EnableOldDomain
         self._enable_internal_domain = EnableInternalDomain
+        self._sign_params = SignParams
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnableInternalDomain)
@@ -278,7 +282,7 @@ class CosS3Client(object):
         """获取配置"""
         return self._conf
 
-    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}, SignHost=None):
+    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}, SignHost=None, UseCiEndPoint=False):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
@@ -311,13 +315,16 @@ class CosS3Client(object):
             Headers = dict()
         if not Params:
             Params = dict()
-            
-        url = self._conf.uri(bucket=Bucket, path=Key)
+
+        endpoint = None
+        if UseCiEndPoint:
+            endpoint = self._conf._endpoint_ci
+        url = self._conf.uri(bucket=Bucket, path=Key, endpoint=endpoint)
         r = Request(Method, url, headers=Headers, params=Params)
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
         return auth(r).headers['Authorization']
 
-    def send_request(self, method, url, bucket, timeout=30, cos_request=True, **kwargs):
+    def send_request(self, method, url, bucket, timeout=30, cos_request=True, ci_request=False, **kwargs):
         """封装request库发起http请求"""
         if self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
@@ -326,12 +333,17 @@ class CosS3Client(object):
         else:
             kwargs['headers']['User-Agent'] = 'cos-python-sdk-v' + __version__
         if self._conf._token is not None:
-            kwargs['headers']['x-cos-security-token'] = self._conf._token
+            if ci_request:
+                kwargs['headers']['x-ci-security-token'] = self._conf._token
+            else:
+                kwargs['headers']['x-cos-security-token'] = self._conf._token
         if self._conf._ip is not None:  # 使用IP访问时需要设置请求host
             if self._conf._domain is not None:
                 kwargs['headers']['Host'] = self._conf._domain
             elif bucket is not None:
                 kwargs['headers']['Host'] = self._conf.get_host(bucket)
+        if self._conf._keep_alive == False:
+            kwargs['headers']['Connection'] = 'close'
         kwargs['headers'] = format_values(kwargs['headers'])
 
         file_position = None
@@ -495,8 +507,8 @@ class CosS3Client(object):
 
         return response
 
-    def get_object_sensitive_content_recognition(self, Bucket, Key, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None,
-                                                 DataId=None, **kwargs):
+    def get_object_sensitive_content_recognition(self, Bucket, Key=None, DetectType=None, Interval=None, MaxFrames=None, BizType=None, DetectUrl=None, LargeImageDetect=None,
+                                                 DataId=None, Async=0, CallBack=None, **kwargs):
         """文件内容识别接口 https://cloud.tencent.com/document/product/460/37318
 
         :param Bucket(string): 存储桶名称.
@@ -510,6 +522,8 @@ class CosS3Client(object):
         :param LargeImageDetect(int): 对于超过大小限制的图片是否进行压缩后再审核，取值为： 0（不压缩），1（压缩）。默认为0。
             注：压缩最大支持32M的图片，且会收取压缩费用。
         :param DataId(string): 图片标识，该字段在结果中返回原始内容，长度限制为512字节.
+        :param Async(int): 是否异步进行审核，取值 0：同步返回结果，1：异步进行审核，默认为0。
+        :param Callback(string): 审核结果（Detail版本）以回调形式发送至您的回调地址，异步审核时生效，支持以 http:// 或者 https:// 开头的地址，例如： http://www.callback.com。
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -573,6 +587,10 @@ class CosS3Client(object):
             params['large-image-detect'] = LargeImageDetect
         if DataId:
             params['dataid'] = DataId
+        if Async != 0:
+            params['async'] = Async
+        if CallBack:
+            params['callback'] = CallBack
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
@@ -611,7 +629,7 @@ class CosS3Client(object):
 
         return data
 
-    def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}, SignHost=None):
+    def get_presigned_url(self, Bucket, Key, Method, Expired=300, Params={}, Headers={}, UseCiEndPoint=False, SignHost=None):
         """生成预签名的url
 
         :param Bucket(string): 存储桶名称.
@@ -634,17 +652,18 @@ class CosS3Client(object):
                 Method='PUT'
             )
         """
-        url = self._conf.uri(bucket=Bucket, path=Key)
-        if self._conf._token is not None and 'x-cos-security-token' not in Params:
-            Params['x-cos-security-token'] = self._conf._token
-        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params, SignHost=SignHost)
+        endpoint = None
+        if UseCiEndPoint:
+            endpoint = self._conf._endpoint_ci
+        url = self._conf.uri(bucket=Bucket, path=Key, endpoint=endpoint)
+        sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params, SignHost=SignHost, UseCiEndPoint=UseCiEndPoint)
         sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
         url = url + '?' + sign
         if Params:
             url = url + '&' + urlencode(Params)
         return url
 
-    def get_presigned_download_url(self, Bucket, Key, Expired=300, Params={}, Headers={}, SignHost=None):
+    def get_presigned_download_url(self, Bucket, Key, Expired=300, Params={}, Headers={}, UseCiEndPoint=False, SignHost=None):
         """生成预签名的下载url
 
         :param Bucket(string): 存储桶名称.
@@ -665,7 +684,7 @@ class CosS3Client(object):
                 Key='test.txt'
             )
         """
-        return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers, SignHost)
+        return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers, UseCiEndPoint, SignHost)
 
     def get_object_url(self, Bucket, Key):
         """生成对象访问的url
@@ -1275,7 +1294,7 @@ class CosS3Client(object):
         return data
 
     # s3 bucket interface begin
-    def create_bucket(self, Bucket, BucketAZConfig=None, **kwargs):
+    def create_bucket(self, Bucket, BucketAZConfig=None, BucketArchConfig=None, **kwargs):
         """创建一个bucket
 
         :param Bucket(string): 存储桶名称. 存储桶名称不支持大写字母，COS 后端会将用户传入的大写字母自动转换为小写字母用于创建存储桶.
@@ -1299,11 +1318,16 @@ class CosS3Client(object):
         """
         headers = mapped(kwargs)
         xml_config = None
+        bucket_config = dict()
         if BucketAZConfig == 'MAZ':
-            bucket_config = {'BucketAZConfig': 'MAZ'}
+            bucket_config.update({'BucketAZConfig': 'MAZ'})
+        if BucketArchConfig == 'OFS':
+            bucket_config.update({'BucketArchConfig': 'OFS'})
+        if len(bucket_config) != 0:
             xml_config = format_xml(data=bucket_config, root='CreateBucketConfiguration')
             headers['Content-MD5'] = get_md5(xml_config)
             headers['Content-Type'] = 'application/xml'
+
         url = self._conf.uri(bucket=Bucket)
         logger.info("create bucket, url=:{url} ,headers=:{headers}".format(
             url=url,
@@ -3311,7 +3335,7 @@ class CosS3Client(object):
     def get_bucket_intelligenttiering(self, Bucket, **kwargs):
         """获取存储桶智能分层配置
         :param Bucket(string): 存储桶名称.
-        :param IntelligentTieringConfiguration(dict): 只能分层配置
+        :param IntelligentTieringConfiguration(dict): 智能分层配置
         :param kwargs(dict): 设置请求headers.
         :return(dict): 智能分层配置.
 
@@ -3338,8 +3362,16 @@ class CosS3Client(object):
         return data
 
     # service interface begin
-    def list_buckets(self, **kwargs):
-        """列出所有bucket
+    def list_buckets(self, TagKey=None, TagValue=None, Region=None, CreateTime=None, Range=None, Marker="", MaxKeys=2000, **kwargs):
+        """列出符合条件的bucket
+        :param Bucket(string): 存储桶名称
+        :param TagKey(string): 标签键
+        :param TagValue(string): 标签值
+        :param Region(string): 地域名称
+        :param CreateTime(Timestamp): GMT时间戳, 和 Range 参数一起使用, 支持根据创建时间过滤存储桶
+        :param Range(string): 和 CreateTime 参数一起使用, 支持根据创建时间过滤存储桶，支持枚举值 lt（创建时间早于 create-time）、gt（创建时间晚于 create-time）、lte（创建时间早于或等于 create-time）、gte（创建时间晚于或等于create-time）
+        :param Marker(string): 起始标记, 从该标记之后（不含）按照 UTF-8 字典序返回存储桶条目
+        :param MaxKeys(int): 单次返回最大的条目数量，默认值为2000，最大为2000
 
         :return(dict): 账号下bucket相关信息.
 
@@ -3359,11 +3391,26 @@ class CosS3Client(object):
 
         if self._conf._service_domain is not None:
             url = '{scheme}://{domain}/'.format(scheme=self._conf._scheme, domain=self._conf._service_domain)
+
+        params = {
+            'marker': Marker,
+            'max-keys': MaxKeys,
+        }
+        if TagKey and TagValue:
+            params['tagkey'] = TagKey
+            params['tagvalue'] = TagValue
+        if Region:
+            params['region'] = Region
+        if CreateTime and Range:
+            params['create-time'] = CreateTime
+            params['range'] = Range
+        
         rt = self.send_request(
             method='GET',
             url=url,
             bucket=None,
             headers=headers,
+            params=params,
             auth=CosS3Auth(self._conf),
         )
         data = xml_to_dict(rt.content)
@@ -3533,8 +3580,8 @@ class CosS3Client(object):
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
                     **kwargs):
-        """小于等于20MB的文件简单上传，大于20MB的文件使用分块上传
 
+        """
         :param Bucket(string): 存储桶名称.
         :param key(string): 分块上传路径名.
         :param LocalFilePath(string): 本地文件路径名.
@@ -3559,7 +3606,7 @@ class CosS3Client(object):
             )
         """
         file_size = os.path.getsize(LocalFilePath)
-        if file_size <= 1024 * 1024 * 20:
+        if file_size <= 1024 * 1024 * PartSize:
             with open(LocalFilePath, 'rb') as fp:
                 rt = self.put_object(Bucket=Bucket, Key=Key, Body=fp, EnableMD5=EnableMD5, **kwargs)
             return rt
@@ -5256,7 +5303,7 @@ class CosS3Client(object):
         data = xml_to_dict(rt.content)
         return response, data
 
-    def ci_auditing_submit_common(self, Bucket, Key, DetectType, Type, Url=None, BizType=None, Conf={}, Input=None, UserInfo=None, DataId=None, RequestType=None, **kwargs):
+    def ci_auditing_submit_common(self, Bucket, Key, DetectType, Type, Url=None, BizType=None, Conf={}, Input=None, UserInfo=None, DataId=None, RequestType=None, StorageConf=None, Encryption=None, **kwargs):
         """通用提交审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
@@ -5269,6 +5316,7 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param StorageConf(dict): 包含直播流转存的配置信息。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 下载成功返回的结果,dict类型.
 
@@ -5318,9 +5366,12 @@ class CosS3Client(object):
             request['Input']['UserInfo'] = UserInfo
         if DataId:
             request['Input']['DataId'] = DataId
+        if Encryption:
+            request['Input']['Encryption'] = Encryption
         if RequestType:
             request['Type'] = RequestType
-
+        if StorageConf:
+            request['StorageConf'] = StorageConf
         xml_request = format_xml(data=request, root='Request')
         headers['Content-Type'] = 'application/xml'
 
@@ -5340,7 +5391,8 @@ class CosS3Client(object):
             data=xml_request,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
@@ -5393,15 +5445,17 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         logger.debug("query ci auditing:%s", rt.content)
         data = xml_to_dict(rt.content)
 
         return data
 
-    def ci_auditing_video_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', DetectContent=0, Mode='Interval', Count=100, TimeInterval=1.0,
-                                 BizType=None, DataId=None, UserInfo=None, **kwargs):
+    def ci_auditing_video_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple',
+                                 CallbackType=None, DetectContent=0, Mode='Interval', Count=100, TimeInterval=1.0,
+                                 BizType=None, DataId=None, UserInfo=None, Freeze=None, Encryption=None, **kwargs):
         """提交video审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
@@ -5410,6 +5464,7 @@ class CosS3Client(object):
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
         :param CallbackVersion(string): 回调内容的结构，有效值：Simple（回调内容包含基本信息）、Detail（回调内容包含详细信息）。默认为 Simple。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部截帧和音频片段）、2（回调违规截帧和音频片段）。默认为 1。
         :param DetectContent(int): 用于指定是否审核视频声音，当值为0时：表示只审核视频画面截图；值为1时：表示同时审核视频画面截图和视频声音。默认值为0。
         :param Mode(string): 截帧模式。Interval 表示间隔模式；Average 表示平均模式；Fps 表示固定帧率模式。
                             Interval 模式：TimeInterval，Count 参数生效。当设置 Count，未设置 TimeInterval 时，表示截取所有帧，共 Count 张图片。
@@ -5420,6 +5475,15 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param Freeze(dict): 自动冻结配置项，可配置指定审核分数的结果进行自动冻结。
+                            PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+        :param Encryption(dict):
+                            Algorithm(string): 当前支持`aes-256-ctr、aes-256-cfb、aes-256-ofb、aes-192-ctr、aes-192-cfb、aes-192-ofb、aes-128-ctr、aes-128-cfb、aes-128-ofb`，不区分大小写。以`aes-256-ctr`为例，`aes`代表加密算法，`256`代表密钥长度，`ctr`代表加密模式。
+                            Key(string): 文件加密使用的密钥的值，需进行 Base64 编码。当KeyType值为1时，需要将Key进行指定的加密后再做Base64 编码。Key的长度与使用的算法有关，详见`Algorithm`介绍，如：使用`aes-256-ctr`算法时，需要使用256位密钥，即32个字节。
+                            IV(string): 初始化向量，需进行 Base64 编码。AES算法要求IV长度为128位，即16字节。
+                            KeyId(string): 当KeyType值为1时，该字段表示RSA加密密钥的版本号，当前支持`1.0`。默认值为`1.0`。
+                            KeyType(int): 指定加密算法的密钥（参数Key）的传输模式，有效值：0（明文传输）、1（RSA密文传输，使用OAEP填充模式），默认值为0。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -5452,6 +5516,11 @@ class CosS3Client(object):
         if CallbackVersion:
             conf['CallbackVersion'] = CallbackVersion
 
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+
+        if Freeze:
+            conf['Freeze'] = Freeze
         return self.ci_auditing_submit_common(
             Bucket=Bucket,
             Key=Key,
@@ -5462,6 +5531,7 @@ class CosS3Client(object):
             DetectType=DetectType,
             UserInfo=UserInfo,
             DataId=DataId,
+            Encryption=Encryption,
             **kwargs
         )
 
@@ -5530,7 +5600,7 @@ class CosS3Client(object):
         return data
 
     def ci_auditing_audio_submit(self, Bucket, Key, DetectType=None, Url=None, Callback=None, CallbackVersion='Simple', BizType=None, UserInfo=None,
-                                 DataId=None, **kwargs):
+                                 DataId=None, CallbackType=None, Freeze=None, **kwargs):
         """提交音频审核任务接口 https://cloud.tencent.com/document/product/460/53395
 
         :param Bucket(string): 存储桶名称.
@@ -5542,6 +5612,10 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部音频片段）、2（回调违规音频片段）。默认为 1。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对音频文件进行自动冻结，仅当input中审核的音频为object时有效。
+                             PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                             AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -5567,6 +5641,11 @@ class CosS3Client(object):
         if CallbackVersion:
             conf['CallbackVersion'] = CallbackVersion
 
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+
+        if Freeze:
+            conf['Freeze'] = Freeze
         return self.ci_auditing_submit_common(
             Bucket=Bucket,
             Key=Key,
@@ -5621,7 +5700,8 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_text_submit(self, Bucket, Key, DetectType=None, Content=None, Callback=None,  BizType=None, Url=None, UserInfo=None, DataId=None, **kwargs):
+    def ci_auditing_text_submit(self, Bucket, Key=None, DetectType=None, Content=None,
+        Callback=None,  BizType=None, Url=None, UserInfo=None, DataId=None, CallbackVersion=None, CallbackType=None, Freeze=None, **kwargs):
         """提交文本审核任务接口 https://cloud.tencent.com/document/product/460/56285
 
         :param Bucket(string): 存储桶名称.
@@ -5633,6 +5713,13 @@ class CosS3Client(object):
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param CallbackVersion(string): 回调内容的结构，有效值：Simple（回调内容包含基本信息）、Detail（回调内容包含详细信息）。默认为 Simple。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部文本片段）、2（回调违规文本片段）。默认为 1。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对文本文件进行自动冻结，仅当 input 中审核的文本为 object 时有效。
+                            PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            IllegalScore(int): 取值为[0,100]，表示当违法审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AbuseScore(int): 取值为[0,100]，表示当谩骂审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -5663,7 +5750,12 @@ class CosS3Client(object):
 
         if Callback:
             conf['Callback'] = Callback
-
+        if CallbackVersion:
+            conf['CallbackVersion'] = CallbackVersion
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+        if Freeze:
+            conf['Freeze'] = Freeze
         data = self.ci_auditing_submit_common(
             Bucket=Bucket,
             Key=Key,
@@ -5712,7 +5804,8 @@ class CosS3Client(object):
             format_dict(data['JobsDetail'], ['Section'])
         return data
 
-    def ci_auditing_document_submit(self, Bucket, Url, DetectType=None, Key=None, Type=None, Callback=None,  BizType=None, UserInfo=None, DataId=None, **kwargs):
+    def ci_auditing_document_submit(self, Bucket, Url=None, DetectType=None, Key=None, Type=None,
+        Callback=None,  BizType=None, UserInfo=None, DataId=None, CallbackType=None, Freeze=None, **kwargs):
         """提交文档审核任务接口 https://cloud.tencent.com/document/product/460/59380
 
         :param Bucket(string): 存储桶名称.
@@ -5722,9 +5815,13 @@ class CosS3Client(object):
         :param Type(string): 指定文档文件的类型，如未指定则默认以文件的后缀为类型。
                              如果文件没有后缀，该字段必须指定，否则会审核失败。例如：doc、docx、ppt、pptx 等
         :param Callback(string): 回调地址，以http://或者https://开头的地址。
+        :param CallbackType(int): 回调片段类型，有效值：1（回调全部音频片段）、2（回调违规音频片段）。默认为1。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对文档进行自动冻结。仅当 input 中审核的文档为 object 时有效。
+                               PornScore(int): 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                               AdsScore(int): 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict):任务提交成功返回的结果,dict类型.
 
@@ -5754,6 +5851,10 @@ class CosS3Client(object):
 
         if Callback:
             conf['Callback'] = Callback
+        if CallbackType:
+            conf['CallbackType'] = CallbackType
+        if Freeze:
+            conf['Freeze'] = Freeze
 
         return self.ci_auditing_submit_common(
             Bucket=Bucket,
@@ -5922,15 +6023,16 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_image_batch(self, Bucket, Input, DetectType=None, BizType=None, **kwargs):
+    def ci_auditing_image_batch(self, Bucket, Input, DetectType=None, BizType=None, Async=0, Callback=None, Freeze=None, **kwargs):
         """图片同步批量审核接口 https://cloud.tencent.com/document/product/436/63593
 
         :param Bucket(string): 存储桶名称.
         :param Input(dict array): 需要审核的图片信息,每个array元素为dict类型，支持的参数如下:
                             Object: 存储在 COS 存储桶中的图片文件名称，例如在目录 test 中的文件 image.jpg，则文件名称为 test/image.jpg。
-                                Object 和 Url 只能选择其中一种。
+                                传入多个时仅一个生效，按 Content，Object， Url 顺序。
                             Url: 图片文件的链接地址，例如 http://a-1250000.cos.ap-shanghai.tencentcos.cn/image.jpg。
-                                Object 和 Url 只能选择其中一种。
+                                传入多个时仅一个生效，按 Content，Object， Url 顺序。
+                            Content: 图片文件的内容，需要先经过 base64 编码。Content，Object 和 Url 只能选择其中一种，传入多个时仅一个生效，按 Content，Object， Url 顺序。
                             Interval: 截帧频率，GIF 图检测专用，默认值为5，表示从第一帧（包含）开始每隔5帧截取一帧
                             MaxFrames: 最大截帧数量，GIF 图检测专用，默认值为5，表示只截取 GIF 的5帧图片进行审核，必须大于0
                             DataId: 图片标识，该字段在结果中返回原始内容，长度限制为512字节
@@ -5938,8 +6040,19 @@ class CosS3Client(object):
                                 注：压缩最大支持32M的图片，且会收取压缩费用。
                             DataId: 图片标识，该字段在结果中返回原始内容，长度限制为512字节
                             UserInfo: 用户业务字段。
+                            Encryption(dict): 文件加密信息。如果图片未做加密则不需要使用该字段，如果设置了该字段，则会按设置的信息解密后再做审核。
+                                            Algorithm(string): 当前支持`aes-256-ctr、aes-256-cfb、aes-256-ofb、aes-192-ctr、aes-192-cfb、aes-192-ofb、aes-128-ctr、aes-128-cfb、aes-128-ofb`，不区分大小写。以`aes-256-ctr`为例，`aes`代表加密算法，`256`代表密钥长度，`ctr`代表加密模式。
+                                            Key(string): 文件加密使用的密钥的值，需进行 Base64 编码。当KeyType值为1时，需要将Key进行指定的加密后再做Base64 编码。Key的长度与使用的算法有关，详见`Algorithm`介绍，如：使用`aes-256-ctr`算法时，需要使用256位密钥，即32个字节。
+                                            IV(string): 初始化向量，需进行 Base64 编码。AES算法要求IV长度为128位，即16字节。
+                                            KeyId(string): 当KeyType值为1时，该字段表示RSA加密密钥的版本号，当前支持`1.0`。默认值为`1.0`。
+                                            KeyType(int): 指定加密算法的密钥（参数Key）的传输模式，有效值：0（明文传输）、1（RSA密文传输，使用OAEP填充模式），默认值为0。
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
+        :param Async(string): 是否异步进行审核，0：同步返回结果，1：异步进行审核。默认值为 0。
+        :param Callback(string): 审核结果（Detail版本）以回调形式发送至您的回调地址，异步审核时生效，支持以 http:// 或者 https:// 开头的地址，例如：http://www.callback.com。
+        :param Freeze(dict): 可通过该字段，设置根据审核结果给出的不同分值，对图片进行自动冻结，仅当 input 中审核的图片为 object 时有效。
+                            PornScore: 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+                            AdsScore: 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
         :param kwargs(dict): 设置请求的headers.
         :return(dict):任务提交成功返回的结果,dict类型.
 
@@ -5976,6 +6089,12 @@ class CosS3Client(object):
         if DetectType is not None:
             detect_type = CiDetectType.get_detect_type_str(DetectType)
             conf['DetectType'] = detect_type
+        if Async == 0:
+            conf['Async'] = Async
+        if Callback is not None:
+            conf["Callback"] = Callback
+        if Freeze is not None:
+            conf["Freeze"] = Freeze
         request = {
             'Input': Input,
             'Conf': conf
@@ -6000,7 +6119,8 @@ class CosS3Client(object):
             data=xml_request,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
@@ -6076,11 +6196,10 @@ class CosS3Client(object):
         return data
 
     def ci_auditing_live_video_submit(self, Bucket, BizType, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
-                                      UserInfo=None, **kwargs):
+                                      UserInfo=None, StorageConf=None, **kwargs):
         """提交直播流审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
         :param Bucket(string): 存储桶名称.
-        :param Key(string): COS路径.
         :param Url(string): 支持直接传非cos上url过来审核
         :param DetectType(int): 内容识别标志,位计算 1:porn, 8:ads
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
@@ -6088,6 +6207,10 @@ class CosS3Client(object):
         :param CallbackType(int): 回调片段类型，有效值：1（回调全部截帧和音频片段）、2（回调违规截帧和音频片段）。默认为 1。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
+        :param StorageConf(dict): 包含直播流转存的配置信息。
+                                Path(string): 表示直播流所要转存的路径，直播流的 ts 文件和 m3u8 文件将保存在本桶该目录下。
+                                              m3u8 文件保存文件名为 Path/{$JobId}.m3u8，ts 文件的保存文件名为
+                                              Path/{$JobId}-{$Realtime}.ts，其中 Realtime 为17位年月日时分秒毫秒时间。
         :param kwargs(dict): 设置请求的headers.
         :return(dict): 任务提交成功返回的结果,dict类型.
 
@@ -6171,7 +6294,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         logger.debug("live video canlce:%s", rt.content)
         data = xml_to_dict(rt.content)
@@ -6243,7 +6367,8 @@ class CosS3Client(object):
             data=xml_request,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         logger.debug("ci auditing rsp:%s", rt.content)
         data = xml_to_dict(rt.content)
@@ -6294,7 +6419,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         logger.debug("query ci auditing:%s", rt.content)
         data = xml_to_dict(rt.content)
@@ -6305,6 +6431,85 @@ class CosS3Client(object):
             for detectItem in data['JobsDetail']['DetectDetail']:
                 if 'Result' in detectItem:
                     format_dict(detectItem, ['Result'])
+
+        return data
+
+    def ci_auditing_report_badcase(self, Bucket, ContentType, Label, SuggestedLabel, Text=None, Url=None, JobId=None, ModerationTime=None, **kwargs):
+        """审核结果反馈
+
+        :param Bucket(string): 存储桶名称.
+        :param ContentType(int): 需要反馈的数据类型，取值为：1-文本，2-图片。
+        :param Label(string): 审核给出的有问题的结果标签。
+        :param SuggestedLabel(string): 期望的正确处置标签，正常则填Normal。
+        :param Text(dic): 文本的Badcase，需要填写base64的文本内容，ContentType为1时必填。
+        :param Url(dic): 图片的Badcase，需要填写图片的url链接，ContentType为2时必填。
+        :param JobId(string): 该Case对应的审核任务ID，有助于定位审核记录。
+        :param ModerationTime(dict): 该Case的审核时间，有助于定位审核记录。格式为 2021-08-07T12:12:12+08:00
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 识别cos上的视频
+            response = client.ci_auditing_report_badcase(
+                Bucket='bucket',
+                ContentType=1,
+                Label='test.mp4',
+                SuggestedLabel='Normal'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        request = {
+            'ContentType': ContentType,
+            'Label': Label,
+            'SuggestedLabel': SuggestedLabel
+        }
+        if Text:
+            request['Text'] = Text
+        if Url:
+            request['Url'] = Url
+        if JobId:
+            request['JobId'] = JobId
+        if ModerationTime:
+            request['ModerationTime'] = ModerationTime
+
+        xml_request = format_xml(data=request, root='Request')
+        headers['Content-Type'] = 'application/xml'
+
+        path = '/report/badcase'
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.debug("ci_auditing_report_badcase, url=:{url} ,headers=:{headers}, params=:{params}, request=:{request}, ci_endpoint=:{ci_endpoint}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            request=request,
+            ci_endpoint=self._conf._endpoint_ci))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_request,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        logger.debug("ci auditing rsp:%s", rt.content)
+        data = xml_to_dict(rt.content)
 
         return data
 
@@ -6333,6 +6538,35 @@ class CosS3Client(object):
             )
             print response
         """
+        return self.ci_get_bucket(Regions=Regions, BucketName=BucketName,
+                                  BucketNames=BucketNames, PageNumber=PageNumber,
+                                  PageSize=PageSize, **kwargs)
+
+    def ci_get_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', Path = '/mediabucket', **kwargs):
+        """查询服务开通状态接口
+
+        :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
+        :param BucketName(string): 存储桶名称前缀，前缀搜索
+        :param BucketNames(string): 存储桶名称，以“,”分隔，支持多个存储桶，精确搜索
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询媒体处理队列接口
+            response = client.ci_get_bucket(
+                Regions='ap-chongqing,ap-shanghai',
+                BucketName='demo',
+                BucketNames='demo-1253960454,demo1-1253960454',
+                PageNumber='2'，
+                PageSize='3',
+            )
+            print response
+        """
         headers = mapped(kwargs)
         final_headers = {}
         params = {}
@@ -6345,7 +6579,7 @@ class CosS3Client(object):
 
         params = format_values(params)
 
-        path = "/mediabucket"
+        path = Path
         url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
         url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
             url=to_unicode(url),
@@ -6355,7 +6589,7 @@ class CosS3Client(object):
             pageNumber=to_unicode('pageNumber='+PageNumber),
             pageSize=to_unicode('pageSize='+PageSize),
         )
-        logger.info("get_media_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+        logger.info("ci_get_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
             params=params))
@@ -6365,11 +6599,15 @@ class CosS3Client(object):
             bucket=None,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
-        format_dict(data, ['MediaBucketList'])
+        if path == '/picbucket':
+            format_dict(data, ['PicBucketList'])
+        else:
+            format_dict(data, ['MediaBucketList'])
         return data
 
     def ci_get_media_queue(self, Bucket, State='All', QueueIds='', PageNumber='', PageSize='', UrlPath='/queue', **kwargs):
@@ -6425,7 +6663,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -6480,12 +6719,42 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
         format_dict(data, ['Queue'])
         return data
+
+    def ci_get_pic_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
+        """查询图片异步处理开通状态接口
+
+        :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
+        :param BucketName(string): 存储桶名称前缀，前缀搜索
+        :param BucketNames(string): 存储桶名称，以“,”分隔，支持多个存储桶，精确搜索
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询媒体处理队列接口
+            response = client.ci_get_pic_bucket(
+                Regions='ap-chongqing,ap-shanghai',
+                BucketName='demo',
+                BucketNames='demo-1253960454,demo1-1253960454',
+                PageNumber='2'，
+                PageSize='3',
+            )
+            print response
+        """
+        return self.ci_get_bucket(Regions=Regions, BucketName=BucketName,
+                                  BucketNames=BucketNames, PageNumber=PageNumber,
+                                  PageSize=PageSize, Path='/picbucket', **kwargs)
 
     def ci_update_media_pic_queue(self, Bucket, QueueId, Request={}, **kwargs):
         """ 更新图片处理队列接口
@@ -6583,7 +6852,8 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -6637,7 +6907,8 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -6686,7 +6957,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("ci_get_media_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -6738,7 +7010,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("ci_get_media_pic_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -6748,7 +7021,7 @@ class CosS3Client(object):
         format_dict(data, ['JobsDetail'])
         return data
 
-    def ci_list_media_pic_jobs(self, Bucket, QueueId, Tag, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+    def ci_list_media_pic_jobs(self, Bucket, Tag, QueueId=None, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
         """ 查询图片处理任务列表接口 https://cloud.tencent.com/document/product/436/67198
 
         :param Bucket(string): 存储桶名称.
@@ -6781,7 +7054,7 @@ class CosS3Client(object):
                                        OrderByTime=OrderByTime, States=States,
                                        Size=Size, NextToken=NextToken, Path='/pic_jobs', **kwargs)
 
-    def ci_list_media_jobs(self, Bucket, QueueId, Tag, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', Path='/jobs', **kwargs):
+    def ci_list_media_jobs(self, Bucket, Tag, QueueId=None, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', Path='/jobs', **kwargs):
         """ 查询任务接口 https://cloud.tencent.com/document/product/436/54011
 
         :param Bucket(string): 存储桶名称.
@@ -6821,15 +7094,16 @@ class CosS3Client(object):
         params = format_values(params)
         path = Path
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{QueueId}&{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
+        url = u"{url}?{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
             url=to_unicode(url),
-            QueueId=to_unicode('queueId='+QueueId),
             Tag=to_unicode('tag='+Tag),
             OrderByTime=to_unicode('orderByTime='+OrderByTime),
             States=to_unicode('states='+States),
             Size=to_unicode('size='+str(Size)),
             NextToken=to_unicode('nextToken='+NextToken)
         )
+        if QueueId is not None:
+            url = u"{url}&{QueueId}".format(url=url, QueueId=to_unicode('queueId='+QueueId))
         if StartCreationTime is not None:
             url = u"{url}&{StartCreationTime}".format(url=url,
                                                       StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
@@ -6846,13 +7120,282 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("list_media_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
         format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_create_workflow(self, Bucket, Body, **kwargs):
+        """ 创建工作流接口 https://cloud.tencent.com/document/product/460/76856
+
+        :param Bucket(string): 存储桶名称.
+        :param Body(dict): 创建工作流的配置信息.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建工作流接口
+            response = client.ci_create_workflow(
+                Bucket='bucket'
+                Body={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        xml_config = format_xml(data=Body, root='Request')
+        path = "/workflow"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_create_workflow result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_update_workflow_state(self, Bucket, WorkflowId, UpdateState, **kwargs):
+        """ 更新工作流接口 https://cloud.tencent.com/document/product/460/76861
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string): 需要更新状态的工作流ID.
+        :param UpdateState(string): 更新工作流的状态,有效值为active、paused
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新工作流状态接口
+            response = client.ci_update_workflow_state(
+                Bucket='bucket'
+                WorkflowId='',
+                UpdateState='active'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/workflow/" + WorkflowId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = url + '?' + UpdateState
+        logger.info("ci_update_workflow_state result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        return data
+
+    def ci_update_workflow(self, Bucket, WorkflowId, Body, **kwargs):
+        """ 更新工作流接口 https://cloud.tencent.com/document/product/460/76861
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string): 需要更新状态的工作流ID.
+        :param Body(dict): 更新工作流的配置信息.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_update_workflow(
+                Bucket='bucket'
+                Body={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        xml_config = format_xml(data=Body, root='Request')
+        path = "/workflow/" + WorkflowId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_update_workflow result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_workflow(self, Bucket, Ids='', Name='', PageNumber='', PageSize='', **kwargs):
+        """ 获取工作流详情接口 https://cloud.tencent.com/document/product/460/76857
+
+        :param Bucket(string): 存储桶名称.
+        :param Ids(string): 需要查询的工作流 ID，可传入多个，以,符号分割字符串.
+        :param Name(string): 需要查询的工作流名称.
+        :param PageNumber(string): 第几页.
+        :param PageSize(string): 每页个数.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_get_workflow(
+                Bucket='bucket'
+                Body={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/workflow"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{ids}&{name}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            ids=to_unicode('ids='+Ids),
+            name=to_unicode('name='+Name),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
+        )
+        logger.info("ci_get_workflow result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['MediaWorkflowList'])
+        return data
+
+    def ci_delete_workflow(self, Bucket, WorkflowId, **kwargs):
+        """ 删除工作流接口 https://cloud.tencent.com/document/product/460/76860
+
+        :param Bucket(string): 存储桶名称.
+        :param WorkflowId(string): 需要删除的工作流ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除指定工作流
+            response = client.ci_delete_workflow(
+                Bucket=bucket_name,
+                WorkflowId='w1bdxxxxxxxxxxxxxxxxx94a9',
+            )
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/workflow/" + WorkflowId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+
+        logger.info("ci_delete_workflow result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
         return data
 
     def ci_trigger_workflow(self, Bucket, WorkflowId, Key, **kwargs):
@@ -6905,7 +7448,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("ci_trigger_workflow result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -6954,7 +7498,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("ci_get_workflowexecution result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -7014,9 +7559,9 @@ class CosS3Client(object):
             NextToken=to_unicode('nextToken='+NextToken)
         )
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url), StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url), EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("ci_list_workflowexecution result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7027,7 +7572,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("ci_list_workflowexecution result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -7257,7 +7803,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -7288,7 +7835,7 @@ class CosS3Client(object):
         return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
                                           Request=Request, UrlPath="/docqueue/", **kwargs)
 
-    def ci_create_doc_job(self, Bucket, QueueId, InputObject, OutputBucket, OutputRegion, OutputObject, SrcType=None, TgtType=None,
+    def ci_create_doc_job(self, Bucket, InputObject, OutputBucket, OutputRegion, OutputObject, QueueId=None, SrcType=None, TgtType=None,
                           StartPage=None, EndPage=-1, SheetId=0, PaperDirection=0, PaperSize=0, DocPassword=None, Comments=None, PageRanges=None,
                           ImageParams=None, Quality=100, Zoom=100, ImageDpi=96, PicPagination=0, **kwargs):
         """ 创建任务接口 https://cloud.tencent.com/document/product/460/46942
@@ -7357,7 +7904,6 @@ class CosS3Client(object):
             'Input': {
                 'Object': InputObject,
             },
-            'QueueId': QueueId,
             'Tag': 'DocProcess',
             'Operation': {
                 'Output': {'Bucket': OutputBucket, 'Region': OutputRegion, 'Object': OutputObject},
@@ -7365,6 +7911,8 @@ class CosS3Client(object):
                 }
             }
         }
+        if QueueId:
+            body['QueueId'] = QueueId
         if SrcType:
             body['Operation']['DocProcess']['SrcType'] = SrcType
         if TgtType:
@@ -7411,7 +7959,8 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         return data
@@ -7460,7 +8009,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("ci_get_doc_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -7470,7 +8020,7 @@ class CosS3Client(object):
         format_dict(data, ['JobsDetail'])
         return data
 
-    def ci_list_doc_jobs(self, Bucket, QueueId, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+    def ci_list_doc_jobs(self, Bucket, QueueId=None, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
         """ 拉取文档预览任务列表接口 https://cloud.tencent.com/document/product/460/46944
 
         :param Bucket(string): 存储桶名称.
@@ -7510,19 +8060,22 @@ class CosS3Client(object):
         params = format_values(params)
         path = "/doc_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{QueueId}&{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
+        url = u"{url}?{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
             url=to_unicode(url),
-            QueueId=to_unicode('queueId='+QueueId),
             Tag=to_unicode('tag=DocProcess'),
             OrderByTime=to_unicode('orderByTime='+OrderByTime),
             States=to_unicode('states='+States),
             Size=to_unicode('size='+str(Size)),
             NextToken=to_unicode('nextToken='+NextToken)
         )
+        if QueueId is not None:
+            url = u"{url}&{QueueId}".format(url=url, QueueId=to_unicode('queueId='+QueueId))
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_doc_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7533,7 +8086,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("list_doc_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -7773,7 +8327,8 @@ class CosS3Client(object):
             bucket=None,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -7837,7 +8392,8 @@ class CosS3Client(object):
             bucket=None,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -7896,7 +8452,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -7927,7 +8484,7 @@ class CosS3Client(object):
         return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
                                           Request=Request, UrlPath="/asrqueue/", **kwargs)
 
-    def ci_create_asr_job(self, Bucket, QueueId, OutputBucket, OutputRegion, OutputObject, InputObject=None, Url=None, TemplateId=None,
+    def ci_create_asr_job(self, Bucket, OutputBucket, OutputRegion, OutputObject, QueueId=None, InputObject=None, Url=None, TemplateId=None,
                           SpeechRecognition=None, CallBack=None, CallBackFormat=None, CallBackType=None, CallBackMqConfig=None, **kwargs):
         """ 创建语音识别任务接口 https://cloud.tencent.com/document/product/460/78951
 
@@ -7984,7 +8541,6 @@ class CosS3Client(object):
         body = {
             'Input': {
             },
-            'QueueId': QueueId,
             'Tag': 'SpeechRecognition',
             'Operation': {
                 'Output': {
@@ -7994,6 +8550,8 @@ class CosS3Client(object):
                 },
             }
         }
+        if QueueId:
+            body['QueueId'] = QueueId
         if InputObject:
             body['Input']['Object'] = InputObject
         if Url:
@@ -8003,11 +8561,11 @@ class CosS3Client(object):
         if SpeechRecognition:
             body['Operation']['SpeechRecognition'] = SpeechRecognition
         if CallBack:
-            body['Operation']['CallBack'] = CallBack
+            body['CallBack'] = CallBack
         if CallBackFormat:
-            body['Operation']['CallBackFormat'] = CallBackFormat
+            body['CallBackFormat'] = CallBackFormat
         if CallBackMqConfig:
-            body['Operation']['CallBackMqConfig'] = CallBackMqConfig
+            body['CallBackMqConfig'] = CallBackMqConfig
         xml_config = format_xml(data=body, root='Request')
         path = "/asr_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
@@ -8023,7 +8581,8 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         return data
@@ -8072,7 +8631,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("ci_get_asr_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -8082,7 +8642,7 @@ class CosS3Client(object):
         format_dict(data, ['JobsDetail'])
         return data
 
-    def ci_list_asr_jobs(self, Bucket, QueueId, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
+    def ci_list_asr_jobs(self, Bucket, QueueId=None, StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
         """ 拉取语音识别任务列表接口 https://cloud.tencent.com/document/product/460/46230
 
         :param Bucket(string): 存储桶名称.
@@ -8122,19 +8682,22 @@ class CosS3Client(object):
         params = format_values(params)
         path = "/asr_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{QueueId}&{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
+        url = u"{url}?{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
             url=to_unicode(url),
-            QueueId=to_unicode('queueId='+QueueId),
             Tag=to_unicode('tag=SpeechRecognition'),
             OrderByTime=to_unicode('orderByTime='+OrderByTime),
             States=to_unicode('states='+States),
             Size=to_unicode('size='+str(Size)),
             NextToken=to_unicode('nextToken='+NextToken)
         )
+        if QueueId is not None:
+            url = u"{url}&{QueueId}".format(url=to_unicode(url), QueueId=to_unicode('queueId='+QueueId))
         if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(StartCreationTime=to_unicode('startCreationTime='+StartCreationTime))
+            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(EndCreationTime=to_unicode('endCreationTime='+EndCreationTime))
+            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_asr_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8145,7 +8708,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
         logger.debug("list_asr_jobs result, url=:{url} ,content=:{content}".format(
             url=url,
             content=rt.content))
@@ -8258,7 +8822,8 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         return data
@@ -8310,7 +8875,7 @@ class CosS3Client(object):
             response = client.ci_update_asr_template(
                 Bucket=bucket_name,
                 TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
-                Name='QueueId1',
+                Name='updateAsr',
                 EngineModelType='16k_zh',
                 ChannelNum=1,
                 ResTextFormat=1,
@@ -8368,7 +8933,8 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         return data
@@ -8428,7 +8994,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            ci_request=True)
 
         data = xml_to_dict(rt.content)
         # 单个元素时将dict转为list
@@ -8480,10 +9047,1053 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def file_hash(self, Bucket, Key, Type, AddToHeader=False, **kwargs):
+        """以同步请求的方式进行文件哈希值计算，实时返回计算得到的哈希值 https://cloud.tencent.com/document/product/436/83107
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param Type(string): 支持的哈希算法类型，有效值：md5、sha1、sha256.
+        :param AddToHeader(bool): 是否将计算得到的哈希值，自动添加至文件的自定义header，格式为：x-cos-meta-md5/sha1/sha256; 有效值： True、False，不填则默认为False.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 用于获取COS文件某个时间的截图
+            response = client.file_hash(Bucket=bucket_name, Key="mytest.mp4", Type='md5')
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'filehash'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params['type'] = Type
+        params['addtoheader'] = str(AddToHeader).lower()
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("file_hash, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
             headers=headers)
 
         data = xml_to_dict(rt.content)
         return data
+
+    def _ci_create_file_process_job(self, Bucket, Body=None, **kwargs):
+        """ 创建文件处理公共接口
+        :param Bucket(string): 存储桶名称.
+        :param Body(dict): 文件处理参数信息.
+        :return(dict): 查询成功返回的结果,dict类型.
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        xml_config = format_xml(data=Body, root='Request')
+        path = "/file_jobs"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("_ci_create_file_job result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_create_file_hash_job(self, Bucket, InputObject,
+        FileHashCodeConfig, QueueId=None, CallBack=None, CallBackFormat=None,
+        CallBackType=None, CallBackMqConfig=None, UserData=None, **kwargs):
+        """ 创建哈希值计算任务接口 https://cloud.tencent.com/document/product/436/83108
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 任务所在的队列 ID.
+        :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param FileHashCodeConfig(dict): 指定哈希值计算的处理规则.
+        :param CallBack(string): 任务结束回调，回调Url
+        :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
+        :param CallBackType(string): 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        :param CallBackMqConfig(dict): 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填，详见 https://cloud.tencent.com/document/product/460/78927#CallBackMqConfig
+        :param UserData(string): 透传用户信息, 可打印的 ASCII 码, 长度不超过1024.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            body = {
+                    'Type': 'MD5',
+            }
+            response = client.ci_create_file_hash_job(
+                Bucket=bucket_name,
+                InputObject="mytest.mp4",
+                FileHashCodeConfig=body
+            )
+            print(response)
+            return response
+        """
+        body = {
+            'Input': {
+                'Object': InputObject
+            },
+            'Tag': 'FileHashCode',
+            'Operation': {
+                'FileHashCodeConfig': FileHashCodeConfig,
+            }
+        }
+        if QueueId:
+            body['QueueId'] = QueueId
+        if CallBack:
+            body['CallBack'] = CallBack
+        if CallBackFormat:
+            body['CallBackFormat'] = CallBackFormat
+        if CallBackMqConfig:
+            body['CallBackMqConfig'] = CallBackMqConfig
+        if CallBackType:
+            body['CallBackType'] = CallBackType
+        if UserData:
+            body['Operation']['UserData'] = UserData
+
+        return self._ci_create_file_process_job(Bucket, Body=body, **kwargs)
+
+    def ci_create_file_uncompress_job(self, Bucket, InputObject, OutputBucket,
+        OutputRegion, FileUncompressConfig, QueueId=None, CallBack=None,
+        CallBackFormat=None, CallBackType=None, CallBackMqConfig=None,
+        UserData=None, **kwargs):
+        """ 创建文件解压任务接口 https://cloud.tencent.com/document/product/436/83110
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 任务所在的队列 ID.
+        :param InputObject(string): 文件在 COS 上的文件路径，Bucket 由 Host 指定.
+        :param OutputBucket(string): 存储结果的存储桶.
+        :param OutputRegion(string): 存储结果的存储桶的地域.
+        :param FileUncompressConfig(dict): 指定文件解压的处理规则.
+        :param CallBack(string): 任务结束回调，回调Url
+        :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
+        :param CallBackType(string): 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        :param CallBackMqConfig(dict): 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填，详见 https://cloud.tencent.com/document/product/460/78927#CallBackMqConfig
+        :param UserData(string): 透传用户信息, 可打印的 ASCII 码, 长度不超过1024.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            body = {
+                'Prefix': 'output/',
+            }
+            response = client.ci_create_file_uncompress_job(
+                Bucket=bucket_name,
+                InputObject='test.zip',
+                FileUncompressConfig=body
+            )
+            print(response)
+            return response
+        """
+        body = {
+            'Input': {
+                'Object': InputObject
+            },
+            'Tag': 'FileUncompress',
+            'Operation': {
+                'FileUncompressConfig': FileUncompressConfig,
+                'Output': {
+                    'Bucket': OutputBucket,
+                    'Region': OutputRegion,
+                }
+            }
+        }
+        if QueueId:
+            body['QueueId'] = QueueId
+        if CallBack:
+            body['CallBack'] = CallBack
+        if CallBackFormat:
+            body['CallBackFormat'] = CallBackFormat
+        if CallBackMqConfig:
+            body['CallBackMqConfig'] = CallBackMqConfig
+        if CallBackType:
+            body['CallBackType'] = CallBackType
+        if UserData:
+            body['Operation']['UserData'] = UserData
+
+        return self._ci_create_file_process_job(Bucket, Body=body, **kwargs)
+
+    def ci_create_file_compress_job(self, Bucket, OutputBucket, OutputRegion, OutputObject,
+        FileCompressConfig, QueueId=None, CallBack=None, CallBackFormat=None,
+        CallBackType=None, CallBackMqConfig=None, UserData=None, **kwargs):
+        """ 创建多文件打包压缩任务接口 https://cloud.tencent.com/document/product/436/83112
+
+        :param Bucket(string): 存储桶名称.
+        :param OutputBucket(string): 存储结果的存储桶.
+        :param OutputRegion(string): 存储结果的存储桶的地域.
+        :param OutputObject(string): 输出文件路径。
+        :param QueueId(string): 任务所在的队列 ID.
+        :param FileCompressConfig(dict): 指定文件打包的处理规则.
+        :param CallBack(string): 任务结束回调，回调Url
+        :param CallBackFormat(string): 任务回调格式，JSON 或 XML，默认 XML，优先级高于队列的回调格式
+        :param CallBackType(string): 任务回调类型，Url 或 TDMQ，默认 Url，优先级高于队列的回调类型
+        :param CallBackMqConfig(dict): 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填，详见 https://cloud.tencent.com/document/product/460/78927#CallBackMqConfig
+        :param UserData(string): 透传用户信息, 可打印的 ASCII 码, 长度不超过1024.
+        :return(dict): 任务返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            body = {
+                'Flatten': '0',
+                'Format': 'zip',
+                'Prefix': '/',
+            }
+            response = client.ci_create_file_compress_job(
+                Bucket=bucket_name,
+                OutputBucket=bucket_name,
+                OutputRegion='ap-guangzhou',
+                OutputObject='result.zip',
+                FileCompressConfig=body
+            )
+            print(response)
+            return response
+        """
+        body = {
+            'Tag': 'FileCompress',
+            'Operation': {
+                'FileCompressConfig': FileCompressConfig,
+                'Output': {
+                    'Bucket': OutputBucket,
+                    'Region': OutputRegion,
+                    'Object': OutputObject
+                },
+            }
+        }
+        if QueueId:
+            body['QueueId'] = QueueId
+        if CallBack:
+            body['CallBack'] = CallBack
+        if CallBackFormat:
+            body['CallBackFormat'] = CallBackFormat
+        if CallBackMqConfig:
+            body['CallBackMqConfig'] = CallBackMqConfig
+        if CallBackType:
+            body['CallBackType'] = CallBackType
+        if UserData:
+            body['Operation']['UserData'] = UserData
+
+        return self._ci_create_file_process_job(Bucket, Body=body, **kwargs)
+
+    def ci_get_file_process_jobs(self, Bucket, JobIDs, **kwargs):
+        """ 查询文件处理任务接口
+
+        :param Bucket(string): 存储桶名称.
+        :param JobIDs(string): 任务ID，以,分割多个任务ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_get_file_process_jobs(
+                Bucket='bucket'
+                JobIDs={}
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/file_jobs/" + JobIDs
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_get_file_process_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+        logger.debug("ci_get_file_process_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_file_zip_preview(self, Bucket, Key, **kwargs):
+        """ci_file_zip_preview 压缩文件预览接口 https://cloud.tencent.com/document/product/436/93032
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): 预览结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response = client.ci_file_zip_preview(
+                Bucket='bucket',
+                Key='test.zip',
+            )
+            print response
+        """
+        return self.ci_process(Bucket, Key, "zippreview", **kwargs)
+
+    def ci_recognize_logo_process(self, Bucket, Key=None, Url=None, **kwargs):
+        """Logo 识别
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 对象文件名，例如：folder/document.jpg.
+        :param Url(string): 公网可访问的图片链接. Key与Url参数不可同时传入，根据需求选择其中一个
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            def ci_recognize_logo_process():
+                # 通用文字识别
+                response = client.ci_recognize_logo_process(
+                    Bucket=bucket_name,
+                    Key='demo.jpeg',
+                )
+                print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'RecognizeLogo'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if Url:
+            params['detect-url'] = Url
+        params = format_values(params)
+        url = self._conf.uri(bucket=Bucket)
+        cos_s3_auth = CosS3Auth(self._conf, params=params)
+        if Key:
+            url = self._conf.uri(bucket=Bucket, path=Key)
+            cos_s3_auth = CosS3Auth(self._conf, Key, params=params)
+        logger.info("ci_recognize_logo_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=cos_s3_auth,
+            params=params,
+            headers=headers)
+
+        data = xml_to_dict(rt.content)
+
+        return data
+
+    def ci_super_resolution_process(self, Bucket, Key=None, Url=None, **kwargs):
+        """图像超分 https://cloud.tencent.com/document/product/460/83793#1.-.E4.B8.8B.E8.BD.BD.E6.97.B6.E5.A4.84.E7.90.86
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 对象文件名，例如：folder/document.jpg.
+        :param Url(string): 您可以通过填写 Url 处理任意公网可访问的图片链接。不填写 detect-url 时，后台会默认处理 ObjectKey ，填写了 detect-url 时，后台会处理 detect-url 链接，无需再填写 ObjectKey，detect-url 示例：http://www.example.com/abc.jpg ，需要进行 UrlEncode，处理后为http%25253A%25252F%25252Fwww.example.com%25252Fabc.jpg。
+        :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            def ci_super_resolution_process():
+                # 图像超分
+                response = client.ci_super_resolution_process(
+                    Bucket=bucket_name,
+                    Key='demo.jpeg',
+                )
+                print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'ci-process': 'AISuperResolution'}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if Url:
+            params['detect-url'] = Url
+        params = format_values(params)
+        url = self._conf.uri(bucket=Bucket)
+        cos_s3_auth = CosS3Auth(self._conf, params=params)
+        if Key:
+            url = self._conf.uri(bucket=Bucket, path=Key)
+            cos_s3_auth = CosS3Auth(self._conf, Key, params=params)
+        logger.info("ci_super_resolution_process, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=cos_s3_auth,
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        response['Body'] = StreamBody(rt)
+
+        return response
+
+    def ci_cancel_jobs(self, Bucket, JobID, **kwargs):
+        """取消媒体处理任务接口 https://cloud.tencent.com/document/product/436/85082
+
+        :param Bucket(string): 存储桶名称.
+        :param JobID(string): 任务id.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 下载成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 取消任务
+            response = client.ci_cancel_jobs(
+                Bucket='bucket',
+                JobID='v11122zxxxazzz',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = '/jobs/' + JobID
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url += "?cancel"
+        logger.info("ci_cancel_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        logger.debug("ci_cancel_jobs:%s", rt.content)
+        return ''
+
+    def ci_create_inventory_trigger_jobs(self, Bucket, JobBody, **kwargs):
+        """ 创建批量处理任务接口 https://cloud.tencent.com/document/product/460/80155
+        :param Bucket(string): 存储桶名称.
+        :param JobBody(dict): 创建批量处理任务的配置.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_create_inventory_trigger_jobs(
+                Bucket='bucket'
+                JobBody={},
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        xml_config = format_xml(data=JobBody, root='Request')
+        path = "/inventorytriggerjob"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_create_inventory_trigger_jobs result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_delete_inventory_trigger_jobs(self, Bucket, JobId, **kwargs):
+        """ 取消指定批量任务接口 https://cloud.tencent.com/document/product/460/76892
+
+        :param Bucket(string): 存储桶名称.
+        :param JobId(string): 需要取消的批量任务ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新工作流状态接口
+            response = client.ci_delete_inventory_trigger_jobs(
+                Bucket='bucket'
+                JobId='',
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/inventorytriggerjob/" + JobId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = url + '?cancel'
+        logger.info("ci_delete_inventory_trigger_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        return data
+
+    def ci_list_inventory_trigger_jobs(self, Bucket, StartCreationTime=None,
+        EndCreationTime=None, OrderByTime='Desc', States='All', Size=10,
+        NextToken='', Type='Workflow', WorkflowId='', JobId='', Name='', **kwargs):
+        """ 查询批量任务列表接口 https://cloud.tencent.com/document/product/460/76894
+
+        :param Bucket(string): 存储桶名称.
+        :param StartCreationTime(string): 开始时间.
+        :param EndCreationTime(string): 结束时间.
+        :param OrderByTime(string): 排序方式.
+        :param States(string): 任务状态.
+        :param Size(string): 任务个数.
+        :param NextToken(string): 请求的上下文，用于翻页.
+        :param Type(string): 拉取批量任务类型，工作流类型 Workflow 、任务类型 Job.
+        :param WorkflowId(string): 工作流 ID.
+        :param JobId(string): 批量触发任务 ID.
+        :param Name(string): 批量触发任务名称.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_list_inventory_trigger_jobs(
+                Bucket='bucket'
+                QueueId='',
+                Tag='Transcode'
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = 'inventorytriggerjob'
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{Type}&{OrderByTime}&{States}&{Size}&{NextToken}&{WorkflowId}&{JobId}&{Name}".format(
+            url=to_unicode(url),
+            Type=to_unicode('type='+Type),
+            OrderByTime=to_unicode('orderByTime='+OrderByTime),
+            States=to_unicode('states='+States),
+            Size=to_unicode('size='+str(Size)),
+            NextToken=to_unicode('nextToken='+NextToken),
+            WorkflowId=to_unicode('workflowId='+WorkflowId),
+            JobId=to_unicode('jobId='+JobId),
+            Name=to_unicode('name='+Name)
+        )
+        if StartCreationTime is not None:
+            url = u"{url}&{StartCreationTime}".format(url=url,
+                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
+        if EndCreationTime is not None:
+            url = u"{url}&{EndCreationTime}".format(url=url,
+                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
+        logger.info("ci_list_inventory_trigger_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+        logger.debug("ci_list_inventory_trigger_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_get_inventory_trigger_jobs(self, Bucket, JobID, **kwargs):
+        """ 查询批量任务接口 https://cloud.tencent.com/document/product/460/76893
+
+        :param Bucket(string): 存储桶名称.
+        :param JobID(string): 任务ID
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_get_inventory_trigger_jobs(
+                Bucket='bucket'
+                JobIDs={}
+            )
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/inventorytriggerjob/" + JobID
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_get_inventory_trigger_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+        logger.debug("ci_get_inventory_trigger_jobs result, url=:{url} ,content=:{content}".format(
+            url=url,
+            content=rt.content))
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['JobsDetail'])
+        return data
+
+    def ci_create_template(self, Bucket, Template, **kwargs):
+        """ 创建模板接口 https://cloud.tencent.com/document/product/460/78939
+
+        :param Bucket(string): 存储桶名称.
+        :param Name(string): 模板名称.
+        :param Template(dict): 模板详细配置
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 创建成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建语音识别模板接口
+            response = client.ci_create_template(
+                Bucket=bucket_name,
+                Name='templateName',
+                Template='16k_zh',
+            )
+            print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+
+        xml_config = format_xml(data=Template, root='Request')
+        path = "/template"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_create_template result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_update_template(self, Bucket, TemplateId, Template, **kwargs):
+        """ 更新模板接口 https://cloud.tencent.com/document/product/460/78942
+
+        :param Bucket(string): 存储桶名称.
+        :param TemplateId(string): 需要更新的模板ID。
+        :param Template(dict): 模板配置.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 更新成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 更新模板接口
+            response = client.ci_update_template(
+                Bucket=bucket_name,
+                TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
+                Template={},
+            )
+            print(response)
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+        if 'Content-Type' not in headers:
+            headers['Content-Type'] = 'application/xml'
+
+        params = format_values(params)
+        xml_config = format_xml(data=Template, root='Request')
+        path = "/template/" + TemplateId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_update_asr_template result, url=:{url} ,headers=:{headers}, params=:{params}, xml_config=:{xml_config}".format(
+            url=url,
+            headers=headers,
+            params=params,
+            xml_config=xml_config))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_template(self, Bucket, Category='Custom', Ids='', Name='', PageNumber=1, PageSize=10, **kwargs):
+        """ 查询模板接口 https://cloud.tencent.com/document/product/460/46943
+
+        :param Bucket(string): 存储桶名称.
+        :param Category(string): Official（系统预设模板），Custom（自定义模板），默认值：Custom.
+        :param Ids(string): 模板 ID，以,符号分割字符串.
+        :param Name(string): 模板名称前缀.
+        :param PageNumber(string): 第几页，默认值：1.
+        :param PageSize(string): 每页个数，默认值：10.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询语音识别模板接口
+            response = client.ci_get_template(
+                Bucket=bucket_name,
+            )
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/template"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        url = u"{url}?{category}&{ids}&{name}&{pageNumber}&{pageSize}".format(
+            url=to_unicode(url),
+            category=to_unicode('category='+Category),
+            ids=to_unicode('ids='+Ids),
+            name=to_unicode('name='+Name),
+            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
+            pageSize=to_unicode('pageSize='+str(PageSize)),
+        )
+        logger.info("ci_get_template result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        # 单个元素时将dict转为list
+        format_dict(data, ['TemplateList'])
+        return data
+
+    def ci_delete_template(self, Bucket, TemplateId, **kwargs):
+        """ 删除模板接口 https://cloud.tencent.com/document/product/460/46943
+
+        :param Bucket(string): 存储桶名称.
+        :param TemplateId(string): 需要删除的模板ID.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除指定语音识别模板
+            response = client.ci_delete_template(
+                Bucket=bucket_name,
+                TemplateId='t1bdxxxxxxxxxxxxxxxxx94a9',
+            )
+            print(response)
+            return response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/template/" + TemplateId
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+
+        logger.info("ci_delete_template result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = xml_to_dict(rt.content)
+        return data
+
+    def ci_get_ai_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
+        """查询ai处理开通状态接口
+
+        :param Regions(string): 地域信息，例如 ap-shanghai、ap-beijing，若查询多个地域以“,”分隔字符串
+        :param BucketName(string): 存储桶名称前缀，前缀搜索
+        :param BucketNames(string): 存储桶名称，以“,”分隔，支持多个存储桶，精确搜索
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询媒体处理队列接口
+            response = client.ci_get_ai_bucket(
+                Regions='ap-chongqing,ap-shanghai',
+                BucketName='demo',
+                BucketNames='demo-1253960454,demo1-1253960454',
+                PageNumber='2'，
+                PageSize='3',
+            )
+            print response
+        """
+        return self.ci_get_bucket(Regions=Regions, BucketName=BucketName,
+                                  BucketNames=BucketNames, PageNumber=PageNumber,
+                                  PageSize=PageSize, Path='/ai_bucket', **kwargs)
+
+    def ci_update_ai_queue(self, Bucket, QueueId, Request={}, **kwargs):
+        """ 更新图片处理队列接口
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueId(string): 队列ID.
+        :param Request(dict): 更新队列配置请求体.
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建任务接口
+            response = client.ci_update_ai_queue(
+                Bucket='bucket',
+                QueueId='',
+                Request={},
+            )
+            print response
+        """
+        return self.ci_update_media_queue(Bucket=Bucket, QueueId=QueueId,
+                                          Request=Request, UrlPath="/ai_queue/", **kwargs)
+
+    def ci_get_ai_queue(self, Bucket, State='All', QueueIds='', PageNumber='', PageSize='', **kwargs):
+        """查询图片处理队列接口
+
+        :param Bucket(string): 存储桶名称.
+        :param QueueIds(string): 队列 ID，以“,”符号分割字符串.
+        :param State(string): 队列状态
+        :param PageNumber(string): 第几页
+        :param PageSize(string): 每页个数
+        :param kwargs(dict): 设置请求的headers.
+        :return(dict): 查询成功返回的结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 查询媒体处理队列接口
+            response = client.ci_get_ai_queue(
+                Bucket='bucket'
+            )
+            print response
+        """
+        return self.ci_get_media_queue(Bucket=Bucket, State=State, QueueIds=QueueIds,
+                                       PageNumber=PageNumber, PageSize=PageSize,
+                                       UrlPath="/ai_queue", **kwargs)
 
 
 if __name__ == "__main__":
