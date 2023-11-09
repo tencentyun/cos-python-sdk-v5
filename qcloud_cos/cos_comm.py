@@ -460,7 +460,7 @@ def parse_object_canned_acl(result_acl, rsp_headers):
         return "default"
     public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'},
                    'Permission': 'READ'}
-    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+    if 'AccessControlList' in result_acl and result_acl['AccessControlList'] is not None and 'Grant' in result_acl['AccessControlList']:
         if public_read in result_acl['AccessControlList']['Grant']:
             return "public-read"
     return "private"
@@ -472,7 +472,7 @@ def parse_bucket_canned_acl(result_acl):
                    'Permission': 'READ'}
     public_write = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'},
                     'Permission': 'WRITE'}
-    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+    if 'AccessControlList' in result_acl and result_acl['AccessControlList'] is not None and 'Grant' in result_acl['AccessControlList']:
         if public_read in result_acl['AccessControlList']['Grant']:
             if public_write in result_acl['AccessControlList']['Grant']:
                 return "public-read-write"
