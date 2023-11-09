@@ -30,19 +30,26 @@ bucket_name = 'test-1250000000'
 
 
 def ci_auditing_video_submit():
+    freeze = {
+        'PornScore': 60,
+        'AdsScore': 50
+    }
     response = client.ci_auditing_video_submit(Bucket=bucket_name,
                                                Key="test.mp4",
                                                Callback="http://www.demo.com",
                                                CallbackVersion='Simple',
+                                               CallbackType=1,
                                                DetectContent=1,
                                                Mode='Interval',
                                                Count=1,
-                                               TimeInterval=1)
+                                               TimeInterval=1,
+                                               Freeze=freeze,)
     print(str(response))
 
 
 def ci_auditing_video_query():
-    response = client.ci_auditing_video_query(Bucket=bucket_name, JobID="jobId")
+    response = client.ci_auditing_video_query(Bucket=bucket_name, JobID="av6ef961d45c3711ee8ace525400198613")
+    print(response)
     print(response['JobsDetail']['State'])
 
 
@@ -98,6 +105,9 @@ def ci_auditing_image_batch():
 
 def ci_live_video_auditing():
     # 提交视频流审核任务
+    storage_conf = {
+        'Path': '/test/'
+    }
     response = client.ci_auditing_live_video_submit(
         Bucket=bucket_name,
         Url='rtmp://example.com/live/123',
@@ -113,9 +123,9 @@ def ci_live_video_auditing():
             'Type': 'Type-test',
         },
         BizType='d0292362d07428b4f6982a31bf97c246',
-        CallbackType=1
+        CallbackType=1,
+        StorageConf=storage_conf
     )
-    assert (response['JobsDetail']['JobId'])
     jobId = response['JobsDetail']['JobId']
     time.sleep(5)
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
@@ -159,12 +169,20 @@ def ci_auditing_text_submit():
         'Level': '100',  # 一般用于表示等级信息，长度不超过128字节
         'Role': '测试人员',  # 一般用于表示角色信息，长度不超过128字节
     }
+    freeze = {
+        'PornScore': '50',  # 取值为[0,100]，表示当色情审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+        'AdsScore': '50'  # 取值为[0,100]，表示当广告审核结果大于或等于该分数时，自动进行冻结操作。不填写则表示不自动冻结，默认值为空。
+    }
     response = client.ci_auditing_text_submit(
         Bucket=bucket_name,  # 桶名称
         Content='123456test'.encode("utf-8"),  # 需要审核的文本内容
         BizType='',  # 表示审核策略的唯一标识
         UserInfo=user_info,  # 用户业务字段
         DataId='456456456',  # 待审核的数据进行唯一业务标识
+        CallbackType=2,
+        CallbackVersion='Detail',
+        Callback='http://www.callback.com',
+        Freeze=freeze
     )
     print(response)
 
@@ -204,12 +222,90 @@ def ci_auditing_text_txt_query():
     print(response)
 
 
+def ci_get_object_sensitive_content_recognition():
+    """测试ci文件内容识别的接口"""
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.get_object_sensitive_content_recognition(
+        Bucket=bucket_name,
+        Key='test.jpg',
+        Interval=3,
+        MaxFrames=20,
+        Async=1,
+        CallBack="www.callback.com",
+        # BizType='xxxx',
+        **kwargs
+    )
+    print(response)
+    assert response
+
+
+def ci_auditing_audio_submit():
+    freeze = {
+        'PornScore': 60,
+        'AdsScore': 50
+    }
+    response = client.ci_auditing_audio_submit(Bucket=bucket_name,
+                                               Key='test.mp4',
+                                               Callback="http://www.demo.com",
+                                               CallbackVersion='Simple',
+                                               CallbackType=1,
+                                               Freeze=freeze
+                                               )
+    jobId = response['JobsDetail']['JobId']
+    print(response)
+    while True:
+        time.sleep(5)
+        response = client.ci_auditing_audio_query(Bucket=bucket_name, JobID=jobId)
+        print(response['JobsDetail']['State'])
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
+
+
+def ci_auditing_document_submit():
+    freeze = {
+        'PornScore': 60,
+        'AdsScore': 50
+    }
+    response = client.ci_auditing_document_submit(Bucket=bucket_name,
+                                                  Url='https://test-1250000000.cos.ap-guangzhou.myqcloud.com/test.txt',
+                                                  Key='1.txt',
+                                                  Type='txt',
+                                                  Callback="http://www.demo.com",
+                                                  CallbackType=2,
+                                                  Freeze=freeze)
+    print(response)
+    jobId = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_auditing_document_query(Bucket=bucket_name, JobID=jobId, **kwargs)
+        print(response['JobsDetail']['State'])
+        print(str(response))
+        if response['JobsDetail']['State'] == 'Success':
+            print(str(response))
+            break
+
+
+def ci_auditing_report_badcase():
+    response = client.ci_auditing_report_badcase(Bucket=bucket_name,
+                                                 ContentType=2,
+                                                 Label='Ads',
+                                                 SuggestedLabel='Normal',
+                                                 Url='https://test-1250000000.cos.ap-chongqing.myqcloud.com/test.jpg')
+    print(response)
+
+
 if __name__ == '__main__':
     # ci_auditing_video_submit()
     # ci_auditing_video_query()
-    ci_auditing_image_batch()
+    # ci_auditing_image_batch()
     # ci_live_video_auditing()
     # ci_auditing_virus_submit_and_query()
     # ci_auditing_text_submit()
     # ci_auditing_text_txt_submit()
     # ci_auditing_text_txt_query()
+    # ci_get_object_sensitive_content_recognition()
+    # ci_auditing_audio_submit()
+    # ci_auditing_document_submit()
+    ci_auditing_report_badcase()
