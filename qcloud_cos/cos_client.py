@@ -3447,7 +3447,8 @@ class CosS3Client(object):
                 fp.seek(offset, 0)
                 data = fp.read(size)
             rt = self.upload_part(bucket, key, data, part_num, uploadid, enable_md5, **kwargs)
-            md5_lst.append({'PartNumber': part_num, 'ETag': rt['ETag']})
+            lower_rt = { k.lower():v for k,v in rt.items() }
+            md5_lst.append({'PartNumber': part_num, 'ETag': lower_rt['etag']})
         if progress_callback:
             progress_callback.report(size)
         return None
