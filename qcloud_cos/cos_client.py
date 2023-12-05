@@ -44,7 +44,7 @@ class CosConfig(object):
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
                  PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True, SignParams=True,
-                 AutoSwitchDomainOnRetry=False):
+                 AutoSwitchDomainOnRetry=True):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
