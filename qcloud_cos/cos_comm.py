@@ -1,7 +1,7 @@
 # -*- coding=utf-8
 
 from six import text_type, binary_type, string_types
-from six.moves.urllib.parse import quote, unquote
+from six.moves.urllib.parse import quote, unquote, urlparse
 import hashlib
 import base64
 import os
@@ -243,6 +243,37 @@ def format_endpoint(endpoint, region, module, EnableOldDomain, EnableInternalDom
             return u"{region}.tencentcos.cn".format(region=region)
     else:
         return None
+
+def switch_hostname(host):
+    """将cos默认域名的.myqcloud.com后缀替换为.tencentcos.cn"""
+    if not host:
+        raise CosClientError("Host is required not empty!")
+    
+    cos_old_suffix = ".myqcloud.com" # 老域名
+    cos_new_suffix = ".tencentcos.cn" # 新域名
+    cos_cdn_suffix = ".file.myqcloud.com" # CDN默认域名不替换
+    if host.endswith(cos_old_suffix) and not host.endswith(cos_cdn_suffix):
+        host = host[:-len(cos_old_suffix)] + cos_new_suffix
+    elif host.endswith(cos_new_suffix):
+        host = host[:-len(cos_new_suffix)] + cos_old_suffix
+    
+    """返回原始host"""
+    return host
+
+def switch_hostname_for_url(url):
+    if not url:
+        raise CosClientError("Url is required not empty!")
+
+    url_parsed = urlparse(url)
+    if url_parsed.hostname is not None:
+        host = url_parsed.hostname
+        new_host = switch_hostname(host)
+        if host != new_host:
+            new_url = url.replace(host, new_host)
+            return new_url
+
+    """返回原始url"""
+    return url
 
 
 def format_region(region, module, EnableOldDomain, EnableInternalDomain):

@@ -43,7 +43,8 @@ class CosConfig(object):
     def __init__(self, Appid=None, Region=None, SecretId=None, SecretKey=None, Token=None, CredentialInstance=None, Scheme=None, Timeout=None,
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
-                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True, SignParams=True):
+                 PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True, SignParams=True,
+                 AutoSwitchDomainOnRetry=False):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -74,6 +75,7 @@ class CosConfig(object):
         :param EnableOldDomain(bool):  是否使用旧的myqcloud.com域名访问COS
         :param EnableInternalDomain(bool):  是否使用内网域名访问COS
         :param SignParams(bool): 是否将请求参数算入签名
+        :param AutoSwitchDomainOnRetry(bool): 重试请求时是否自动切换域名
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -98,6 +100,7 @@ class CosConfig(object):
         self._enable_old_domain = EnableOldDomain
         self._enable_internal_domain = EnableInternalDomain
         self._sign_params = SignParams
+        self._auto_switch_domain_on_retry = AutoSwitchDomainOnRetry
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnableInternalDomain)
@@ -376,6 +379,11 @@ class CosS3Client(object):
                     break
                 else:
                     if j < self._retry and client_can_retry(file_position, **kwargs):
+                        if self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                            # 重试时切换域名
+                            logger.debug("switch hostname, url before: " + url)
+                            url = switch_hostname_for_url(url)
+                            logger.debug("switch hostname, url after: " + url)
                         continue
                     else:
                         break
@@ -383,6 +391,11 @@ class CosS3Client(object):
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
                 if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
                     if client_can_retry(file_position, **kwargs):
+                        if self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                            # 重试时切换域名
+                            logger.debug("switch hostname, url before: " + url)
+                            url = switch_hostname_for_url(url)
+                            logger.debug("switch hostname, url after: " + url)
                         continue
                 raise CosClientError(str(e))
 
@@ -3447,7 +3460,7 @@ class CosS3Client(object):
                 fp.seek(offset, 0)
                 data = fp.read(size)
             rt = self.upload_part(bucket, key, data, part_num, uploadid, enable_md5, **kwargs)
-            lower_rt = { k.lower():v for k,v in rt.items() }
+            lower_rt = dict([(k.lower(), v) for k, v in rt.items()])
             md5_lst.append({'PartNumber': part_num, 'ETag': lower_rt['etag']})
         if progress_callback:
             progress_callback.report(size)
