@@ -249,15 +249,10 @@ def switch_hostname(host):
     if not host:
         raise CosClientError("Host is required not empty!")
     
-    cos_old_suffix = ".myqcloud.com" # 老域名
-    cos_new_suffix = ".tencentcos.cn" # 新域名
-    cos_cdn_suffix = ".file.myqcloud.com" # CDN默认域名不替换
-    if host.endswith(cos_old_suffix) and not host.endswith(cos_cdn_suffix):
-        host = host[:-len(cos_old_suffix)] + cos_new_suffix
-    elif host.endswith(cos_new_suffix):
-        host = host[:-len(cos_new_suffix)] + cos_old_suffix
+    # *.cos.*-*.myqcloud.com
+    if re.match(r'^.*\.cos\..*\-.*\.myqcloud\.com$', host):
+        host = host[:-len(".myqcloud.com")] + ".tencentcos.cn"
     
-    """返回原始host"""
     return host
 
 def switch_hostname_for_url(url):

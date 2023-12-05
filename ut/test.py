@@ -15,7 +15,7 @@ from qcloud_cos import get_date
 from qcloud_cos.cos_encryption_client import CosEncryptionClient
 from qcloud_cos.crypto import AESProvider
 from qcloud_cos.crypto import RSAProvider
-from qcloud_cos.cos_comm import CiDetectType, get_md5, to_bytes
+from qcloud_cos.cos_comm import CiDetectType, get_md5, to_bytes, switch_hostname_for_url
 
 SECRET_ID = os.environ["COS_SECRET_ID"]
 SECRET_KEY = os.environ["COS_SECRET_KEY"]
@@ -3561,6 +3561,37 @@ def test_check_multipart_upload():
         Key=test_key,
         UploadId=uploadId
     )
+
+def test_switch_hostname_for_url():
+    url = "https://example-125000000.cos.ap-chengdu.myqcloud.com/123"
+    res = switch_hostname_for_url(url)
+    exp = "https://example-125000000.cos.ap-chengdu.tencentcos.cn/123"
+    assert res == exp
+
+    url = "https://example-125000000.cos.ap-chengdu.tencentcos.cn/123"
+    res = switch_hostname_for_url(url)
+    exp = "https://example-125000000.cos.ap-chengdu.tencentcos.cn/123"
+    assert res == exp
+
+    url = "https://cos.ap-chengdu.myqcloud.com/123"
+    res = switch_hostname_for_url(url)
+    exp = "https://cos.ap-chengdu.myqcloud.com/123"
+    assert res == exp
+
+    url = "https://service.cos.myqcloud.com/123"
+    res = switch_hostname_for_url(url)
+    exp = "https://service.cos.myqcloud.com/123"
+    assert res == exp
+
+    url = "https://example-125000000.file.myqcloud.com/123"
+    res = switch_hostname_for_url(url)
+    exp = "https://example-125000000.file.myqcloud.com/123"
+    assert res == exp
+
+    try:
+        switch_hostname_for_url('')
+    except Exception as e:
+        print(e)
 
 if __name__ == "__main__":
     setUp()
