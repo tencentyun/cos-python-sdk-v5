@@ -245,7 +245,6 @@ def format_endpoint(endpoint, region, module, EnableOldDomain, EnableInternalDom
         return None
 
 def switch_hostname(host):
-    """将cos默认域名的.myqcloud.com后缀替换为.tencentcos.cn"""
     if not host:
         raise CosClientError("Host is required not empty!")
     
@@ -267,7 +266,6 @@ def switch_hostname_for_url(url):
             new_url = url.replace(host, new_host)
             return new_url
 
-    """返回原始url"""
     return url
 
 

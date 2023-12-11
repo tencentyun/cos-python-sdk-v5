@@ -75,7 +75,6 @@ class CosConfig(object):
         :param EnableOldDomain(bool):  是否使用旧的myqcloud.com域名访问COS
         :param EnableInternalDomain(bool):  是否使用内网域名访问COS
         :param SignParams(bool): 是否将请求参数算入签名
-        :param AutoSwitchDomainOnRetry(bool): 重试请求时是否自动切换域名
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -381,11 +380,8 @@ class CosS3Client(object):
                 else:
                     if j < self._retry and client_can_retry(file_position, **kwargs):
                         if not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
-                            # 重试时切换域名
-                            logger.debug("switch hostname, url before: " + url)
                             url = switch_hostname_for_url(url)
                             domain_switched = True
-                            logger.debug("switch hostname, url after: " + url)
                         continue
                     else:
                         break
@@ -394,11 +390,8 @@ class CosS3Client(object):
                 if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
                     if client_can_retry(file_position, **kwargs):
                         if not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
-                            # 重试时切换域名
-                            logger.debug("switch hostname, url before: " + url)
                             url = switch_hostname_for_url(url)
                             domain_switched = True
-                            logger.debug("switch hostname, url after: " + url)
                         continue
                 raise CosClientError(str(e))
 
