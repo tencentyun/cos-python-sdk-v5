@@ -400,7 +400,7 @@ class CosS3Client(object):
                 logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
                 if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
                     if client_can_retry(file_position, **kwargs):
-                        if not 'x-cos-request-id' in res.headers and not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                        if not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
                             url = switch_hostname_for_url(url)
                             domain_switched = True
                         continue
