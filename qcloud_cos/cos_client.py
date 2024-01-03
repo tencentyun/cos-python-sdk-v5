@@ -374,12 +374,23 @@ class CosS3Client(object):
                 elif method == 'HEAD':
                     res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
+                    if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
+                        if j < self._retry and not 'x-cos-request-id' in res.headers \
+                            and not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                            url = switch_hostname_for_url(url)
+                            domain_switched = True
+                            continue
                     return res
                 elif res.status_code < 500:  # 4xx 不重试
+                    if j < self._retry and not 'x-cos-request-id' in res.headers \
+                        and not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                        url = switch_hostname_for_url(url)
+                        domain_switched = True
+                        continue
                     break
                 else:
                     if j < self._retry and client_can_retry(file_position, **kwargs):
-                        if not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                        if not 'x-cos-request-id' in res.headers and not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
                             url = switch_hostname_for_url(url)
                             domain_switched = True
                         continue
