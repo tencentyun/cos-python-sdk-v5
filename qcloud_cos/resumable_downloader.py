@@ -34,7 +34,8 @@ class ResumableDownLoader(object):
         self.__finished_parts = []
         self.__lock = threading.Lock()
         self.__record = None  # 记录当前的上下文
-        self.__dump_record_dir = os.path.join(os.path.expanduser('~'), '.cos_download_tmp_file')
+        base_path = '/tmp' if os.environ.get("TENCENTCLOUD_RUNENV", None) == "SCF" else os.path.expanduser('~')
+        self.__dump_record_dir = os.path.join(base_path, '.cos_download_tmp_file')
 
         record_filename = self.__get_record_filename(bucket, key, self.__dest_file_path)
         self.__record_filepath = os.path.join(self.__dump_record_dir, record_filename)
