@@ -44,7 +44,7 @@ class CosConfig(object):
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
                  PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True, SignParams=True,
-                 AutoSwitchDomainOnRetry=True):
+                 AutoSwitchDomainOnRetry=False):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -1635,7 +1635,7 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf),
             headers=headers)
-        return None
+        return rt.headers
 
     def put_bucket_acl(self, Bucket, AccessControlPolicy={}, **kwargs):
         """设置bucket ACL
@@ -2926,7 +2926,7 @@ class CosS3Client(object):
         return data
 
     def delete_bucket_inventory(self, Bucket, Id, **kwargs):
-        """删除bucket 回源配置
+        """删除bucket清单规则
 
         :param Bucket(string): 存储桶名称.
         :param Id(string): 清单规则名称.
@@ -2956,6 +2956,52 @@ class CosS3Client(object):
             headers=headers,
             params=params)
         return None
+
+    def list_bucket_inventory_configurations(self, Bucket, ContinuationToken=None, **kwargs):
+        """列举存储桶清单规则
+
+        :param Bucket(string): 存储桶名称
+        :param ContinuationToken(string): 分页参数, 用以获取下一页信息
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 存储桶清单规则列表
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 分页列举bucket清单规则
+            continuation_token = ''
+            while True:
+                resp = client.list_bucket_inventory_configurations(
+                    Bucket=bucket,
+                    ContinuationToken=continuation_token,
+                )
+                if 'InventoryConfiguration' in resp:
+                    for conf in resp['InventoryConfiguration']:
+                        print(conf)
+                if resp['IsTruncated'] == 'true':
+                    continuation_token = resp['NextContinuationToken']
+                else:
+                    break
+        """
+        headers = mapped(kwargs)
+        params = {'inventory': ''}
+        if ContinuationToken is not None:
+            params['continuation-token'] = ContinuationToken
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("list bucket inventory configurations, url={url}, headers={headers}".format(
+            url=url,
+            headers=headers,
+        ))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        return data
 
     def put_object_tagging(self, Bucket, Key, Tagging={}, **kwargs):
         """设置object的标签
@@ -3560,7 +3606,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -3596,7 +3642,7 @@ class CosS3Client(object):
             callback = ProgressCallback(file_size, progress_callback)
 
         downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC,
-                                         callback, **Kwargs)
+                                         callback, DumpRecordDir, **Kwargs)
         downloader.start()
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
