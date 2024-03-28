@@ -1506,6 +1506,76 @@ def test_put_get_delete_bucket_inventory():
         Id='test'
     )
 
+def test_list_bucket_inventory_configrations():
+    """测试列举bucket清单"""
+    inventory_config = {
+        'Destination': {
+            'COSBucketDestination': {
+                'AccountId': '2832742109',
+                'Bucket': 'qcs::cos:' + REGION + '::' + test_bucket,
+                'Format': 'CSV',
+                'Prefix': 'list1',
+                'Encryption': {
+                    'SSECOS': {}
+                }
+            }
+        },
+        'IsEnabled': 'True',
+        'Filter': {
+            'Prefix': 'filterPrefix'
+        },
+        'IncludedObjectVersions': 'All',
+        'OptionalFields': {
+            'Field': [
+                'Size',
+                'LastModifiedDate',
+                'ETag',
+                'StorageClass',
+                'IsMultipartUploaded',
+                'ReplicationStatus'
+            ]
+        },
+        'Schedule': {
+            'Frequency': 'Daily'
+        }
+    }
+    # 构建150条清单配置规则(清单分页大小为100条规则)
+    n = 150
+    for i in range(n):
+        id = 'ID-{}'.format(i)
+        response = client.put_bucket_inventory(
+            Bucket=test_bucket,
+            Id=id,
+            InventoryConfiguration=inventory_config,
+        )
+    
+    # 列举清单
+    i = 0
+    continuation_token = ''
+    while True:
+        resp = client.list_bucket_inventory_configurations(
+            Bucket=test_bucket,
+            ContinuationToken=continuation_token,
+        )
+        if 'InventoryConfiguration' in resp:
+            for conf in resp['InventoryConfiguration']:
+                id = 'ID-{}'.format(i)
+                assert id == conf['Id']
+                i += 1
+        if resp['IsTruncated'] == 'true':
+            continuation_token = resp['NextContinuationToken']
+        else:
+            break
+    
+    assert i == n
+
+    # 删除清单
+    for i in range(n):
+        id = 'ID-{}'.format(i)
+        response = client.delete_bucket_inventory(
+            Bucket=test_bucket,
+            Id=id,
+        )
 
 def test_put_get_delete_bucket_tagging():
     """测试设置获取删除bucket标签"""
