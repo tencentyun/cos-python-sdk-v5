@@ -2978,7 +2978,7 @@ class CosS3Client(object):
                 )
                 if 'InventoryConfiguration' in resp:
                     for conf in resp['InventoryConfiguration']:
-                        id = 'ID-{}'.format(i)
+                        print(conf)
                 if resp['IsTruncated'] == 'true':
                     continuation_token = resp['NextContinuationToken']
                 else:
