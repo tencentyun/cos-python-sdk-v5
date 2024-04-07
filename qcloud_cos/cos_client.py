@@ -359,6 +359,7 @@ class CosS3Client(object):
             kwargs['verify'] = False
         if self._conf._allow_redirects is not None:
             kwargs['allow_redirects'] = self._conf._allow_redirects
+        exception_logbuf = list() # 记录每次重试的错误日志
         for j in range(self._retry + 1):
             try:
                 if j != 0:
@@ -397,13 +398,16 @@ class CosS3Client(object):
                     else:
                         break
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
-                logger.exception('url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
+                # 记录每次请求的exception
+                exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
+                exception_logbuf.append(exception_log)
                 if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
                     if client_can_retry(file_position, **kwargs):
                         if not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
                             url = switch_hostname_for_url(url)
                             domain_switched = True
                         continue
+                logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
                 raise CosClientError(str(e))
 
         if not cos_request:
@@ -419,12 +423,16 @@ class CosS3Client(object):
                 if 'x-cos-trace-id' in res.headers:
                     info['traceid'] = res.headers['x-cos-trace-id']
                 logger.warn(info)
+                if len(exception_logbuf) > 0:
+                    logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
                 raise CosServiceError(method, info, res.status_code)
             else:
                 msg = res.text
                 if msg == u'':  # 服务器没有返回Error Body时 给出头部的信息
                     msg = res.headers
                 logger.error(msg)
+                if len(exception_logbuf) > 0:
+                    logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
                 raise CosServiceError(method, msg, res.status_code)
 
         return None
