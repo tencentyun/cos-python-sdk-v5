@@ -1621,7 +1621,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
-        :return: None.
+        :return: HEAD Bucket响应头域.
 
         .. code-block:: python
 
