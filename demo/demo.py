@@ -7,6 +7,7 @@ from qcloud_cos import CosClientError
 import sys
 import logging
 
+# 基础图片处理相关API 请参考 https://cloud.tencent.com/document/product/460/36540
 
 def percentage(consumed_bytes, total_bytes):
     """进度条回调函数，计算当前上传的百分比

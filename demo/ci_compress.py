@@ -8,7 +8,8 @@ import os
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
-# https://cloud.tencent.com/document/product/436/48987
+# 高级图片压缩 TPG压缩相关API请参考 https://cloud.tencent.com/document/product/460/60526
+# 高级图片压缩 HEIF压缩相关API请参考 https://cloud.tencent.com/document/product/460/60525
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
