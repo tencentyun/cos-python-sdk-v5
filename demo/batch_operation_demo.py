@@ -1,8 +1,18 @@
 # -*- coding=utf-8
+
+'''
+此demo演示批处理操作: 
+1. 删除cos目录
+2. 多线程上传本地目录下的文件
+3. 批量删除cos对象
+4. 移动对象
+'''
+
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosServiceError
 from qcloud_cos import CosClientError
+from qcloud_cos.cos_exception import CosException
 from qcloud_cos.cos_threadpool import SimpleThreadPool
 
 import sys

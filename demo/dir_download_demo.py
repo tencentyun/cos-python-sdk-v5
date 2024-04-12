@@ -8,6 +8,8 @@ from qcloud_cos import CosConfig, CosServiceError
 from qcloud_cos import CosS3Client
 from qcloud_cos.cos_threadpool import SimpleThreadPool
 
+# 演示多线程方式下载COS目录下的文件
+
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # 设置用户属性, 包括 secret_id, secret_key, region等。Appid 已在CosConfig中移除，请在参数 Bucket 中带上 Appid。Bucket 由 BucketName-Appid 组成
@@ -22,7 +24,7 @@ config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Toke
 client = CosS3Client(config)
 
 # 用户的 bucket 信息
-test_bucket = 'chenxi-1253870963'
+test_bucket = 'examplebucket-1250000000'
 start_prefix = 'data/'
 # 对象存储依赖 分隔符 '/' 来模拟目录语义，
 # 使用默认的空分隔符可以列出目录下面的所有子节点，实现类似本地目录递归的效果,
