@@ -11,6 +11,7 @@ import logging
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
+# 审核相关API 请参考如下文档
 # 图片审核 https://cloud.tencent.com/document/product/436/45434
 # 视频审核 https://cloud.tencent.com/document/product/436/47316
 # 音频审核 https://cloud.tencent.com/document/product/436/54063

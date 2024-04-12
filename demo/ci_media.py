@@ -10,7 +10,7 @@ import os
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
-# https://cloud.tencent.com/document/product/436/48987
+# 媒体处理相关API请参考 https://cloud.tencent.com/document/product/460/84790
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 

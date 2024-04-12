@@ -8,7 +8,7 @@ import base64
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
-# https://cloud.tencent.com/document/product/436/46782
+# 图片盲水印相关API 请参考 https://cloud.tencent.com/document/product/436/46782
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
