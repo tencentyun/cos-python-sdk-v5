@@ -8,6 +8,7 @@ import sys
 import random
 import string
 
+# 对SDK基础接口的封装操作
 
 class CosV5PythonSDKTest(object):
     def __init__(self, region, appid, secret_id, secret_key, end_point,
