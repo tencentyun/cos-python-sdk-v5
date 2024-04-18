@@ -5319,12 +5319,17 @@ class CosS3Client(object):
         with open(LocalFilePath, 'rb') as fp:
             return self.ci_put_object(Bucket, fp, Key, EnableMD5, **kwargs)
 
-    def ci_get_object_qrcode(self, Bucket, Key, Cover, **kwargs):
+    def ci_get_object_qrcode(self, Bucket, Key, Cover, BarType=0, **kwargs):
         """单文件CI下载接口，返回文件二维码信息
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
         :param Cover(int): 二维码覆盖功能.
+        :param BarType(int): 二维码/条形码识别功能，将对识别出的二维码/条形码 覆盖马赛克. 取值为0,1,2:
+                            0表示都识别
+                            1表示识别二维码
+                            2表示识别条形码
+                            默认值0
         :param kwargs(dict): 设置下载的headers.
         :return(dict,dict): 操作返回的结果.
 
@@ -5355,10 +5360,11 @@ class CosS3Client(object):
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
-        url = u"{url}?{ci}={cover}".format(
+        url = u"{url}?{ci}={cover}&bar-type={barType}".format(
             url=to_unicode(url),
             ci=to_unicode('ci-process=QRcode&cover'),
-            cover=Cover
+            cover=Cover,
+            barType=BarType
         )
 
         logger.info("get object, url=:{url} ,headers=:{headers}, params=:{params}".format(

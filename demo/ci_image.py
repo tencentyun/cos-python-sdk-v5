@@ -500,7 +500,8 @@ def qr_code_identify_when_download_object():
     response, data = client.ci_get_object_qrcode(
         Bucket=bucket_name,
         Key='format.png',
-        Cover=0
+        Cover=0,
+        BarType=2
     )
     print(response, data)
 
