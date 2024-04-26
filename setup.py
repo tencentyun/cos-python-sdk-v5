@@ -34,7 +34,7 @@ def long_description():
 
 setup(
     name='cos-python-sdk-v5',
-    version='1.9.23',
+    version='1.9.28',
     url='https://www.qcloud.com/',
     license='MIT',
     author='tiedu, lewzylu, channingliu',

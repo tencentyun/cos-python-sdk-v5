@@ -9,7 +9,7 @@ import logging
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
-# https://cloud.tencent.com/document/product/436/46782
+# 文档预览相关API请参考 https://cloud.tencent.com/document/product/460/46942
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -107,7 +107,6 @@ def ci_list_doc_jobs():
     # 获取文档预览异步任务信息列表
     response = client.ci_list_doc_jobs(
         Bucket=bucket_name,
-        QueueId='p4bdxxxxxxxxxxxxxxxxxxxx57f1',
         Size=10,
     )
     print(response)

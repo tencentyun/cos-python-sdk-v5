@@ -7,6 +7,8 @@ from qcloud_cos import CosClientError
 import sys
 import logging
 
+# Fetch接口异步拉取URL资源保存到COS
+
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # 设置用户属性, 包括 secret_id, secret_key, region等。Appid 已在CosConfig中移除，请在参数 Bucket 中带上 Appid。Bucket 由 BucketName-Appid 组成

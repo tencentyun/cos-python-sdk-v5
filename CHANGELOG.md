@@ -76,8 +76,6 @@ py2 and py3 setup
 
 ## [v1.7.9](https://github.com/tencentyun/cos-python-sdk-v5/compare/v1.7.7...v1.7.9) - 2020-04-24
 
-fix retry logic
-
 ### Merged
 
 - Fix 400 retry [`#115`](https://github.com/tencentyun/cos-python-sdk-v5/pull/115)

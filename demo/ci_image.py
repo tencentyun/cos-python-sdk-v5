@@ -1,4 +1,8 @@
 # -*- coding=utf-8
+import json
+from urllib.parse import quote, urlencode
+
+from qcloud_cos.cos_comm import to_bytes
 from qcloud_cos.streambody import StreamBody
 
 from qcloud_cos import CosConfig
@@ -11,7 +15,7 @@ import base64
 
 # 腾讯云COSV5Python SDK, 目前可以支持Python2.6与Python2.7以及Python3.x
 
-# https://cloud.tencent.com/document/product/436/46782
+# 图片处理相关API请参考 https://cloud.tencent.com/document/product/460/18147
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -29,6 +33,19 @@ client = CosS3Client(config)
 bucket_name = 'examplebucket-1250000000'
 watermark_url = 'http://{bucket}.cos.{region}.tencentcos.cn/watermark.png'.format(bucket=bucket_name, region=region)
 watermark_url_base64 = bytes.decode(base64.b64encode(str.encode(watermark_url)))
+
+
+def ci_image_inspect():
+    # 车辆车牌检测
+    response = client.ci_process(
+        Bucket=bucket_name,
+        Key='heichan.png',
+        CiProcess='ImageInspect'
+    )
+    result = json.loads(response)
+    if result["suspicious"]:
+        print("ok")
+    print(response)
 
 
 def when_put_object(local_file, key, pic_operations):
@@ -90,7 +107,8 @@ def add_blind_watermark_process_on_cloud():
     process_on_cloud('format.png', operations)
 
 
-sample_url = 'http://{bucket}.cos.{region}.tencentcos.cn/sample.png'.format(bucket=bucket_name, region=region)
+sample_url = 'http://{bucket}.cos.{region}.tencentcos.cn/sample.png'.format(
+    bucket=bucket_name, region=region)
 sample_url_base64 = bytes.decode(base64.b64encode(str.encode(sample_url)))
 
 
@@ -334,7 +352,8 @@ def image_watermark_process_on_cloud():
     process_on_cloud('format.png', operations)
 
 
-text_watermark_base64 = bytes.decode(base64.b64encode(str.encode("testWaterMark")))
+text_watermark_base64 = bytes.decode(
+    base64.b64encode(str.encode("testWaterMark")))
 text_color_base64 = bytes.decode(base64.b64encode(str.encode("#3D3D3D")))
 
 
@@ -481,7 +500,8 @@ def qr_code_identify_when_download_object():
     response, data = client.ci_get_object_qrcode(
         Bucket=bucket_name,
         Key='format.png',
-        Cover=0
+        Cover=0,
+        BarType=2
     )
     print(response, data)
 
@@ -573,6 +593,39 @@ def ci_image_detect_label():
     print(response)
 
 
+def ci_recognize_logo_process():
+    url = u"{scheme}://{endpoint}/{path}".format(
+        scheme="https",
+        endpoint="demo-1250000000.ci.ap-chongqing.myqcloud.com",
+        path=quote(to_bytes("demo.png"), b'/-_.~')
+    )
+    params = {
+        "1": "2",
+        "测试": "参数"
+    }
+    url = url + str('?') + urlencode(params)
+    response = client.ci_recognize_logo_process(bucket_name, Url=url)
+    print(response)
+
+
+def ci_super_resolution_process():
+    url = u"{scheme}://{endpoint}/{path}".format(
+        scheme="https",
+        endpoint="demo-1250000000.ci.ap-chongqing.myqcloud.com",
+        path=quote(to_bytes("demo.png"), b'/-_.~')
+    )
+    params = {
+        "1": "2",
+        "测试": "参数"
+    }
+    url = url + str('?') + urlencode(params)
+    response = client.ci_super_resolution_process(bucket_name,
+                                                  Key='test.jpg',
+                                                  # Url=url
+                                                  )
+    response['Body'].get_stream_to_file('super-resolution-result.jpg')
+
+
 if __name__ == '__main__':
     # format.png
     # thumbnail_when_put_object()
@@ -623,7 +676,7 @@ if __name__ == '__main__':
     # ci_image_assess_quality()
     # ci_qrcode_generate()
     # qr_code_identify_when_put_object()
-    qr_code_identify_when_download_object()
+    # qr_code_identify_when_download_object()
     # ci_image_detect_car()
     # ci_ocr_process()
     # ci_get_image_info()
@@ -640,4 +693,6 @@ if __name__ == '__main__':
     # ci_get_image_style()
     # ci_delete_image_style()
     # ci_image_detect_label()
-
+    # ci_recognize_logo_process()
+    # ci_image_inspect()
+    ci_super_resolution_process()

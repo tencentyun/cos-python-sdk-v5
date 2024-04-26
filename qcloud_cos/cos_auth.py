@@ -34,6 +34,7 @@ def filter_headers(data):
         "origin",
         "range",
         "transfer-encoding",
+        "pic-operations",
     ]
     headers = {}
     for i in data:
@@ -52,6 +53,7 @@ class CosS3Auth(AuthBase):
         self._anonymous = conf._anonymous
         self._expire = expire
         self._params = params
+        self._sign_params = conf._sign_params
 
         # 如果API指定了是否签名host，则以具体API为准，如果未指定则以配置为准
         if sign_host is not None:
@@ -77,7 +79,9 @@ class CosS3Auth(AuthBase):
             return r
 
         path = self._path
-        uri_params = self._params
+        uri_params = {}
+        if self._sign_params:
+            uri_params = self._params
         headers = filter_headers(r.headers)
 
         # 如果headers中不包含host头域，则从url中提取host，并且加入签名计算
@@ -104,20 +108,26 @@ class CosS3Auth(AuthBase):
         format_str = u"{method}\n{host}\n{params}\n{headers}\n".format(
             method=r.method.lower(),
             host=path,
-            params='&'.join(map(lambda tupl: "%s=%s" % (tupl[0], tupl[1]), sorted(uri_params.items()))),
-            headers='&'.join(map(lambda tupl: "%s=%s" % (tupl[0], tupl[1]), sorted(headers.items())))
+            params='&'.join(map(lambda tupl: "%s=%s" %
+                            (tupl[0], tupl[1]), sorted(uri_params.items()))),
+            headers='&'.join(map(lambda tupl: "%s=%s" %
+                             (tupl[0], tupl[1]), sorted(headers.items())))
         )
         logger.debug("format str: " + format_str)
 
         start_sign_time = int(time.time())
-        sign_time = "{bg_time};{ed_time}".format(bg_time=start_sign_time - 60, ed_time=start_sign_time + self._expire)
+        sign_time = "{bg_time};{ed_time}".format(
+            bg_time=start_sign_time - 60, ed_time=start_sign_time + self._expire)
         sha1 = hashlib.sha1()
         sha1.update(to_bytes(format_str))
 
-        str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time, sha1=sha1.hexdigest())
+        str_to_sign = "sha1\n{time}\n{sha1}\n".format(
+            time=sign_time, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
-        sign_key = hmac.new(to_bytes(self._secret_key), to_bytes(sign_time), hashlib.sha1).hexdigest()
-        sign = hmac.new(to_bytes(sign_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
+        sign_key = hmac.new(to_bytes(self._secret_key), to_bytes(
+            sign_time), hashlib.sha1).hexdigest()
+        sign = hmac.new(to_bytes(sign_key), to_bytes(
+            str_to_sign), hashlib.sha1).hexdigest()
         logger.debug('sign_key: ' + str(sign_key))
         logger.debug('sign: ' + str(sign))
         sign_tpl = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-header-list={headers}&q-url-param-list={params}&q-signature={sign}"
@@ -156,20 +166,25 @@ class CosRtmpAuth(AuthBase):
         for k, v in self._params.items():
             canonicalized_param += '{key}={value}&'.format(key=k, value=v)
         if self._presign_expire >= 60:
-            canonicalized_param += 'presign={value}'.format(value=self._presign_expire)
+            canonicalized_param += 'presign={value}'.format(
+                value=self._presign_expire)
         canonicalized_param = canonicalized_param.rstrip('&')
-        rtmp_str = u"{path}\n{params}\n".format(path=self._path, params=canonicalized_param)
+        rtmp_str = u"{path}\n{params}\n".format(
+            path=self._path, params=canonicalized_param)
         logger.debug("rtmp str: " + rtmp_str)
 
         sha1 = hashlib.sha1()
         sha1.update(to_bytes(rtmp_str))
         # get time
         sign_time = int(time.time())
-        sign_time_str = "{start_time};{end_time}".format(start_time=sign_time - 60, end_time=sign_time + self._expire)
-        str_to_sign = "sha1\n{time}\n{sha1}\n".format(time=sign_time_str, sha1=sha1.hexdigest())
+        sign_time_str = "{start_time};{end_time}".format(
+            start_time=sign_time - 60, end_time=sign_time + self._expire)
+        str_to_sign = "sha1\n{time}\n{sha1}\n".format(
+            time=sign_time_str, sha1=sha1.hexdigest())
         logger.debug('str_to_sign: ' + str(str_to_sign))
         # get sinature
-        signature = hmac.new(to_bytes(self._secret_key), to_bytes(str_to_sign), hashlib.sha1).hexdigest()
+        signature = hmac.new(to_bytes(self._secret_key), to_bytes(
+            str_to_sign), hashlib.sha1).hexdigest()
         logger.debug('signature: ' + str(signature))
         rtmp_sign = "q-sign-algorithm=sha1&q-ak={ak}&q-sign-time={sign_time}&q-key-time={key_time}&q-signature={sign}".format(
             ak=self._secret_id, sign_time=sign_time_str, key_time=sign_time_str, sign=signature)

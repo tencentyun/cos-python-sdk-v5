@@ -1,7 +1,7 @@
 # -*- coding=utf-8
 
 from six import text_type, binary_type, string_types
-from six.moves.urllib.parse import quote, unquote
+from six.moves.urllib.parse import quote, unquote, urlparse
 import hashlib
 import base64
 import os
@@ -178,13 +178,13 @@ def xml_to_dict(data, origin_str="", replace_str=""):
     return xmldict
 
 
-def get_id_from_xml(data, name):
-    """解析xml中的特定字段"""
-    tree = xml.dom.minidom.parseString(data)
-    root = tree.documentElement
-    result = root.getElementsByTagName(name)
-    # use childNodes to get a list, if has no child get itself
-    return result[0].childNodes[0].nodeValue
+# def get_id_from_xml(data, name):
+#     """解析xml中的特定字段"""
+#     tree = xml.dom.minidom.parseString(data)
+#     root = tree.documentElement
+#     result = root.getElementsByTagName(name)
+#     # use childNodes to get a list, if has no child get itself
+#     return result[0].childNodes[0].nodeValue
 
 
 def mapped(headers):
@@ -243,6 +243,30 @@ def format_endpoint(endpoint, region, module, EnableOldDomain, EnableInternalDom
             return u"{region}.tencentcos.cn".format(region=region)
     else:
         return None
+
+def switch_hostname(host):
+    if not host:
+        raise CosClientError("Host is required not empty!")
+    
+    # *.cos.*-*.myqcloud.com
+    if re.match(r'^.*\.cos\..*\-.*\.myqcloud\.com$', host):
+        host = host[:-len(".myqcloud.com")] + ".tencentcos.cn"
+    
+    return host
+
+def switch_hostname_for_url(url):
+    if not url:
+        raise CosClientError("Url is required not empty!")
+
+    url_parsed = urlparse(url)
+    if url_parsed.hostname is not None:
+        host = url_parsed.hostname
+        new_host = switch_hostname(host)
+        if host != new_host:
+            new_url = url.replace(host, new_host)
+            return new_url
+
+    return url
 
 
 def format_region(region, module, EnableOldDomain, EnableInternalDomain):
@@ -460,7 +484,7 @@ def parse_object_canned_acl(result_acl, rsp_headers):
         return "default"
     public_read = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'},
                    'Permission': 'READ'}
-    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+    if 'AccessControlList' in result_acl and result_acl['AccessControlList'] is not None and 'Grant' in result_acl['AccessControlList']:
         if public_read in result_acl['AccessControlList']['Grant']:
             return "public-read"
     return "private"
@@ -472,7 +496,7 @@ def parse_bucket_canned_acl(result_acl):
                    'Permission': 'READ'}
     public_write = {'Grantee': {'Type': 'Group', 'URI': 'http://cam.qcloud.com/groups/global/AllUsers'},
                     'Permission': 'WRITE'}
-    if 'AccessControlList' in result_acl and 'Grant' in result_acl['AccessControlList']:
+    if 'AccessControlList' in result_acl and result_acl['AccessControlList'] is not None and 'Grant' in result_acl['AccessControlList']:
         if public_read in result_acl['AccessControlList']['Grant']:
             if public_write in result_acl['AccessControlList']['Grant']:
                 return "public-read-write"
