@@ -229,6 +229,7 @@ class CosS3Client(object):
 
     __built_in_sessions = None  # 内置的静态连接池，多个Client间共享使用
     __built_in_pid = 0
+    __built_in_used = False
 
     def __init__(self, conf, retry=1, session=None):
         """初始化client对象
@@ -248,6 +249,7 @@ class CosS3Client(object):
 
         if session is None:
             self._session = CosS3Client.__built_in_sessions
+            CosS3Client.__built_in_used = True
             logger.info("bound built-in connection pool success. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
         else:
             self._session = session
@@ -261,18 +263,13 @@ class CosS3Client(object):
            and CosS3Client.__built_in_sessions.get_adapter('http://')._pool_maxsize == PoolMaxSize:
             return
 
-        # 判断之前是否绑定到内置连接池
-        rebound = False
-        if self._session and self._session is CosS3Client.__built_in_sessions:
-            rebound = True
-
         # 重新生成内置连接池
         CosS3Client.__built_in_sessions.close()
         CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(PoolConnections, PoolMaxSize)
         CosS3Client.__built_in_pid = os.getpid()
 
         # 重新绑定到内置连接池
-        if rebound:
+        if CosS3Client.__built_in_used:
             self._session = CosS3Client.__built_in_sessions
             logger.info("rebound built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
 
@@ -294,11 +291,6 @@ class CosS3Client(object):
         with threading.Lock():
             if CosS3Client.__built_in_pid == os.getpid(): # 加锁后double check
                 return
-            
-            # 判断之前是否绑定到内置连接池
-            rebound = False
-            if self._session and self._session is CosS3Client.__built_in_sessions:
-                rebound = True
                 
             # 重新生成内置连接池
             CosS3Client.__built_in_sessions.close()
@@ -306,7 +298,7 @@ class CosS3Client(object):
             CosS3Client.__built_in_pid = os.getpid()
             
             # 重新绑定到内置连接池
-            if rebound:
+            if CosS3Client.__built_in_used:
                 self._session = CosS3Client.__built_in_sessions
                 logger.info("rebound built-in connection when new process. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
         
