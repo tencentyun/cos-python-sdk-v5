@@ -250,7 +250,7 @@ class CosS3Client(object):
         if session is None:
             self._session = CosS3Client.__built_in_sessions
             CosS3Client.__built_in_used = True
-            logger.info("bound built-in connection pool success. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
+            logger.info("bound built-in connection pool when new client. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
         else:
             self._session = session
 
@@ -271,7 +271,7 @@ class CosS3Client(object):
         # 重新绑定到内置连接池
         if CosS3Client.__built_in_used:
             self._session = CosS3Client.__built_in_sessions
-            logger.info("rebound built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+            logger.info("bound built-in connection pool when new config. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
 
     def generate_built_in_connection_pool(self, PoolConnections, PoolMaxSize):
         """生成SDK内置的连接池，此连接池是client间共用的"""
@@ -300,7 +300,7 @@ class CosS3Client(object):
             # 重新绑定到内置连接池
             if CosS3Client.__built_in_used:
                 self._session = CosS3Client.__built_in_sessions
-                logger.info("rebound built-in connection when new process. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
+                logger.info("bound built-in connection pool when new processor. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
         
     def get_conf(self):
         """获取配置"""
