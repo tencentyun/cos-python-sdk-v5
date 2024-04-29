@@ -906,6 +906,34 @@ def test_put_get_delete_website():
             }
         ]
     }
+    exp_respponse = {
+        'IndexDocument': {
+            'Suffix': 'index.html'
+        },
+        'ErrorDocument': {
+            'Key': 'error.html'
+        },
+        'RoutingRules': [
+            {
+                'Condition': {
+                    'HttpErrorCodeReturnedEquals': '404',
+                },
+                'Redirect': {
+                    'ReplaceKeyWith': '404.html',
+                    'URLRedirect': 'Enabled'
+                }
+            },
+            {
+                'Condition': {
+                    'KeyPrefixEquals': 'aaa/'
+                },
+                'Redirect': {
+                    'ReplaceKeyPrefixWith': 'ccc/',
+                    'URLRedirect': 'Enabled'
+                }
+            }
+        ]
+    }
     response = client.put_bucket_website(
         Bucket=test_bucket,
         WebsiteConfiguration=website_config
@@ -916,7 +944,7 @@ def test_put_get_delete_website():
     response = client.get_bucket_website(
         Bucket=test_bucket
     )
-    assert website_config == response
+    assert exp_respponse == response
     # delete website
     response = client.delete_bucket_website(
         Bucket=test_bucket
