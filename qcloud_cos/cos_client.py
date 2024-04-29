@@ -228,6 +228,7 @@ class CosS3Client(object):
     """cos客户端类，封装相应请求"""
 
     __built_in_sessions = None  # 内置的静态连接池，多个Client间共享使用
+    __built_in_pid = 0
 
     def __init__(self, conf, retry=1, session=None):
         """初始化client对象
@@ -239,38 +240,19 @@ class CosS3Client(object):
         self._conf = conf
         self._retry = retry  # 重试的次数，分片上传时可适当增大
 
-        if not CosS3Client.__built_in_sessions:
-            with threading.Lock():
-                if not CosS3Client.__built_in_sessions:  # 加锁后double check
-                    CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
-
         if session is None:
+            if not CosS3Client.__built_in_sessions:
+                with threading.Lock():
+                    if not CosS3Client.__built_in_sessions:  # 加锁后double check
+                        CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
+                        CosS3Client.__built_in_pid = os.getpid()
+            
             self._session = CosS3Client.__built_in_sessions
+            self._use_built_in_pool = True
+            logger.info("bound built-in connection pool when new client. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
         else:
             self._session = session
-
-    def set_built_in_connection_pool_max_size(self, PoolConnections, PoolMaxSize):
-        """设置SDK内置的连接池的连接大小，并且重新绑定到client中"""
-        if not CosS3Client.__built_in_sessions:
-            return
-
-        if CosS3Client.__built_in_sessions.get_adapter('http://')._pool_connections == PoolConnections \
-           and CosS3Client.__built_in_sessions.get_adapter('http://')._pool_maxsize == PoolMaxSize:
-            return
-
-        # 判断之前是否绑定到内置连接池
-        rebound = False
-        if self._session and self._session is CosS3Client.__built_in_sessions:
-            rebound = True
-
-        # 重新生成内置连接池
-        CosS3Client.__built_in_sessions.close()
-        CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(PoolConnections, PoolMaxSize)
-
-        # 重新绑定到内置连接池
-        if rebound:
-            self._session = CosS3Client.__built_in_sessions
-            logger.info("rebound built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
+            self._use_built_in_pool = False
 
     def generate_built_in_connection_pool(self, PoolConnections, PoolMaxSize):
         """生成SDK内置的连接池，此连接池是client间共用的"""
@@ -279,7 +261,30 @@ class CosS3Client(object):
         built_in_sessions.mount('https://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
         logger.info("generate built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
         return built_in_sessions
-
+    
+    def handle_built_in_connection_pool_by_pid(self):
+        if not CosS3Client.__built_in_sessions:
+            return
+      
+        if not self._use_built_in_pool:
+            return  
+        
+        if CosS3Client.__built_in_pid == os.getpid():
+            return
+        
+        with threading.Lock():
+            if CosS3Client.__built_in_pid == os.getpid(): # 加锁后double check
+                return
+                
+            # 重新生成内置连接池
+            CosS3Client.__built_in_sessions.close()
+            CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
+            CosS3Client.__built_in_pid = os.getpid()
+            
+            # 重新绑定到内置连接池
+            self._session = CosS3Client.__built_in_sessions
+            logger.info("bound built-in connection pool when new processor. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
+        
     def get_conf(self):
         """获取配置"""
         return self._conf
@@ -360,6 +365,10 @@ class CosS3Client(object):
         if self._conf._allow_redirects is not None:
             kwargs['allow_redirects'] = self._conf._allow_redirects
         exception_logbuf = list() # 记录每次重试的错误日志
+        
+        # 切换了进程需要重新生成连接池
+        self.handle_built_in_connection_pool_by_pid()
+        
         for j in range(self._retry + 1):
             try:
                 if j != 0:
