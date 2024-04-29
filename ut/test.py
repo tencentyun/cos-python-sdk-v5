@@ -11,6 +11,7 @@ import base64
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError
+from qcloud_cos.select_event_stream import EventStream
 from qcloud_cos import get_date
 from qcloud_cos.cos_encryption_client import CosEncryptionClient
 from qcloud_cos.crypto import AESProvider
@@ -1835,6 +1836,80 @@ def test_select_object():
     event_stream.get_select_result_to_file(file_name)
     if os.path.exists(file_name):
         os.remove(file_name)
+    
+
+def test_select_event_stream_error_message():
+    '''
+    参考: https://cloud.tencent.com/document/product/436/37641
+    构建EventStream, 测试ErrorMessage处理逻辑
+    '''
+    import io
+    import struct
+    s = io.BytesIO()
+    header_byte_length = (1+11+1+2+13)+(1+14+1+2+49)+(1+13+1+2+5)
+    total_byte_length = 4 + 4 + 4 + header_byte_length + 5 + 4
+    # Total byte length, Header byte length, Prelude CRC, Headers, Payload, Message CRC
+    prelude_crc = 1234567890
+
+    s.write(struct.pack('>I', total_byte_length))
+    s.write(struct.pack('>I', header_byte_length))
+    s.write(struct.pack('>I', prelude_crc))
+
+    # Header: error-code
+    s.write(struct.pack('>B', 11)) # len(':error-code')
+    s.write(struct.pack('11s', b':error-code'))
+    s.write(struct.pack('>B', 7))
+    s.write(struct.pack('>H', 13)) # len('InternalError')
+    s.write(struct.pack('13s', b'InternalError'))
+
+    # Header: error-message
+    s.write(struct.pack('>B', 14)) # len(':error-message')
+    s.write(struct.pack('14s', b':error-message'))
+    s.write(struct.pack('>B', 7))
+    s.write(struct.pack('>H', 49)) # len('We encounted an internal error. Please try again.')
+    s.write(struct.pack('49s', b'We encounted an internal error. Please try again.'))
+
+    # Header: message-type
+    s.write(struct.pack('>B', 13)) # len(':message-type')
+    s.write(struct.pack('13s', b':message-type'))
+    s.write(struct.pack('>B', 7))
+    s.write(struct.pack('>H', 5)) # len('error')
+    s.write(struct.pack('5s', b'error'))
+
+    # Payload
+    s.write(struct.pack('5s', b'AAAAA'))
+
+    # Message CRC
+    s.write(struct.pack('>I', 1234567890))
+
+    s.seek(0, 0)
+
+    class request_obj():
+        def __init__(self):
+            self.url = 'http://www.test.com'
+
+    class rt_obj():
+        def __init__(self):
+            self.raw = s
+            self.request = request_obj()
+            self.status_code = 400
+            self.headers = {
+                'x-cos-request-id': 'xxx',
+                'x-cos-trace-id': 'yyy',
+            }
+    
+    rt = rt_obj()
+    event_stream = EventStream(rt)
+    try:
+        for ev in event_stream:
+            print(ev)
+    except CosServiceError as e:
+        print(e)
+        assert e.get_error_code() == 'InternalError'
+        assert e.get_error_msg() == 'We encounted an internal error. Please try again.'
+        assert e.get_resource_location() == 'http://www.test.com'
+        assert e.get_request_id() == 'xxx'
+        assert e.get_trace_id() == 'yyy'
 
 
 def test_get_object_sensitive_content_recognition():
