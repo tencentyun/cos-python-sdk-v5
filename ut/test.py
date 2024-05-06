@@ -10,7 +10,7 @@ import base64
 
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
-from qcloud_cos import CosServiceError
+from qcloud_cos import CosServiceError, CosClientError
 from qcloud_cos.select_event_stream import EventStream
 from qcloud_cos import get_date
 from qcloud_cos.cos_encryption_client import CosEncryptionClient
@@ -3764,6 +3764,87 @@ def test_switch_hostname_for_url():
     try:
         switch_hostname_for_url('')
     except Exception as e:
+        print(e)
+
+
+def test_should_switch_domain():
+    conf1 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+    )
+    client1 = CosS3Client(conf1)
+    domain_switched = False
+    headers = {}
+    # 默认AutoSwitchedDomainOnRetry=False, 不切换域名
+    assert client1.should_switch_domain(domain_switched, headers) == False
+
+    conf1 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        AutoSwitchDomainOnRetry=True,
+    )
+    client1 = CosS3Client(conf1)
+    domain_switched = False
+    headers = {}
+    # AutoSwitchedDomainOnRetry=True, 切换域名
+    assert client1.should_switch_domain(domain_switched, headers) == True
+
+    conf1 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        AutoSwitchDomainOnRetry=True,
+    )
+    client1 = CosS3Client(conf1)
+    domain_switched = True # 已经切换过了, 本次不切换
+    headers = {}
+    assert client1.should_switch_domain(domain_switched, headers) == False
+
+    conf1 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        AutoSwitchDomainOnRetry=True,
+    )
+    client1 = CosS3Client(conf1)
+    domain_switched = True
+    headers = {'x-cos-request-id': 'xxx'}
+    # 响应头中有x-cos-request-id, 不切换域名
+    assert client1.should_switch_domain(domain_switched, headers) == False
+
+    conf1 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        AutoSwitchDomainOnRetry=True,
+    )
+    conf1.set_ip_port('10.0.0.1', 443)
+    client1 = CosS3Client(conf1)
+    domain_switched = True
+    headers = {}
+    # 请求指定了ip, 不切换域名
+    assert client1.should_switch_domain(domain_switched, headers) == False
+
+def test_network_failure():
+    """指定一个错误的ip"""
+    conf1 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        Scheme='http',
+        Timeout=10,
+        AutoSwitchDomainOnRetry=True,
+    )
+    conf1.set_ip_port('10.0.0.1', 80)
+    client1 = CosS3Client(conf1)
+    try:
+        response = client1.get_object(
+            Bucket=test_bucket,
+            Key='test',
+        )
+    except CosClientError as e:
         print(e)
 
 if __name__ == "__main__":

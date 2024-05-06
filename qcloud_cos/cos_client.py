@@ -331,6 +331,14 @@ class CosS3Client(object):
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
         return auth(r).headers['Authorization']
 
+    def should_switch_domain(self, domain_switched, headers={}):
+        if not 'x-cos-request-id' in headers and \
+            not domain_switched and \
+            self._conf._auto_switch_domain_on_retry and \
+            self._conf._ip is None:
+            return True
+        return False
+
     def send_request(self, method, url, bucket, timeout=30, cos_request=True, ci_request=False, **kwargs):
         """封装request库发起http请求"""
         if self._conf._timeout is not None:  # 用户自定义超时时间
@@ -372,7 +380,10 @@ class CosS3Client(object):
         for j in range(self._retry + 1):
             try:
                 if j != 0:
-                    time.sleep(j)
+                    if client_can_retry(file_position, **kwargs):
+                        time.sleep(j)
+                    else:
+                        break
                 if method == 'POST':
                     res = self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'GET':
@@ -385,24 +396,21 @@ class CosS3Client(object):
                     res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
-                        if j < self._retry and not 'x-cos-request-id' in res.headers \
-                            and not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                        if j < self._retry and self.should_switch_domain(domain_switched, res.headers):
                             url = switch_hostname_for_url(url)
                             domain_switched = True
                             continue
                     return res
                 elif res.status_code < 500:  # 4xx 不重试
-                    if j < self._retry and not 'x-cos-request-id' in res.headers \
-                        and not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
+                    if j < self._retry and self.should_switch_domain(domain_switched, res.headers):
                         url = switch_hostname_for_url(url)
                         domain_switched = True
                         continue
                     break
                 else:
-                    if j < self._retry and client_can_retry(file_position, **kwargs):
-                        if not 'x-cos-request-id' in res.headers and not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
-                            url = switch_hostname_for_url(url)
-                            domain_switched = True
+                    if j < self._retry and self.should_switch_domain(domain_switched, res.headers):
+                        url = switch_hostname_for_url(url)
+                        domain_switched = True
                         continue
                     else:
                         break
@@ -411,11 +419,10 @@ class CosS3Client(object):
                 exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
                 exception_logbuf.append(exception_log)
                 if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
-                    if client_can_retry(file_position, **kwargs):
-                        if not domain_switched and self._conf._auto_switch_domain_on_retry and self._conf._ip is None:
-                            url = switch_hostname_for_url(url)
-                            domain_switched = True
-                        continue
+                    if self.should_switch_domain(domain_switched):
+                        url = switch_hostname_for_url(url)
+                        domain_switched = True
+                    continue
                 logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
                 raise CosClientError(str(e))
 
