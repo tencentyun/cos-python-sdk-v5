@@ -1936,7 +1936,7 @@ def test_download_file():
         os.remove('test_download_file.local')
 
     # 重置内置线程池大小
-    client.set_built_in_connection_pool_max_size(10, 5)
+    client.generate_built_in_connection_pool(10, 5)
 
     # 测试限速下载
     client.download_file(copy_test_bucket, test_object, 'test_download_traffic_limit.local', TrafficLimit='819200')
