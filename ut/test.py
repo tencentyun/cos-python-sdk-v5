@@ -7,6 +7,7 @@ import os
 import requests
 import json
 import base64
+import multiprocessing
 
 from qcloud_cos import CosS3Client
 from qcloud_cos import CosConfig
@@ -1101,6 +1102,42 @@ def test_upload_file_multithreading():
     if os.path.exists(file_name):
         os.remove(file_name)
     print(ed - st)
+
+def multiprocessing_worker(file_name):
+    gen_file(file_name, 10)
+    client = CosS3Client(conf)
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=file_name,
+        LocalFilePath=file_name,
+        PartSize=1,
+        MAXThread=5
+    )
+    assert response
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+def test_upload_file_multiprocessing():
+    """多进程+多线程上传10M的文件"""
+    file_name = 'test_10M'
+    gen_file(file_name, 10)
+    # 主进程先做一次请求, 将socket连接保留在连接池里, 子进程应该重新生成自己的连接池
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=file_name,
+        LocalFilePath=file_name,
+        PartSize=1,
+        MAXThread=5
+    )
+    assert response
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+    pool = multiprocessing.Pool(2)
+    pool.apply_async(multiprocessing_worker, args=('test1_10M',))
+    pool.apply_async(multiprocessing_worker, args=('test2_10M',))
+    pool.close()
+    pool.join()
 
 
 def test_upload_file_with_progress_callback():
