@@ -4,6 +4,8 @@ import sys
 import time
 import hashlib
 import os
+from urllib.parse import urlencode, quote
+
 import requests
 import json
 import base64
@@ -2553,6 +2555,7 @@ def test_ci_put_image_style():
         Request=body,
     )
     assert response
+    time.sleep(1)
     body = {
         'StyleName': 'style_name',
     }
@@ -2561,6 +2564,7 @@ def test_ci_put_image_style():
         Request=body,
     )
     assert response
+    time.sleep(1)
     body = {
         'StyleName': 'style_name',
     }
@@ -3693,7 +3697,7 @@ def test_ci_auditing_video_submit():
         response = client.ci_auditing_video_query(
             Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
-        if response['JobsDetail']['State'] == 'Success':
+        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
             print(str(response))
             break
     assert response
@@ -3710,7 +3714,7 @@ def test_ci_auditing_audio_submit():
         response = client.ci_auditing_audio_query(
             Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
-        if response['JobsDetail']['State'] == 'Success':
+        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
             print(str(response))
             break
     assert response
@@ -3727,7 +3731,7 @@ def test_ci_auditing_text_submit():
         response = client.ci_auditing_text_query(
             Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
-        if response['JobsDetail']['State'] == 'Success':
+        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
             print(str(response))
             break
     assert response
@@ -3748,7 +3752,7 @@ def test_ci_auditing_document_submit():
             Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
         print(str(response))
-        if response['JobsDetail']['State'] == 'Success':
+        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
             print(str(response))
             break
     assert response
@@ -3765,7 +3769,7 @@ def test_ci_auditing_html_submit():
         response = client.ci_auditing_html_query(
             Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
-        if response['JobsDetail']['State'] == 'Success':
+        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
             print(str(response))
             break
     assert response
@@ -3783,7 +3787,7 @@ def test_ci_auditing_image_batch():
         response = client.ci_auditing_image_query(
             Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
-        if response['JobsDetail']['State'] == 'Success':
+        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
             print(str(response))
             break
     assert response
@@ -3803,7 +3807,7 @@ def test_ci_auditing_virus_submit():
         response = client.ci_auditing_virus_query(
             Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
-        if response['JobsDetail']['State'] == 'Success':
+        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
             print(str(response))
             break
     assert response
@@ -3812,6 +3816,393 @@ def test_ci_auditing_virus_submit():
 def test_ci_auditing_detect_type():
     detect_type = CiDetectType.get_detect_type_str(127)
     assert detect_type
+
+
+def test_ci_file_hash():
+    """文件哈希同步请求"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.file_hash(
+        Bucket=ci_bucket_name,
+        Key=ci_test_txt,
+        Type='md5',
+        AddToHeader=True,
+        **kwargs
+    )
+    assert response['FileHashCodeResult']['MD5'] == '3355b4c1078429b94a083459e194f5ec'
+
+
+def test_ci_create_file_hash_job():
+    """创建获取文件哈希值异步任务"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'Type': 'MD5',
+    }
+    mq_config = {
+        'MqRegion': 'bj',
+        'MqMode': 'Queue',
+        'MqName': 'queueName'
+    }
+    response = client.ci_create_file_hash_job(
+        Bucket=ci_bucket_name,  # 文件所在的桶名称
+        InputObject=ci_test_txt,  # 需要获取哈希值的文件名
+        FileHashCodeConfig=body,  # 获取文件哈希值配置详情
+        CallBack="http://www.callback.com",  # 回调url地址,当 CallBackType 参数值为 Url 时有效
+        CallBackFormat="JSON",  # 回调信息格式 JSON 或 XML，默认 XML
+        CallBackType="Url",  # 回调类型，Url 或 TDMQ，默认 Url
+        CallBackMqConfig=mq_config,  # 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填
+        UserData="this is my user data",  # 透传用户信息, 可打印的 ASCII 码, 长度不超过1024
+        **kwargs
+    )
+    job_id = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_get_file_process_jobs(
+            Bucket=ci_bucket_name,  # 任务所在桶名称
+            JobIDs=job_id,  # 文件处理异步任务ID
+            **kwargs
+        )
+        print(response['JobsDetail'][0]['State'])
+        if response['JobsDetail'][0]['State'] == 'Success' or response['JobsDetail'][0]['State'] == 'Failed':
+            print(str(response))
+            break
+    assert response['JobsDetail'][0]['Operation']['FileHashCodeResult']['MD5'] == '3355b4c1078429b94a083459e194f5ec'
+
+
+def test_ci_create_file_uncompress_job():
+    """创建获取文件解压异步任务"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'Prefix': 'zip/result/',
+        'PrefixReplaced': '0'
+    }
+    mq_config = {
+        'MqRegion': 'bj',
+        'MqMode': 'Queue',
+        'MqName': 'queueName'
+    }
+    response = client.ci_create_file_uncompress_job(
+        Bucket=ci_bucket_name,  # 文件所在的桶名称
+        InputObject='zip/test.zip',  # 需要解压的文件名
+        OutputBucket=ci_bucket_name,  # 指定输出文件所在的桶名称
+        OutputRegion=ci_region,  # 指定输出文件所在的地域
+        FileUncompressConfig=body,  # 文件解压配置详情
+        CallBack="http://www.callback.com",  # 回调url地址,当 CallBackType 参数值为 Url 时有效
+        CallBackFormat="JSON",  # 回调信息格式 JSON 或 XML，默认 XML
+        CallBackType="Url",  # 回调类型，Url 或 TDMQ，默认 Url
+        CallBackMqConfig=mq_config,  # 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填
+        UserData="this is my user data",  # 透传用户信息, 可打印的 ASCII 码, 长度不超过1024
+        **kwargs
+    )
+    job_id = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_get_file_process_jobs(
+            Bucket=ci_bucket_name,  # 任务所在桶名称
+            JobIDs=job_id,  # 文件处理异步任务ID
+            **kwargs
+        )
+        print(response['JobsDetail'][0]['State'])
+        if response['JobsDetail'][0]['State'] == 'Success' or response['JobsDetail'][0]['State'] == 'Failed':
+            print(str(response))
+            break
+    assert response['JobsDetail'][0]['State'] == 'Success'
+
+
+def test_ci_create_file_compress_job():
+    """创建获取文件压缩异步任务"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'Flatten': '0',
+        'Format': 'zip',
+        'Type': 'faster',
+        'Key': ['zip/result/test.txt']
+    }
+    mq_config = {
+        'MqRegion': 'bj',
+        'MqMode': 'Queue',
+        'MqName': 'queueName'
+    }
+    response = client.ci_create_file_compress_job(
+        Bucket=ci_bucket_name,  # 文件所在的桶名称
+        OutputBucket=ci_bucket_name,  # 指定输出文件所在的桶名称
+        OutputRegion=ci_region,  # 指定输出文件所在的地域
+        OutputObject='zip/test.zip',  # 指定输出文件名
+        FileCompressConfig=body,  # 指定压缩配置
+        CallBack="http://www.callback.com",  # 回调url地址,当 CallBackType 参数值为 Url 时有效
+        CallBackFormat="JSON",  # 回调信息格式 JSON 或 XML，默认 XML
+        CallBackType="Url",  # 回调类型，Url 或 TDMQ，默认 Url
+        CallBackMqConfig=mq_config,  # 任务回调TDMQ配置，当 CallBackType 为 TDMQ 时必填
+        UserData="this is my user data",  # 透传用户信息, 可打印的 ASCII 码, 长度不超过1024
+        **kwargs
+    )
+    job_id = response['JobsDetail']['JobId']
+    while True:
+        time.sleep(5)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_get_file_process_jobs(
+            Bucket=ci_bucket_name,  # 任务所在桶名称
+            JobIDs=job_id,  # 文件处理异步任务ID
+            **kwargs
+        )
+        print(response['JobsDetail'][0]['State'])
+        if response['JobsDetail'][0]['State'] == 'Success' or response['JobsDetail'][0]['State'] == 'Failed':
+            print(str(response))
+            break
+    assert response['JobsDetail'][0]['State'] == 'Success'
+
+
+def test_ci_get_zip_preview():
+    """压缩包预览同步请求"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    # 压缩包预览同步请求
+    response = client.ci_file_zip_preview(
+        Bucket=ci_bucket_name,   # 压缩文件所在桶名称
+        Key="zip/test.zip",  # 需要预览的压缩文件名
+        **kwargs
+    )
+    assert response['FileNumber'] == '1'
+
+
+def test_ci_recognize_logo_process():
+    """logo 识别"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_recognize_logo_process(ci_bucket_name, Key='logo.png', **kwargs)
+    assert response['Status'] == '0'
+
+
+def test_ci_super_resolution_process():
+    """图片超分下载时处理"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_super_resolution_process(ci_bucket_name,
+                                                  Key=ci_test_car_image,
+                                                  **kwargs
+                                                  # Url=url
+                                                  )
+    assert response['Content-Type'] == 'image/jpeg'
+
+
+def test_ci_cancel_jobs():
+    """取消ci任务"""
+    if TEST_CI != 'true':
+        return
+    try:
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_cancel_jobs(
+            Bucket=ci_bucket_name,
+            JobID='a65xxxxxxx1f213dcd0151',
+            ContentType='application/xml',
+            **kwargs
+        )
+    except Exception as e:
+        print(e)
+
+
+def test_ci_create_inventory_trigger_jobs():
+    """创建异常图片检测批量处理任务"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'Name': 'image-inspect-auto-move-batch-process',
+        'Type': 'Job',
+        'Input': {
+            'Object': 'test.png',
+        },
+        'Operation': {
+            'Tag': 'ImageInspect',
+            'JobParam': {
+                'ImageInspect': {
+                    'AutoProcess': 'false',
+                },
+            },
+        },
+    }
+    response = client.ci_create_inventory_trigger_jobs(
+        Bucket=ci_bucket_name,
+        JobBody=body,
+        ContentType='application/xml',
+        **kwargs
+    )
+    print(response)
+    assert response['JobsDetail'][0]['JobId'] is not None
+    job_id = response['JobsDetail'][0]['JobId']
+    while True:
+        time.sleep(5)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response = client.ci_get_inventory_trigger_jobs(
+            Bucket=ci_bucket_name,
+            JobID=job_id,
+            **kwargs
+        )
+        print(response['JobsDetail'][0]['State'])
+        if response['JobsDetail'][0]['State'] == 'Success' or response['JobsDetail'][0]['State'] == 'Failed':
+            print(str(response))
+            break
+    assert response['JobsDetail'][0]['State'] == 'Success'
+
+
+def test_ci_delete_inventory_trigger_jobs():
+    """删除批量处理任务"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'Name': 'image-inspect-auto-move-batch-process',
+        'Type': 'Job',
+        'Input': {
+            'Object': 'test.png',
+        },
+        'Operation': {
+            'Tag': 'ImageInspect',
+            'JobParam': {
+                'ImageInspect': {
+                    'AutoProcess': 'false',
+                },
+            },
+        },
+    }
+    response = client.ci_create_inventory_trigger_jobs(
+        Bucket=ci_bucket_name,
+        JobBody=body,
+        ContentType='application/xml',
+        **kwargs
+    )
+    print(response)
+    assert response['JobsDetail'][0]['JobId'] is not None
+    job_id = response['JobsDetail'][0]['JobId']
+    response = client.ci_delete_inventory_trigger_jobs(
+        Bucket=ci_bucket_name,
+        JobId=job_id,
+        **kwargs
+    )
+    print(response)
+    assert response
+
+
+def test_ci_snapshot_template():
+    """截图模板"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    snapshot_template_config = {
+        'Name': 'snapshot_template_' + str(random.randint(0, 1000)),
+        'Tag': 'Snapshot',
+        'Snapshot': {
+            'Mode': 'Interval',
+            'Width': '128',
+            'Height': '128',
+            'Count': '1',
+            'SnapshotOutMode': 'OnlySnapshot',
+        },
+    }
+    response = client.ci_create_template(
+        Bucket=ci_bucket_name,
+        Template=snapshot_template_config,
+        **kwargs
+    )
+    print(response)
+    assert response['Template']['TemplateId'] is not None
+    template_id = response['Template']['TemplateId']
+    response = client.ci_update_template(
+        Bucket=ci_bucket_name,
+        TemplateId=template_id,
+        Template=snapshot_template_config,
+        **kwargs
+    )
+    print(response)
+    assert response['Template']['TemplateId'] == template_id
+    response = client.ci_get_template(
+        Bucket=ci_bucket_name,
+        Ids=template_id,
+        **kwargs
+    )
+    print(response)
+    assert response['TemplateList'][0]['TemplateId'] == template_id
+    response = client.ci_delete_template(
+        Bucket=ci_bucket_name,  # 任务所在桶名称
+        TemplateId=template_id,  # 文件处理异步任务ID
+        **kwargs
+    )
+    print(response)
+    assert response['TemplateId'] == template_id
+
+
+def test_ci_list_inventory_trigger_jobs():
+    """获取ci批量处理任务列表"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_list_inventory_trigger_jobs(
+        Bucket=ci_bucket_name,  # 桶名称
+        Type='Job',
+        **kwargs
+    )
+    assert response
+
+
+def test_ci_get_ai_bucket():
+    """获取ai bucket信息"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_get_ai_bucket(
+        BucketName=ci_bucket_name,
+        **kwargs
+    )
+    print(response)
+    assert response['AiBucketList']['BucketId'] == ci_bucket_name
+
+
+def test_ci_update_ai_queue():
+    """更新ai队列信息"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+
+    response = client.ci_get_ai_queue(
+        Bucket=ci_bucket_name,
+        ContentType='application/xml',
+        **kwargs
+    )
+    assert response['QueueList'][0]['QueueId'] is not None
+    queue_id = response['QueueList'][0]['QueueId']
+
+    body = {
+        'Name': 'ai-queue',
+        'QueueID': queue_id,
+        'State': 'Active',
+        'NotifyConfig': {
+            'Type': 'Url',
+            'Url': 'http://www.demo.callback.com',
+            'Event': 'TaskFinish',
+            'State': 'On',
+            'ResultFormat': 'JSON',
+        }
+    }
+    response = client.ci_update_ai_queue(
+        Bucket=ci_bucket_name,
+        QueueId=queue_id,
+        Request=body,
+        ContentType='application/xml',
+        **kwargs
+    )
+    assert response['Queue'][0]['QueueId'] == queue_id
 
 
 def test_put_get_async_fetch_task():
@@ -4217,5 +4608,6 @@ if __name__ == "__main__":
     test_ci_auditing_image_batch()
     test_ci_auditing_virus_submit()
     test_sse_c_file()
+    test_ci_file_hash()
     """
     tearDown()

@@ -9750,10 +9750,7 @@ class CosS3Client(object):
             params=params,
             headers=headers,
             ci_request=True)
-
-        data = xml_to_dict(rt.content)
-        # 单个元素时将dict转为list
-        return data
+        return rt
 
     def ci_list_inventory_trigger_jobs(self, Bucket, StartCreationTime=None,
         EndCreationTime=None, OrderByTime='Desc', States='All', Size=10,
