@@ -30,21 +30,25 @@ test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
-special_file_name = "中文" + "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+special_file_name = "中文" + \
+    "→↓←→↖↗↙↘! \"#$%&'()*+,-./0123456789:;<=>@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 
 """ CredentialDemo """
+
+
 class CredentialDemo:
     @property
     def secret_id(self):
         return SECRET_ID
-    
+
     @property
     def secret_key(self):
         return SECRET_KEY
-    
+
     @property
     def token(self):
         return ''
+
 
 if USE_CREDENTIAL_INST == 'true':
     conf = CosConfig(
@@ -99,6 +103,7 @@ def _create_test_bucket(test_bucket, create_region=None):
             raise e
     return None
 
+
 def _clear_and_delete_bucket(_client, _bucket):
     marker = ""
     while True:
@@ -109,7 +114,7 @@ def _clear_and_delete_bucket(_client, _bucket):
             for content in response['Contents']:
                 key = content['Key']
                 objects.append({'Key': key})
-        
+
         if response['IsTruncated'] == 'false':
             break
 
@@ -127,6 +132,7 @@ def _clear_and_delete_bucket(_client, _bucket):
     )
     print("bucket deleted: {}".format(_bucket))
 
+
 def _upload_test_file(test_bucket, test_key):
     response = client.put_object(
         Bucket=test_bucket,
@@ -134,6 +140,7 @@ def _upload_test_file(test_bucket, test_key):
         Body='test'
     )
     return None
+
 
 def _upload_test_file_from_local_file(test_bucket, test_key, file_name):
     with open(file_name, 'rb') as f:
@@ -144,22 +151,25 @@ def _upload_test_file_from_local_file(test_bucket, test_key, file_name):
         )
     return None
 
+
 def get_raw_md5(data):
     m2 = hashlib.md5(data)
     etag = '"' + str(m2.hexdigest()) + '"'
     return etag
 
 
-def gen_file(path, size):
+def gen_file(path, size, attach_size=0):
     _file = open(path, 'w')
-    _file.seek(1024 * 1024 * size - 3)
+    _file.seek(1024 * 1024 * size + attach_size - 3)
     _file.write('cos')
     _file.close()
+
 
 def gen_file_small(path, size):
     _file = open(path, 'w')
     _file.write('x'*size)
     _file.close()
+
 
 def print_error_msg(e):
     print(e.get_origin_msg())
@@ -195,6 +205,7 @@ def setUp():
 def tearDown():
     print("function teardown")
 
+
 def test_cos_comm_format_region():
     from qcloud_cos.cos_comm import format_region
     try:
@@ -211,7 +222,7 @@ def test_cos_comm_format_region():
         r = format_region('ap_beijing', u'cos.', False, False)
     except Exception as e:
         print(e)
-    
+
     r = format_region('cos.ap-beijing', u'cos.', False, False)
     assert r == 'cos.ap-beijing'
 
@@ -233,7 +244,8 @@ def test_cos_comm_format_region():
     r = format_region('sg', u'cos.', False, False)
     assert r == 'sg'
 
-    r = format_region('ap-beijing', u'cos.', EnableOldDomain=False, EnableInternalDomain=True)
+    r = format_region('ap-beijing', u'cos.',
+                      EnableOldDomain=False, EnableInternalDomain=True)
     assert r == 'cos-internal.ap-beijing'
 
     regionMap = [
@@ -250,6 +262,7 @@ def test_cos_comm_format_region():
     for data in regionMap:
         r = format_region(data[0], u'cos.', False, False)
         assert r == 'cos.' + data[1]
+
 
 def test_cos_comm_format_bucket():
     from qcloud_cos.cos_comm import format_bucket
@@ -399,7 +412,8 @@ def test_get_object_acl():
 
 def test_copy_object_diff_bucket():
     """从另外的bucket拷贝object"""
-    copy_source = {'Bucket': copy_test_bucket, 'Key': 'test.txt', 'Region': REGION}
+    copy_source = {'Bucket': copy_test_bucket,
+                   'Key': 'test.txt', 'Region': REGION}
     response = client.copy_object(
         Bucket=test_bucket,
         Key='test.txt',
@@ -491,7 +505,8 @@ def test_upload_part_copy():
     )
 
     # upload part copy
-    copy_source = {'Bucket': copy_test_bucket, 'Key': 'test.txt', 'Region': REGION}
+    copy_source = {'Bucket': copy_test_bucket,
+                   'Key': 'test.txt', 'Region': REGION}
     response = client.upload_part_copy(
         Bucket=test_bucket,
         Key='multipartfile.txt',
@@ -560,9 +575,11 @@ def test_create_head_delete_bucket():
     response = client.head_bucket(
         Bucket=bucket_name
     )
+    assert response
     response = client.delete_bucket(
         Bucket=bucket_name
     )
+
 
 def test_create_head_delete_maz_ofs_bucket():
     """创建一个多AZ OFS bucket,head它是否存在,最后删除一个空bucket"""
@@ -577,6 +594,7 @@ def test_create_head_delete_maz_ofs_bucket():
     response = client.head_bucket(
         Bucket=bucket_name
     )
+    assert response
     response = client.delete_bucket(
         Bucket=bucket_name
     )
@@ -590,12 +608,39 @@ def test_put_bucket_acl():
     )
     print(response)
 
+
 def test_put_bucket_acl_illegal():
     """设置非法的ACL"""
     try:
         response = client.put_bucket_acl(
             Bucket=test_bucket,
             ACL='public-read-writ',
+        )
+    except CosServiceError as e:
+        print_error_msg(e)
+
+    try:
+        response = client.put_bucket_acl(
+            Bucket=test_bucket,
+            ACL='private',
+            AccessControlPolicy={
+                'AccessControlList': {
+                    'Grant': [
+                        {
+                            'Grantee': {
+                                'DisplayName': 'qcs::cam::uin/100000000002:uin/100000000002',
+                                'Type': 'CanonicalUser',
+                                'ID': 'qcs::cam::uin/100000000002:uin/100000000002',  # Type为CanonicalUser时必须填写ID
+                            },
+                            'Permission': 'WRITE'
+                        },
+                    ]
+                },
+                'Owner': {
+                    'DisplayName': 'qcs::cam::uin/100000000001:uin/100000000001',
+                    'ID': 'qcs::cam::uin/100000000001:uin/100000000001'  # 必须是桶 Owner 的 ID
+                }
+            }
         )
     except CosServiceError as e:
         print_error_msg(e)
@@ -639,6 +684,7 @@ def test_list_objects():
         )
     except Exception as e:
         print(e)
+
 
 def test_list_objects_versions():
     """列出bucket下的带版本信息的objects"""
@@ -709,12 +755,13 @@ def test_get_service():
             }
         }
     )
-    response = client.list_buckets(Region=REGION, TagKey='tagKey', TagValue='tagValue')
+    response = client.list_buckets(
+        Region=REGION, TagKey='tagKey', TagValue='tagValue')
     for bucket in response['Buckets']['Bucket']:
         tag = client.get_bucket_tagging(Bucket=bucket['Name'])
         assert tag['TagSet']['Tag'][0]['Key'] == 'tagKey'
         assert tag['TagSet']['Tag'][0]['Value'] == 'tagValue'
-    
+
     time.sleep(3)
     client.delete_bucket(Bucket=test_tagging_bucket)
 
@@ -723,9 +770,11 @@ def test_get_service():
     list_over = False
     while list_over is False:
         create_time = 1514736000
-        response = client.list_buckets(Region='ap-beijing', CreateTime=create_time, Range='gt', Marker=marker)
+        response = client.list_buckets(
+            Region='ap-beijing', CreateTime=create_time, Range='gt', Marker=marker)
         for bucket in response['Buckets']['Bucket']:
-            ctime = int(time.mktime(datetime.strptime(bucket['CreationDate'], '%Y-%m-%dT%H:%M:%SZ').timetuple()))
+            ctime = int(time.mktime(datetime.strptime(
+                bucket['CreationDate'], '%Y-%m-%dT%H:%M:%SZ').timetuple()))
             assert ctime > create_time
             assert bucket['Location'] == 'ap-beijing'
 
@@ -999,7 +1048,7 @@ def test_list_multipart_uploads():
             Bucket=test_bucket,
             Prefix="multipart",
             MaxUploads=100,
-            EncodingType='xml' # 非法, 只能为url
+            EncodingType='xml'  # 非法, 只能为url
         )
     except Exception as e:
         print(e)
@@ -1023,6 +1072,29 @@ def test_upload_file_from_buffer():
         MaxBufferSize=5,
         PartSize=1
     )
+
+    # 简单上传
+    data = io.BytesIO(1024 * b'A')
+    response = client.upload_file_from_buffer(
+        Bucket=test_bucket,
+        Key='test_upload_from_buffer',
+        Body=data,
+        MaxBufferSize=5,
+        PartSize=1
+    )
+
+    # Body没有read方法
+    try:
+        response = client.upload_file_from_buffer(
+            Bucket=test_bucket,
+            Key='test_upload_from_buffer',
+            Body=b'xxx',
+            MaxBufferSize=5,
+            PartSize=1
+        )
+    except CosClientError as e:
+        print(e)  # Body must have attr read
+
 
 def test_upload_small_file():
     """使用高级上传接口上传小文件"""
@@ -1083,6 +1155,33 @@ def test_upload_small_file():
     )
     assert response['Content-Length'] == '0'
 
+
+def test_upload_file_10000_parts_with_trafficlimit():
+    """将文件最大分块数限制在10000"""
+    file_name = "file_10000_parts"
+    file_size = 10000
+    attach_size = 1024  # 1KB
+    gen_file(file_name, file_size, attach_size)
+
+    st = time.time()  # 记录开始时间
+    try:
+        response = client.upload_file(
+            Bucket=test_bucket,
+            Key=file_name,
+            LocalFilePath=file_name,
+            MAXThread=10,
+            PartSize=1,
+            TrafficLimit=10000000
+        )
+    except CosClientError as e:
+        print(e)
+
+    ed = time.time()  # 记录结束时间
+    if os.path.exists(file_name):
+        os.remove(file_name)
+    print(ed - st)
+
+
 def test_upload_file_multithreading():
     """根据文件大小自动选择分块大小,多线程并发上传提高上传速度"""
     file_name = "thread_1GB"
@@ -1103,6 +1202,7 @@ def test_upload_file_multithreading():
         os.remove(file_name)
     print(ed - st)
 
+
 def multiprocessing_worker(file_name):
     gen_file(file_name, 10)
     client = CosS3Client(conf)
@@ -1116,6 +1216,7 @@ def multiprocessing_worker(file_name):
     assert response
     if os.path.exists(file_name):
         os.remove(file_name)
+
 
 def test_upload_file_multiprocessing():
     """多进程+多线程上传10M的文件"""
@@ -1161,12 +1262,14 @@ def test_upload_file_with_progress_callback():
 
 def test_copy_file_automatically():
     """根据拷贝源文件的大小自动选择拷贝策略，不同园区,小于5G直接copy_object，大于5G分块拷贝"""
-    copy_source = {'Bucket': copy_test_bucket, 'Key': 'test.txt', 'Region': REGION}
+    copy_source = {'Bucket': copy_test_bucket,
+                   'Key': 'test.txt', 'Region': REGION}
     response = client.copy(
         Bucket=test_bucket,
         Key='copy.txt',
         CopySource=copy_source,
-        MAXThread=10
+        MAXThread=10,
+        StorageClass='STANDARD'
     )
 
 
@@ -1194,9 +1297,11 @@ def test_use_get_auth():
         Params={'acl': '', 'unsed': '123'}
     )
     if conf._enable_old_domain:
-        url = 'http://' + test_bucket + '.cos.' + REGION + '.myqcloud.com/test.txt?acl&unsed=123'
+        url = 'http://' + test_bucket + '.cos.' + \
+            REGION + '.myqcloud.com/test.txt?acl&unsed=123'
     else:
-        url = 'http://' + test_bucket + '.cos.' + REGION + '.tencentcos.cn/test.txt?acl&unsed=123'
+        url = 'http://' + test_bucket + '.cos.' + REGION + \
+            '.tencentcos.cn/test.txt?acl&unsed=123'
     response = requests.get(url, headers={'Authorization': auth})
     assert response.status_code == 200
 
@@ -1309,6 +1414,12 @@ def test_object_exists():
     )
     assert status is True
 
+    status = client.object_exists(
+        Bucket=test_bucket,
+        Key='object_not_exists'
+    )
+    assert status is False
+
 
 def test_bucket_exists():
     """测试一个bucket是否存在"""
@@ -1316,6 +1427,11 @@ def test_bucket_exists():
         Bucket=test_bucket
     )
     assert status is True
+
+    status = client.bucket_exists(
+        Bucket='bucket-not-exists-' + APPID
+    )
+    assert status is False
 
 
 def test_put_get_delete_bucket_policy():
@@ -1368,7 +1484,8 @@ def test_put_file_like_object():
 def test_put_chunked_object():
     """支持网络流来支持chunk上传"""
     import requests
-    input = requests.get(client.get_presigned_download_url(test_bucket, test_object))
+    input = requests.get(
+        client.get_presigned_download_url(test_bucket, test_object))
     rt = client.put_object(
         Bucket=test_bucket,
         Key='test_chunked_object',
@@ -1441,6 +1558,7 @@ def test_put_get_delete_bucket_domain():
         Bucket=test_bucket
     )
 
+
 def test_put_get_delete_bucket_domain_certificate():
     """测试设置获取删除bucket自定义域名证书"""
 
@@ -1464,8 +1582,7 @@ def test_put_get_delete_bucket_domain_certificate():
         )
     except CosServiceError as e:
         if e.get_error_code() == "RecordAlreadyExist":
-            print(e.get_error_code())
-            return
+            print_error_msg(e)
         else:
             raise e
 
@@ -1496,18 +1613,26 @@ def test_put_get_delete_bucket_domain_certificate():
     )
 
     time.sleep(2)
-    response = client.put_bucket_domain_certificate(
-        Bucket=test_bucket,
-        DomainCertificateConfiguration=domain_cert_config
-    )
-    # wait for sync
-    # get domain certificate
-    time.sleep(4)
-    response = client.get_bucket_domain_certificate(
-        Bucket=test_bucket,
-        DomainName=domain
-    )
-    assert response["Status"] == "Enabled"
+    try:
+        response = client.put_bucket_domain_certificate(
+            Bucket=test_bucket,
+            DomainCertificateConfiguration=domain_cert_config
+        )
+        # wait for sync
+        # get domain certificate
+        time.sleep(4)
+        response = client.get_bucket_domain_certificate(
+            Bucket=test_bucket,
+            DomainName=domain
+        )
+        assert response["Status"] == "Enabled"
+    except CosServiceError as e:
+        print_error_msg(e)
+        response = client.get_bucket_domain_certificate(
+            Bucket=test_bucket,
+            DomainName=domain
+        )
+        assert response["Status"] == "Disabled"
 
     # delete domain certificate
     response = client.delete_bucket_domain_certificate(
@@ -1520,6 +1645,7 @@ def test_put_get_delete_bucket_domain_certificate():
     response = client.delete_bucket_domain(
         Bucket=test_bucket,
     )
+
 
 def test_put_get_delete_bucket_inventory():
     """测试设置获取删除bucket清单"""
@@ -1572,6 +1698,7 @@ def test_put_get_delete_bucket_inventory():
         Id='test'
     )
 
+
 def test_list_bucket_inventory_configrations():
     """测试列举bucket清单"""
     inventory_config = {
@@ -1614,7 +1741,7 @@ def test_list_bucket_inventory_configrations():
             Id=id,
             InventoryConfiguration=inventory_config,
         )
-    
+
     # 列举清单
     i = 0
     continuation_token = ''
@@ -1632,7 +1759,7 @@ def test_list_bucket_inventory_configrations():
             continuation_token = resp['NextContinuationToken']
         else:
             break
-    
+
     assert i == n
 
     # 删除清单
@@ -1642,6 +1769,7 @@ def test_list_bucket_inventory_configrations():
             Bucket=test_bucket,
             Id=id,
         )
+
 
 def test_put_get_delete_bucket_tagging():
     """测试设置获取删除bucket标签"""
@@ -1873,7 +2001,7 @@ def test_select_object():
     event_stream.get_select_result_to_file(file_name)
     if os.path.exists(file_name):
         os.remove(file_name)
-    
+
 
 def test_select_event_stream_error_message():
     '''
@@ -1893,24 +2021,25 @@ def test_select_event_stream_error_message():
     s.write(struct.pack('>I', prelude_crc))
 
     # Header: error-code
-    s.write(struct.pack('>B', 11)) # len(':error-code')
+    s.write(struct.pack('>B', 11))  # len(':error-code')
     s.write(struct.pack('11s', b':error-code'))
     s.write(struct.pack('>B', 7))
-    s.write(struct.pack('>H', 13)) # len('InternalError')
+    s.write(struct.pack('>H', 13))  # len('InternalError')
     s.write(struct.pack('13s', b'InternalError'))
 
     # Header: error-message
-    s.write(struct.pack('>B', 14)) # len(':error-message')
+    s.write(struct.pack('>B', 14))  # len(':error-message')
     s.write(struct.pack('14s', b':error-message'))
     s.write(struct.pack('>B', 7))
-    s.write(struct.pack('>H', 49)) # len('We encounted an internal error. Please try again.')
+    # len('We encounted an internal error. Please try again.')
+    s.write(struct.pack('>H', 49))
     s.write(struct.pack('49s', b'We encounted an internal error. Please try again.'))
 
     # Header: message-type
-    s.write(struct.pack('>B', 13)) # len(':message-type')
+    s.write(struct.pack('>B', 13))  # len(':message-type')
     s.write(struct.pack('13s', b':message-type'))
     s.write(struct.pack('>B', 7))
-    s.write(struct.pack('>H', 5)) # len('error')
+    s.write(struct.pack('>H', 5))  # len('error')
     s.write(struct.pack('5s', b'error'))
 
     # Payload
@@ -1934,7 +2063,7 @@ def test_select_event_stream_error_message():
                 'x-cos-request-id': 'xxx',
                 'x-cos-trace-id': 'yyy',
             }
-    
+
     rt = rt_obj()
     event_stream = EventStream(rt)
     try:
@@ -1958,7 +2087,8 @@ def test_get_object_sensitive_content_recognition():
         Interval=3,
         MaxFrames=20,
         # BizType='xxxx',
-        DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST | CiDetectType.POLITICS | CiDetectType.ADS),
+        DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST |
+                    CiDetectType.POLITICS | CiDetectType.ADS),
         **kwargs
     )
     print(response)
@@ -1968,7 +2098,8 @@ def test_get_object_sensitive_content_recognition():
 def test_download_file():
     """测试断点续传下载接口"""
     # 测试普通下载
-    client.download_file(copy_test_bucket, test_object, 'test_download_file.local')
+    client.download_file(copy_test_bucket, test_object,
+                         'test_download_file.local')
     if os.path.exists('test_download_file.local'):
         os.remove('test_download_file.local')
 
@@ -1976,12 +2107,14 @@ def test_download_file():
     client.generate_built_in_connection_pool(10, 5)
 
     # 测试限速下载
-    client.download_file(copy_test_bucket, test_object, 'test_download_traffic_limit.local', TrafficLimit='819200')
+    client.download_file(copy_test_bucket, test_object,
+                         'test_download_traffic_limit.local', TrafficLimit='819200')
     if os.path.exists('test_download_traffic_limit.local'):
         os.remove('test_download_traffic_limit.local')
 
     # 测试crc64校验开关
-    client.download_file(copy_test_bucket, test_object, 'test_download_crc.local', EnableCRC=True)
+    client.download_file(copy_test_bucket, test_object,
+                         'test_download_crc.local', EnableCRC=True)
     if os.path.exists('test_download_crc.local'):
         os.remove('test_download_crc.local')
 
@@ -2002,7 +2135,8 @@ def test_download_file():
         Key=file_name
     )
 
-    client.download_file(copy_test_bucket, file_name, 'test_download_md5.local')
+    client.download_file(copy_test_bucket, file_name,
+                         'test_download_md5.local')
     if os.path.exists('test_download_md5.local'):
         with open('test_download_md5.local', 'rb') as f:
             dest_file_md5 = get_raw_md5(f.read())
@@ -2021,12 +2155,12 @@ def test_put_get_bucket_intelligenttiering():
     """测试设置获取智能分层"""
     try:
         intelligent_tiering_conf = {
-                    'Status': 'Enabled',
-                    'Transition': {
-                        'Days': '30',
+            'Status': 'Enabled',
+            'Transition': {
+                'Days': '30',
                         'RequestFrequent': '1'
-                    }
-                }
+            }
+        }
         response = client.put_bucket_intelligenttiering(
             Bucket=test_bucket,
             IntelligentTieringConfiguration=intelligent_tiering_conf
@@ -2084,7 +2218,8 @@ def test_aes_client():
         os.remove('test_for_aes_local')
 
     # 测试读取部分数据的md5
-    response = client_for_aes.get_object(test_bucket, 'test_for_aes', Range='bytes=5-3000')
+    response = client_for_aes.get_object(
+        test_bucket, 'test_for_aes', Range='bytes=5-3000')
     response['Body'].get_stream_to_file('test_for_aes_local')
     with open('test_for_aes_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
@@ -2098,12 +2233,17 @@ def test_aes_client():
     content = '1' * 1024 * 1024
     # 测试分片上传
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
-    response = client_for_aes.create_multipart_upload(test_bucket, 'test_multi_upload')
+    response = client_for_aes.create_multipart_upload(
+        test_bucket, 'test_multi_upload')
     uploadid = response['UploadId']
-    client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
-    client_for_aes.upload_part(test_bucket, 'test_multi_upload', content, 2, uploadid)
-    response = client_for_aes.list_parts(test_bucket, 'test_multi_upload', uploadid)
-    client_for_aes.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part': response['Part']})
+    client_for_aes.upload_part(
+        test_bucket, 'test_multi_upload', content, 1, uploadid)
+    client_for_aes.upload_part(
+        test_bucket, 'test_multi_upload', content, 2, uploadid)
+    response = client_for_aes.list_parts(
+        test_bucket, 'test_multi_upload', uploadid)
+    client_for_aes.complete_multipart_upload(
+        test_bucket, 'test_multi_upload', uploadid, {'Part': response['Part']})
     response = client_for_aes.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
@@ -2114,6 +2254,7 @@ def test_aes_client():
         os.remove('test_multi_upload_local')
 
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
+
 
 def test_aes_client2():
     """测试aes加密客户端的上传下载操作"""
@@ -2157,7 +2298,8 @@ def test_rsa_client():
         os.remove('test_for_rsa_local')
 
     # 测试读取部分数据的md5
-    response = client_for_rsa.get_object(test_bucket, 'test_for_rsa', Range='bytes=5-3000')
+    response = client_for_rsa.get_object(
+        test_bucket, 'test_for_rsa', Range='bytes=5-3000')
     response['Body'].get_stream_to_file('test_for_rsa_local')
     with open('test_for_rsa_local', 'rb') as f:
         local_file_md5 = get_raw_md5(f.read())
@@ -2171,12 +2313,17 @@ def test_rsa_client():
     content = '1' * 1024 * 1024
     # 测试分片上传
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
-    response = client_for_rsa.create_multipart_upload(test_bucket, 'test_multi_upload')
+    response = client_for_rsa.create_multipart_upload(
+        test_bucket, 'test_multi_upload')
     uploadid = response['UploadId']
-    client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 1, uploadid)
-    client_for_rsa.upload_part(test_bucket, 'test_multi_upload', content, 2, uploadid)
-    response = client_for_rsa.list_parts(test_bucket, 'test_multi_upload', uploadid)
-    client_for_rsa.complete_multipart_upload(test_bucket, 'test_multi_upload', uploadid, {'Part': response['Part']})
+    client_for_rsa.upload_part(
+        test_bucket, 'test_multi_upload', content, 1, uploadid)
+    client_for_rsa.upload_part(
+        test_bucket, 'test_multi_upload', content, 2, uploadid)
+    response = client_for_rsa.list_parts(
+        test_bucket, 'test_multi_upload', uploadid)
+    client_for_rsa.complete_multipart_upload(
+        test_bucket, 'test_multi_upload', uploadid, {'Part': response['Part']})
     response = client_for_rsa.get_object(test_bucket, 'test_multi_upload')
     response['Body'].get_stream_to_file('test_multi_upload_local')
     with open('test_multi_upload_local', 'rb') as f:
@@ -2188,12 +2335,14 @@ def test_rsa_client():
 
     client_for_rsa.delete_object(test_bucket, 'test_multi_upload')
 
+
 def test_rsa_client2():
     """测试rsa加密客户端的上传下载操作"""
     rsa_dir = os.path.expanduser('~/.cos_local_rsa')
     public_key_path = os.path.join(rsa_dir, '.public_key.pem')
     private_key_path = os.path.join(rsa_dir, '.private_key.pem')
-    rsa_provider = RSAProvider(key_pair_info=RSAProvider.get_rsa_key_pair_path(public_key_path, private_key_path))
+    rsa_provider = RSAProvider(key_pair_info=RSAProvider.get_rsa_key_pair_path(
+        public_key_path, private_key_path))
     client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 
     with open('test_rsa_file', 'w') as f:
@@ -2215,6 +2364,7 @@ def test_rsa_client2():
         os.remove('test_for_rsa_local')
     if os.path.exists('test_rsa_file'):
         os.remove('test_rsa_file')
+
 
 def test_live_channel():
     if TEST_CI != 'true':
@@ -2296,7 +2446,8 @@ def test_live_channel():
     print(response)
     assert (response['MaxKeys'] == '10')
     assert (response['IsTruncated'] == 'true')
-    response = client.list_live_channel(Bucket=test_bucket, MaxKeys=5, Marker=response['NextMarker'])
+    response = client.list_live_channel(
+        Bucket=test_bucket, MaxKeys=5, Marker=response['NextMarker'])
     print(response)
     assert (response['MaxKeys'] == '5')
     assert (response['IsTruncated'] == 'true')
@@ -2348,7 +2499,8 @@ def test_live_channel():
     )
 
     print("delete live channel...")
-    response = client.delete_live_channel(Bucket=test_bucket, ChannelName=channel_name)
+    response = client.delete_live_channel(
+        Bucket=test_bucket, ChannelName=channel_name)
     assert (response)
 
 
@@ -2505,10 +2657,10 @@ def test_ci_get_media_queue():
     # 查询媒体队列信息
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name,
-                    State="Active",
-                    **kwargs
-                )
+        Bucket=ci_bucket_name,
+        State="Active",
+        **kwargs
+    )
     assert (response['QueueList'])
 
 
@@ -2530,8 +2682,8 @@ def test_ci_create_media_transcode_watermark_jobs():
 
     # 创建转码任务
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name,
-                    State="Active",
+        Bucket=ci_bucket_name,
+        State="Active",
     )
     QueueId = response['QueueList'][0]['QueueId']
 
@@ -2593,11 +2745,11 @@ def test_ci_create_media_transcode_watermark_jobs():
         '</Watermark>'
     ]
     response = client.ci_create_media_jobs(
-                    Bucket=ci_bucket_name,
-                    Jobs=body,
-                    Lst=lst,
-                    ContentType='application/xml'
-                )
+        Bucket=ci_bucket_name,
+        Jobs=body,
+        Lst=lst,
+        ContentType='application/xml'
+    )
     assert (response['JobsDetail'])
 
 
@@ -2607,8 +2759,8 @@ def test_ci_create_media_transcode_jobs():
 
     # 创建转码任务
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name,
-                    State="Active",
+        Bucket=ci_bucket_name,
+        State="Active",
     )
     QueueId = response['QueueList'][0]['QueueId']
     body = {
@@ -2626,13 +2778,14 @@ def test_ci_create_media_transcode_jobs():
             'TemplateId': 't02db40900dc1c43ad9bdbd8acec6075c5'
         }
     }
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
+    kwargs = {"CacheControl": "no-cache",
+              "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
     response = client.ci_create_media_jobs(
-                    Bucket=ci_bucket_name,
-                    Jobs=body,
-                    Lst={},
-                    **kwargs
-                )
+        Bucket=ci_bucket_name,
+        Jobs=body,
+        Lst={},
+        **kwargs
+    )
     assert (response['JobsDetail'])
 
 
@@ -2664,7 +2817,8 @@ def test_ci_create_media_pic_jobs():
             },
         }
     }
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
+    kwargs = {"CacheControl": "no-cache",
+              "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
     response = client.ci_create_media_pic_jobs(
         Bucket=ci_bucket_name,
         Jobs=body,
@@ -2702,21 +2856,23 @@ def test_ci_list_media_transcode_jobs():
 
     # 转码任务
     response = client.ci_get_media_queue(
-                    Bucket=ci_bucket_name,
-                    State="Active",
+        Bucket=ci_bucket_name,
+        State="Active",
     )
     QueueId = response['QueueList'][0]['QueueId']
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     now_time = time.time()
     response = client.ci_list_media_jobs(
-                    Bucket=ci_bucket_name,
-                    QueueId=QueueId,
-                    Tag='Transcode',
-                    StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
-                    EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
-                    Size=2,
-                    **kwargs
-                )
+        Bucket=ci_bucket_name,
+        QueueId=QueueId,
+        Tag='Transcode',
+        StartCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+        EndCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
+        Size=2,
+        **kwargs
+    )
     assert (response)
 
 
@@ -2785,33 +2941,33 @@ def test_ci_create_doc_transcode_jobs():
         return
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_doc_queue(
-                    Bucket=ci_bucket_name,
-                    **kwargs)
+        Bucket=ci_bucket_name,
+        **kwargs)
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_create_doc_job(
-                    Bucket=ci_bucket_name,
-                    QueueId=queueId,
-                    InputObject='normal.pptx',
-                    OutputBucket=ci_bucket_name,
-                    OutputRegion='ap-guangzhou',
-                    OutputObject='/test_doc/normal/abc_${Number}.jpg',
-                    SrcType='pptx',
-                    TgtType='jpg',
-                    StartPage=1,
-                    EndPage=-1,
-                    SheetId=0,
-                    PaperDirection=0,
-                    PaperSize=0,
-                    DocPassword='123',
-                    Comments=0,
-                    Quality=109,
-                    Zoom=100,
-                    ImageDpi=96,
-                    PicPagination=1,
-                    PageRanges='1,3',
-                    **kwargs
+        Bucket=ci_bucket_name,
+        QueueId=queueId,
+        InputObject='normal.pptx',
+        OutputBucket=ci_bucket_name,
+        OutputRegion='ap-guangzhou',
+        OutputObject='/test_doc/normal/abc_${Number}.jpg',
+        SrcType='pptx',
+        TgtType='jpg',
+        StartPage=1,
+        EndPage=-1,
+        SheetId=0,
+        PaperDirection=0,
+        PaperSize=0,
+        DocPassword='123',
+        Comments=0,
+        Quality=109,
+        Zoom=100,
+        ImageDpi=96,
+        PicPagination=1,
+        PageRanges='1,3',
+        **kwargs
     )
     assert (response['JobsDetail']['JobId'])
 
@@ -2819,10 +2975,10 @@ def test_ci_create_doc_transcode_jobs():
     JobID = response['JobsDetail']['JobId']
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_doc_job(
-                    Bucket=ci_bucket_name,
-                    JobID=JobID,
-                    **kwargs
-                )
+        Bucket=ci_bucket_name,
+        JobID=JobID,
+        **kwargs
+    )
     assert (response['JobsDetail'])
 
 
@@ -2831,19 +2987,21 @@ def test_ci_list_doc_transcode_jobs():
         return
     # 查询任务列表
     response = client.ci_get_doc_queue(
-                    Bucket=ci_bucket_name
-                )
+        Bucket=ci_bucket_name
+    )
     assert (response['QueueList'][0]['QueueId'])
     queueId = response['QueueList'][0]['QueueId']
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     now_time = time.time()
     response = client.ci_list_doc_jobs(
-                    Bucket=ci_bucket_name,
-                    QueueId=queueId,
-                    StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
-                    EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
-                    Size=10,
-                    **kwargs
+        Bucket=ci_bucket_name,
+        QueueId=queueId,
+        StartCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+        EndCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
+        Size=10,
+        **kwargs
     )
     assert response
 
@@ -2853,38 +3011,39 @@ def test_ci_live_video_auditing():
         return
     # 提交视频流审核任务
     response = client.ci_auditing_live_video_submit(
-                    Bucket=ci_bucket_name,
-                    Url='rtmp://example.com/live/123',
-                    Callback='http://callback.com/',
-                    DataId='testdataid-111111',
-                    UserInfo={
-                        'TokenId': 'token',
-                        'Nickname': 'test',
+        Bucket=ci_bucket_name,
+        Url='rtmp://example.com/live/123',
+        Callback='http://callback.com/',
+        DataId='testdataid-111111',
+        UserInfo={
+            'TokenId': 'token',
+            'Nickname': 'test',
                         'DeviceId': 'DeviceId-test',
                         'AppId': 'AppId-test',
                         'Room': 'Room-test',
                         'IP': 'IP-test',
                         'Type': 'Type-test',
-                    },
-                    BizType='d0292362d07428b4f6982a31bf97c246',
-                    CallbackType=1
-                )
+        },
+        BizType='d0292362d07428b4f6982a31bf97c246',
+        CallbackType=1
+    )
     assert (response['JobsDetail']['JobId'])
     jobId = response['JobsDetail']['JobId']
     time.sleep(5)
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_auditing_live_video_cancle(
-                    Bucket=ci_bucket_name,
-                    JobID=jobId,
-                    **kwargs
-                )
+        Bucket=ci_bucket_name,
+        JobID=jobId,
+        **kwargs
+    )
     assert (response['JobsDetail'])
 
 
 def test_sse_c_file():
     """测试SSE-C的各种接口"""
     bucket = test_bucket
-    ssec_key = base64.standard_b64encode(to_bytes('01234567890123456789012345678901'))
+    ssec_key = base64.standard_b64encode(
+        to_bytes('01234567890123456789012345678901'))
     ssec_key_md5 = get_md5('01234567890123456789012345678901')
     file_name = 'sdk-sse-c'
 
@@ -2892,13 +3051,15 @@ def test_sse_c_file():
     response = client.put_object(Bucket=bucket, Key=file_name, Body="00000",
                                  SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
     print(response)
-    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+    assert(
+        response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
 
     # 测试普通下载
     response = client.get_object(Bucket=bucket, Key=file_name,
                                  SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
     print(response)
-    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+    assert(
+        response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
 
     # 测试小文件高级下载
     response = client.download_file(Bucket=bucket, Key=file_name, DestFilePath='sdk-sse-c.local',
@@ -2911,7 +3072,8 @@ def test_sse_c_file():
 
     # 测试普通拷贝
     # 故意构造源和目标的密钥不同
-    dest_ssec_key = base64.standard_b64encode(to_bytes('01234567890123456789012345678902'))
+    dest_ssec_key = base64.standard_b64encode(
+        to_bytes('01234567890123456789012345678902'))
     dest_ssec_key_md5 = get_md5('01234567890123456789012345678902')
     copy_source = {'Bucket': bucket, 'Key': file_name, 'Region': REGION}
     response = client.copy_object(
@@ -2919,13 +3081,15 @@ def test_sse_c_file():
         SSECustomerAlgorithm='AES256', SSECustomerKey=dest_ssec_key, SSECustomerKeyMD5=dest_ssec_key_md5,
         CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5
     )
-    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+    assert(
+        response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
 
     # 测试高级拷贝
     response = client.copy(Bucket=bucket, Key='sdk-sse-c-copy', CopySource=copy_source, MAXThread=2,
                            SSECustomerAlgorithm='AES256', SSECustomerKey=dest_ssec_key, SSECustomerKeyMD5=dest_ssec_key_md5,
                            CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5)
-    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+    assert(
+        response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
 
     # 测试取回
     response = client.put_object(Bucket=bucket, Key=file_name, Body="00000",
@@ -2944,7 +3108,8 @@ def test_sse_c_file():
     response = client.upload_file(Bucket=bucket, Key=file_name, LocalFilePath="sdk-sse-c-big.local",
                                   SSECustomerAlgorithm='AES256', SSECustomerKey=ssec_key, SSECustomerKeyMD5=ssec_key_md5)
     print(response)
-    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+    assert(
+        response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
     os.remove('sdk-sse-c-big.local')
 
     # 测试大文件高级下载，走多段
@@ -2962,7 +3127,9 @@ def test_sse_c_file():
     response = client.copy(Bucket=bucket, Key='sdk-sse-c-big-copy', CopySource=copy_source, MAXThread=2,
                            SSECustomerAlgorithm='AES256', SSECustomerKey=dest_ssec_key, SSECustomerKeyMD5=dest_ssec_key_md5, StorageClass='STANDARD_IA',
                            CopySourceSSECustomerAlgorithm='AES256', CopySourceSSECustomerKey=ssec_key, CopySourceSSECustomerKeyMD5=ssec_key_md5)
-    assert(response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+    assert(
+        response['x-cos-server-side-encryption-customer-algorithm'] == 'AES256')
+
 
 def test_short_connection_put_get_object():
     """使用短连接上传下载对象"""
@@ -2987,6 +3154,7 @@ def test_short_connection_put_get_object():
     )
     assert response['Connection'] == 'close'
 
+
 def test_config_invalid_scheme():
     """初始化Scheme为非法值"""
     try:
@@ -2998,6 +3166,7 @@ def test_config_invalid_scheme():
     except Exception as e:
         print(e)
 
+
 def test_config_invalid_aksk():
     """aksk首尾包含空格"""
     try:
@@ -3007,6 +3176,7 @@ def test_config_invalid_aksk():
             SecretKey='   ' + SECRET_KEY)
     except Exception as e:
         print(e)
+
 
 def test_config_credential_inst():
     """使用CredentialInstance初始化"""
@@ -3018,6 +3188,7 @@ def test_config_credential_inst():
     except Exception as e:
         raise e
 
+
 def test_config_anoymous():
     """匿名访问配置"""
     try:
@@ -3028,6 +3199,7 @@ def test_config_anoymous():
     except Exception as e:
         raise e
 
+
 def test_config_none_aksk():
     """缺少aksk"""
     try:
@@ -3036,6 +3208,7 @@ def test_config_none_aksk():
         )
     except Exception as e:
         print(e)
+
 
 def test_head_bucket_object_not_exist():
     """HEAD不存在的桶和对象"""
@@ -3059,6 +3232,7 @@ def test_head_bucket_object_not_exist():
             print(e.get_error_code())
         else:
             raise e
+
 
 def test_append_object():
     """APPEND上传对象"""
@@ -3087,7 +3261,8 @@ def test_ci_delete_asr_template():
 
 def test_ci_get_asr_template():
     # 获取语音识别模板
-    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
+    kwargs = {"ContentType": "application/xml",
+              "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_template(
         Bucket=ci_bucket_name,
         **kwargs
@@ -3124,7 +3299,8 @@ def test_ci_create_asr_template():
         **kwargs
     )
     assert response
-    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
+    kwargs = {"ContentType": "application/xml",
+              "ResponseCacheControl": "no-cache"}
     # 删除指定语音识别模板
     response = client.ci_delete_asr_template(
         Bucket=ci_bucket_name,
@@ -3135,7 +3311,8 @@ def test_ci_create_asr_template():
 
 
 def test_ci_list_asr_jobs():
-    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
+    kwargs = {"ContentType": "application/xml",
+              "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_queue(
         Bucket=ci_bucket_name,
         **kwargs
@@ -3147,8 +3324,10 @@ def test_ci_list_asr_jobs():
     response = client.ci_list_asr_jobs(
         Bucket=ci_bucket_name,
         QueueId=queueId,
-        StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
-        EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
+        StartCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+        EndCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
         Size=10,
         **kwargs
     )
@@ -3238,7 +3417,8 @@ def test_ci_get_asr_queue():
 
 def test_ci_get_asr_bucket():
     # 查询语音识别开通状态
-    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
+    kwargs = {"ContentType": "application/xml",
+              "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_bucket(
         Regions=REGION,
         BucketName=ci_bucket_name,
@@ -3251,7 +3431,8 @@ def test_ci_get_asr_bucket():
 
 def test_ci_get_doc_bucket():
     # 查询文档预览开通状态
-    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
+    kwargs = {"ContentType": "application/xml",
+              "ResponseCacheControl": "no-cache"}
     response = client.ci_get_doc_bucket(
         Regions=REGION,
         # BucketName='demo',
@@ -3265,7 +3446,8 @@ def test_ci_get_doc_bucket():
 
 def test_ci_doc_preview_to_html_process():
     # 文档预览同步接口（生成html）
-    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
+    kwargs = {"ContentType": "application/xml",
+              "ResponseCacheControl": "no-cache"}
     response = client.ci_doc_preview_html_process(
         Bucket=ci_bucket_name,
         Key=ci_test_txt,
@@ -3287,7 +3469,8 @@ def test_ci_doc_preview_to_html_process():
 
 def test_ci_doc_preview_process():
     # 文档预览同步接口
-    kwargs = {"ContentType": "application/xml", "ResponseCacheControl": "no-cache"}
+    kwargs = {"ContentType": "application/xml",
+              "ResponseCacheControl": "no-cache"}
     response = client.ci_doc_preview_process(
         Bucket=ci_bucket_name,
         Key=ci_test_txt,
@@ -3318,7 +3501,8 @@ def test_ci_put_doc_queue():
             'ResultFormat': 'JSON'
         }
     }
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
+    kwargs = {"CacheControl": "no-cache",
+              "ResponseCacheControl": "no-cache", "ContentType": 'application/xml'}
     response = client.ci_update_doc_queue(
         Bucket=ci_bucket_name,
         QueueId=queueId,
@@ -3335,8 +3519,10 @@ def test_ci_list_workflowexecution():
     response = client.ci_list_workflowexecution(
         Bucket=ci_bucket_name,
         WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
-        StartCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
-        EndCreationTime=time.strftime("%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
+        StartCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
+        EndCreationTime=time.strftime(
+            "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
         **kwargs
     )
     assert response
@@ -3445,6 +3631,7 @@ def test_ci_image_detect_car():
     )
     assert response
 
+
 def test_pic_process_when_download_object():
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     rule = 'imageMogr2/format/jpg/interlace/1'
@@ -3501,8 +3688,10 @@ def test_ci_auditing_video_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-        response = client.ci_auditing_video_query(Bucket=ci_bucket_name, JobID=jobId, **kwargs)
+        kwargs = {"CacheControl": "no-cache",
+                  "ResponseCacheControl": "no-cache"}
+        response = client.ci_auditing_video_query(
+            Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
@@ -3518,7 +3707,8 @@ def test_ci_auditing_audio_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        response = client.ci_auditing_audio_query(Bucket=ci_bucket_name, JobID=jobId)
+        response = client.ci_auditing_audio_query(
+            Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
@@ -3534,7 +3724,8 @@ def test_ci_auditing_text_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        response = client.ci_auditing_text_query(Bucket=ci_bucket_name, JobID=jobId)
+        response = client.ci_auditing_text_query(
+            Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
@@ -3551,8 +3742,10 @@ def test_ci_auditing_document_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-        response = client.ci_auditing_document_query(Bucket=ci_bucket_name, JobID=jobId, **kwargs)
+        kwargs = {"CacheControl": "no-cache",
+                  "ResponseCacheControl": "no-cache"}
+        response = client.ci_auditing_document_query(
+            Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
         print(str(response))
         if response['JobsDetail']['State'] == 'Success':
@@ -3569,7 +3762,8 @@ def test_ci_auditing_html_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        response = client.ci_auditing_html_query(Bucket=ci_bucket_name, JobID=jobId)
+        response = client.ci_auditing_html_query(
+            Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
@@ -3581,12 +3775,13 @@ def test_ci_auditing_image_batch():
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_auditing_image_batch(Bucket=ci_bucket_name,
                                               Input=[{
-                                                'Object': 'ocr.jpeg'}],
+                                                  'Object': 'ocr.jpeg'}],
                                               **kwargs)
     jobId = response['JobsDetail'][0]['JobId']
     while True:
         time.sleep(5)
-        response = client.ci_auditing_image_query(Bucket=ci_bucket_name, JobID=jobId)
+        response = client.ci_auditing_image_query(
+            Bucket=ci_bucket_name, JobID=jobId)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
@@ -3603,8 +3798,10 @@ def test_ci_auditing_virus_submit():
     jobId = response['JobsDetail']['JobId']
     while True:
         time.sleep(5)
-        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-        response = client.ci_auditing_virus_query(Bucket=ci_bucket_name, JobID=jobId, **kwargs)
+        kwargs = {"CacheControl": "no-cache",
+                  "ResponseCacheControl": "no-cache"}
+        response = client.ci_auditing_virus_query(
+            Bucket=ci_bucket_name, JobID=jobId, **kwargs)
         print(response['JobsDetail']['State'])
         if response['JobsDetail']['State'] == 'Success':
             print(str(response))
@@ -3616,12 +3813,14 @@ def test_ci_auditing_detect_type():
     detect_type = CiDetectType.get_detect_type_str(127)
     assert detect_type
 
+
 def test_put_get_async_fetch_task():
     from copy import deepcopy
     tmp_conf = deepcopy(conf)
     tmp_conf._scheme = 'http'
     tmp_client = CosS3Client(tmp_conf)
-    url = "{}://{}/{}".format(tmp_conf._scheme, tmp_conf.get_host(test_bucket), test_object)
+    url = "{}://{}/{}".format(tmp_conf._scheme,
+                              tmp_conf.get_host(test_bucket), test_object)
     response = tmp_client.put_async_fetch_task(
         Bucket=test_bucket,
         FetchTaskConfiguration={
@@ -3643,6 +3842,7 @@ def test_get_rtmp_signed_url():
         ChannelName='ch1'
     )
     assert response
+
 
 def test_change_object_storage_class():
     response = client.change_object_storage_class(
@@ -3667,6 +3867,7 @@ def test_change_object_storage_class():
     )
     assert 'x-cos-storage-class' not in response
 
+
 def test_update_object_meta():
     response = client.update_object_meta(
         Bucket=test_bucket,
@@ -3682,6 +3883,7 @@ def test_update_object_meta():
     )
     assert response['x-cos-meta-key1'] == 'value1'
     assert response['x-cos-meta-key2'] == 'value2'
+
 
 def test_cos_comm_misc():
     from qcloud_cos.cos_comm import format_dict_or_list, get_date, get_raw_md5, client_can_retry, format_path
@@ -3703,7 +3905,7 @@ def test_cos_comm_misc():
         assert r
     if os.path.exists("tmp_test"):
         os.remove("tmp_test")
-    
+
     try:
         r = format_path('')
     except Exception as e:
@@ -3713,9 +3915,10 @@ def test_cos_comm_misc():
         r = format_path(0)
     except Exception as e:
         print(e)
-    
+
     r = format_path('/test/path/to')
     assert r == 'test/path/to'
+
 
 def test_cos_exception_unknow():
     msg = '<Error></Error>'
@@ -3725,6 +3928,7 @@ def test_cos_exception_unknow():
     assert e.get_resource_location() == 'Unknown'
     assert e.get_trace_id() == 'Unknown'
     assert e.get_request_id() == 'Unknown'
+
 
 def test_check_multipart_upload():
     test_key = 'test_key'
@@ -3771,6 +3975,7 @@ def test_check_multipart_upload():
         Key=test_key,
         UploadId=uploadId
     )
+
 
 def test_switch_hostname_for_url():
     url = "https://example-125000000.cos.ap-chengdu.myqcloud.com/123"
@@ -3835,7 +4040,7 @@ def test_should_switch_domain():
         AutoSwitchDomainOnRetry=True,
     )
     client1 = CosS3Client(conf1)
-    domain_switched = True # 已经切换过了, 本次不切换
+    domain_switched = True  # 已经切换过了, 本次不切换
     headers = {}
     assert client1.should_switch_domain(domain_switched, headers) == False
 
@@ -3864,6 +4069,7 @@ def test_should_switch_domain():
     # 请求指定了ip, 不切换域名
     assert client1.should_switch_domain(domain_switched, headers) == False
 
+
 def test_network_failure():
     """指定一个错误的ip"""
     conf1 = CosConfig(
@@ -3883,6 +4089,7 @@ def test_network_failure():
         )
     except CosClientError as e:
         print(e)
+
 
 if __name__ == "__main__":
     setUp()

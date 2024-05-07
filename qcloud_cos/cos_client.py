@@ -3949,7 +3949,7 @@ class CosS3Client(object):
         :return(dict): 成功上传的文件的结果.
         """
         if not hasattr(Body, 'read'):
-            raise CosClientError("Body must has attr read")
+            raise CosClientError("Body must have attr read")
 
         part_size = 1024 * 1024 * PartSize
 
