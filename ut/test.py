@@ -4189,7 +4189,7 @@ def test_ci_update_ai_queue():
         'State': 'Active',
         'NotifyConfig': {
             'Type': 'Url',
-            'Url': 'http://www.demo.callback.com',
+            'Url': 'http://www.callback.com',
             'Event': 'TaskFinish',
             'State': 'On',
             'ResultFormat': 'JSON',
@@ -4203,6 +4203,150 @@ def test_ci_update_ai_queue():
         **kwargs
     )
     assert response['Queue'][0]['QueueId'] == queue_id
+
+
+def test_ci_workflow():
+    """创建/更新/获取/删除异常图片检测工作流"""
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+
+    body = {
+        'MediaWorkflow': {
+            'Name': 'image-inspect',
+            'State': 'Paused',
+            'Topology': {
+                'Dependencies': {
+                    'Start': 'ImageInspectNode',
+                    'ImageInspectNode': 'End',
+                },
+                'Nodes': {
+                    'Start': {
+                        'Type': 'Start',
+                        'Input': {
+                            'ObjectPrefix': 'test',
+                            'NotifyConfig': {
+                                'Type': 'Url',
+                                'Url': 'http://www.callback.com',
+                                'Event': 'WorkflowFinish,TaskFinish',
+                                'ResultFormat': '',
+                            },
+                            'ExtFilter': {
+                                'State': 'On',
+                                'Image': 'true',
+                            }
+                        }
+                    },
+                    'ImageInspectNode': {
+                        'Type': 'ImageInspect',
+                        'Operation': {
+                            'ImageInspect': {
+                                'AutoProcess': 'true',
+                                'ProcessType': 'BackupObject'
+                            }
+                        }
+                    },
+                },
+            },
+        },
+    }
+    response = client.ci_create_workflow(
+        Bucket=ci_bucket_name,  # 桶名称
+        Body=body,  # 工作流配置信息
+        ContentType='application/xml',
+        **kwargs
+    )
+    print(response)
+    assert response['MediaWorkflow']['WorkflowId'] is not None
+    workflow_id = response['MediaWorkflow']['WorkflowId']
+
+    update_body = {
+        'MediaWorkflow': {
+            'Name': 'image-inspect',
+            'State': 'Paused',
+            'Topology': {
+                'Dependencies': {
+                    'Start': 'ImageInspectNode',
+                    'ImageInspectNode': 'End',
+                },
+                'Nodes': {
+                    'Start': {
+                        'Type': 'Start',
+                        'Input': {
+                            'ObjectPrefix': 'test',
+                            'NotifyConfig': {
+                                'Type': 'Url',
+                                'Url': 'http://www.callback.com',
+                                'Event': 'WorkflowFinish,TaskFinish',
+                                'ResultFormat': '',
+                            },
+                            'ExtFilter': {
+                                'State': 'On',
+                                'Image': 'true',
+                            }
+                        }
+                    },
+                    'ImageInspectNode': {
+                        'Type': 'ImageInspect',
+                        'Operation': {
+                            'ImageInspect': {
+                                'AutoProcess': 'true',
+                                'ProcessType': 'SwitchObjectToPrivate'
+                            }
+                        }
+                    },
+                },
+            },
+        },
+    }
+
+    response = client.ci_update_workflow(
+        Bucket=ci_bucket_name,  # 桶名称
+        WorkflowId=workflow_id,  # 需要更新的工作流ID
+        Body=update_body,  # 工作流配置详情
+        ContentType='application/xml',
+        **kwargs
+    )
+    print(response)
+    print("workflowId is: " + response['MediaWorkflow']['WorkflowId'])
+    assert response['MediaWorkflow']['WorkflowId'] == workflow_id
+    assert response['MediaWorkflow']['Topology']['Nodes']['ImageInspectNode']['Operation']['ImageInspect']['ProcessType'] == 'SwitchObjectToPrivate'
+
+    response = client.ci_update_workflow_state(
+        Bucket=ci_bucket_name,  # 桶名称
+        WorkflowId=workflow_id,  # 需要更新的工作流ID
+        UpdateState='active',  # 需要更新至的工作流状态，支持 active 开启 / paused 关闭
+        ContentType='application/xml',
+        **kwargs
+    )
+    assert response['MediaWorkflow']['State'] == 'Active'
+
+    response = client.ci_get_workflow(
+        Bucket=ci_bucket_name,  # 桶名称
+        Ids=workflow_id,  # 需要查询的工作流ID，支持传入多个，以","分隔
+        Name='image-inspect',  # 需要查询的工作流名称
+        ContentType='application/xml',
+        **kwargs
+    )
+    print(response)
+    assert response['MediaWorkflowList'][0]['WorkflowId'] == workflow_id
+
+    response = client.ci_update_workflow_state(
+        Bucket=ci_bucket_name,  # 桶名称
+        WorkflowId=workflow_id,  # 需要更新的工作流ID
+        UpdateState='paused',  # 需要更新至的工作流状态，支持 active 开启 / paused 关闭
+        ContentType='application/xml',
+        **kwargs
+    )
+    assert response['MediaWorkflow']['State'] == 'Paused'
+
+    response = client.ci_delete_workflow(
+        Bucket=ci_bucket_name,  # 桶名称
+        WorkflowId=workflow_id,  # 需要删除的工作流ID
+        **kwargs
+    )
+    print(response)
+    assert response['WorkflowId'] == workflow_id
 
 
 def test_put_get_async_fetch_task():
