@@ -78,6 +78,8 @@ ci_test_image = "test.png"
 ci_test_ocr_image = "ocr.jpeg"
 ci_test_txt = "test.txt"
 ci_test_car_image = "car.jpeg"
+ci_test_guanggao_audit_image = "audit_guanggao_test.jpg"
+ci_test_zhengzhi_audit_image = "audit_zhengzhi_test.jpg"
 
 
 def _create_test_bucket(test_bucket, create_region=None):
@@ -2085,16 +2087,33 @@ def test_get_object_sensitive_content_recognition():
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.get_object_sensitive_content_recognition(
         Bucket=ci_bucket_name,
-        Key=ci_test_ocr_image,
+        Key=ci_test_guanggao_audit_image,
         Interval=3,
         MaxFrames=20,
         # BizType='xxxx',
         DetectType=(CiDetectType.PORN | CiDetectType.TERRORIST |
-                    CiDetectType.POLITICS | CiDetectType.ADS),
+                    CiDetectType.POLITICS | CiDetectType.ADS | CiDetectType.TEENAGER),
+        LargeImageDetect=0,
+        DataId="test",
+        CallBack="www.callback.com",
         **kwargs
     )
     print(response)
-    assert response
+    assert response['AdsInfo']['Score'] != 0
+
+    response = client.get_object_sensitive_content_recognition(
+        Bucket=ci_bucket_name,
+        Key=ci_test_zhengzhi_audit_image,
+        Interval=3,
+        MaxFrames=20,
+        # BizType='xxxx',
+        LargeImageDetect=0,
+        DataId="test",
+        CallBack="www.callback.com",
+        **kwargs
+    )
+    print(response)
+    assert response['PoliticsInfo']['Score'] != 0
 
 
 def test_download_file():
@@ -3738,24 +3757,27 @@ def test_ci_auditing_text_submit():
 
 
 def test_ci_auditing_document_submit():
-    response = client.ci_auditing_document_submit(Bucket=ci_bucket_name,
-                                                  Url='https://cos-python-v5-test-ci-1253960454.cos.ap-guangzhou.myqcloud.com/test.txt',
-                                                  Key=ci_test_txt,
-                                                  Type='txt',
-                                                  Callback="http://www.demo.com")
-    jobId = response['JobsDetail']['JobId']
-    while True:
-        time.sleep(5)
-        kwargs = {"CacheControl": "no-cache",
-                  "ResponseCacheControl": "no-cache"}
-        response = client.ci_auditing_document_query(
-            Bucket=ci_bucket_name, JobID=jobId, **kwargs)
-        print(response['JobsDetail']['State'])
-        print(str(response))
-        if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
+    file_list = ["ads_test.docx", "politics_test.docx", "porn_test.docx", "terrorism_test.docx"]
+    for file in file_list:
+        response = client.ci_auditing_document_submit(Bucket=ci_bucket_name,
+                                                      Key=file,
+                                                      Type='docx',
+                                                      Callback="http://www.demo.com",
+                                                      DataId="test",
+                                                      CallbackType=1)
+        jobId = response['JobsDetail']['JobId']
+        while True:
+            time.sleep(3)
+            kwargs = {"CacheControl": "no-cache",
+                      "ResponseCacheControl": "no-cache"}
+            response = client.ci_auditing_document_query(
+                Bucket=ci_bucket_name, JobID=jobId, **kwargs)
+            print(response['JobsDetail']['State'])
             print(str(response))
-            break
-    assert response
+            if response['JobsDetail']['State'] == 'Success' or response['JobsDetail']['State'] == 'Failed':
+                print(str(response))
+                break
+        assert response
 
 
 def test_ci_auditing_html_submit():
@@ -3778,8 +3800,9 @@ def test_ci_auditing_html_submit():
 def test_ci_auditing_image_batch():
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_auditing_image_batch(Bucket=ci_bucket_name,
-                                              Input=[{
-                                                  'Object': 'ocr.jpeg'}],
+                                              Input=[{'Object': ci_test_zhengzhi_audit_image},
+                                                     {'Object': ci_test_guanggao_audit_image}],
+                                              Callback='http://www.callback.com',
                                               **kwargs)
     jobId = response['JobsDetail'][0]['JobId']
     while True:
