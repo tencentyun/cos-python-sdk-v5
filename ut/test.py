@@ -4349,6 +4349,22 @@ def test_ci_workflow():
     assert response['WorkflowId'] == workflow_id
 
 
+def test_ci_auditing_report_badcase():
+    if TEST_CI != 'true':
+        return
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_auditing_report_badcase(Bucket=ci_bucket_name,
+                                                 ContentType=2,
+                                                 Label='Ads',
+                                                 SuggestedLabel='Normal',
+                                                 Text=base64.b64encode("123456".encode("utf-8")).decode('utf-8'),
+                                                 Url='https://' + ci_bucket_name + '.cos.ap-chongqing.myqcloud.com/ocr.jpeg',
+                                                 JobId='si16ac0b3f0cec11ef9fab525400bf01fd',
+                                                 ModerationTime='2024-05-08T11:36:00+08:00',
+                                                 **kwargs)
+    assert response
+
+
 def test_put_get_async_fetch_task():
     from copy import deepcopy
     tmp_conf = deepcopy(conf)
