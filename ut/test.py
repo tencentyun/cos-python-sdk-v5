@@ -2525,6 +2525,167 @@ def test_live_channel():
     assert (response)
 
 
+def test_live_channel_exception():
+    """测试rtmp推流功能"""
+    livechannel_config = {
+        'Description': 'cos python sdk test',
+        'Switch': 'Enabled',
+        'Target': {
+            'Type': 'HLS',
+            'FragDuration': '3',
+            'FragCount': '5',
+        }
+    }
+    channel_name = 'cos-python-sdk-uttest-ch1'
+
+    try:
+        response = client.put_live_channel(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            LiveChannelConfiguration=livechannel_config)
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.list_live_channel(
+            Bucket=test_bucket,
+            Prefix='foo',
+            Marker='bar',
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.get_live_channel_info(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.put_live_channel_switch(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            Switch='enabled',
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.get_live_channel_history(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.get_live_channel_status(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.delete_live_channel(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    # vod_playlist
+    try:
+        response = client.get_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            StartTime=1611218201,
+            EndTime=1611218300,
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.get_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            StartTime=0,
+            EndTime=0,
+        )
+        assert (response)
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            StartTime=1000,
+            EndTime=100,
+        )
+        assert (response)
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.post_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test.m3u8',
+            StartTime=1611218201,
+            EndTime=1611218300,
+        )
+        assert (response)
+    except CosServiceError as e:
+        print(e)
+
+    try:
+        response = client.post_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test.mp4',
+            StartTime=1611218201,
+            EndTime=1611218300,
+        )
+        assert (response)
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.post_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test.m3u8',
+            StartTime=0,
+            EndTime=0,
+        )
+        assert (response)
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_vod_playlist(
+            Bucket=test_bucket,
+            ChannelName=channel_name,
+            PlaylistName='test.m3u8',
+            StartTime=1000,
+            EndTime=100,
+        )
+        assert (response)
+    except CosClientError as e:
+        print(e)
+
+
 def test_get_object_url():
     """测试获取对象访问URL"""
     response = client.get_object_url(
