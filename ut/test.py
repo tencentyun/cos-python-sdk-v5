@@ -4665,6 +4665,79 @@ def test_network_failure():
         print(e)
 
 
+def test_get_object_path_simplify_check():
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key=''
+        )
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key='/'
+        )
+        raise Exception('err')
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key='/'
+        )
+        raise Exception('err')
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key='////'
+        )
+        raise Exception('err')
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key='/abc/../'
+        )
+        raise Exception('err')
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key='/./'
+        )
+        raise Exception('err')
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key='///abc/.//def//../../'
+        )
+        raise Exception('err')
+    except CosClientError as e:
+        print(e)
+
+    try:
+        response = client.get_object(
+            Bucket=test_bucket,
+            Key='/././///abc/.//def//../../'
+        )
+        raise Exception('err')
+    except CosClientError as e:
+        print(e)
+
+
 if __name__ == "__main__":
     setUp()
     """

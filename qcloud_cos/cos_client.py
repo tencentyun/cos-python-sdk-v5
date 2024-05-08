@@ -498,7 +498,7 @@ class CosS3Client(object):
         response = dict(**rt.headers)
         return response
 
-    def get_object(self, Bucket, Key, **kwargs):
+    def get_object(self, Bucket, Key, KeySimplifyCheck=True, **kwargs):
         """单文件下载接口
 
         :param Bucket(string): 存储桶名称.
@@ -531,6 +531,10 @@ class CosS3Client(object):
             params['versionId'] = headers['versionId']
             del headers['versionId']
         params = format_values(params)
+
+        # 检查key: 按照posix路径语义合并后如果是'/'则抛异常(因为这导致GetObject请求变成GetBucket)
+        if KeySimplifyCheck:
+            path_simplify_check(path=Key)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
         logger.info("get object, url=:{url} ,headers=:{headers}, params=:{params}".format(
