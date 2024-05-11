@@ -3670,7 +3670,7 @@ class CosS3Client(object):
             callback = ProgressCallback(file_size, progress_callback)
 
         downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC,
-                                         callback, DumpRecordDir, **Kwargs)
+                                         callback, DumpRecordDir, KeySimplifyCheck, **Kwargs)
         downloader.start()
 
     def upload_file(self, Bucket, Key, LocalFilePath, PartSize=1, MAXThread=5, EnableMD5=False, progress_callback=None,
