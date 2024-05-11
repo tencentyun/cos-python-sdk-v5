@@ -3634,7 +3634,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, KeySimplifyCheck=True, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -3660,7 +3660,7 @@ class CosS3Client(object):
         object_info = self.head_object(Bucket, Key, **head_headers)
         file_size = int(object_info['Content-Length'])
         if file_size <= 1024 * 1024 * 20:
-            response = self.get_object(Bucket, Key, **Kwargs)
+            response = self.get_object(Bucket, Key, KeySimplifyCheck, **Kwargs)
             response['Body'].get_stream_to_file(DestFilePath)
             return
 

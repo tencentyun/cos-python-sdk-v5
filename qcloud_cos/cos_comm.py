@@ -344,7 +344,7 @@ def path_simplify_check(path):
             stack.append(token)
     path = u'/' + u'/'.join(stack)
     if path == u'/':
-        raise CosClientError("key is invalid")
+        raise CosClientError("GetObject Key is invalid")
 
 
 def format_path(path):
