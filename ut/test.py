@@ -4899,6 +4899,44 @@ def test_get_object_path_simplify_check():
         print(e)
 
 
+def test_download_file_simplify_check():
+    file_name = 'test_21M'
+    file_size = 21
+    gen_file(file_name, file_size)
+
+    key = '/abc/../'
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=key,
+        LocalFilePath=file_name,
+    )
+    print(response)
+
+    response = client.download_file(
+        Bucket=test_bucket,
+        Key=key,
+        DestFilePath=file_name,
+        KeySimplifyCheck=False,
+        PartSize=1,
+        TrafficLimit='10000000',
+    )
+    print(response)
+
+    try:
+        response = client.download_file(
+            Bucket=test_bucket,
+            Key=key,
+            DestFilePath=file_name,
+            PartSize=1,
+            TrafficLimit='10000000',
+        )
+    except CosClientError as e:
+        print(e) # 'some download_part fail after max_retry, please downloade_file again'
+
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+
 if __name__ == "__main__":
     setUp()
     """
