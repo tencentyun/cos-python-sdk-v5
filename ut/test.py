@@ -589,12 +589,19 @@ def test_create_head_delete_maz_ofs_bucket():
     """创建一个多AZ OFS bucket,head它是否存在,最后删除一个空bucket"""
     bucket_id = str(random.randint(0, 1000)) + str(random.randint(0, 1000))
     bucket_name = 'buckettest-maz-ofs' + bucket_id + '-' + APPID
-    response = client.create_bucket(
-        Bucket=bucket_name,
-        BucketAZConfig='MAZ',
-        BucketArchConfig='OFS',
-        ACL='public-read'
-    )
+    try:
+        response = client.create_bucket(
+            Bucket=bucket_name,
+            BucketAZConfig='MAZ',
+            BucketArchConfig='OFS',
+            ACL='public-read'
+        )
+    except CosServiceError as e:
+        if e.get_error_code() == 'TooManyBuckets':
+            return
+        else:
+            raise e
+
     response = client.head_bucket(
         Bucket=bucket_name
     )
