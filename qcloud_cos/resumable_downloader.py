@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ResumableDownLoader(object):
     def __init__(self, cos_client, bucket, key, dest_filename, object_info, part_size=20, max_thread=5,
-                 enable_crc=False, progress_callback=None, dump_record_dir = None, **kwargs):
+                 enable_crc=False, progress_callback=None, dump_record_dir=None, key_simplify_check=True, **kwargs):
         self.__cos_client = cos_client
         self.__bucket = bucket
         self.__key = key
@@ -27,6 +27,7 @@ class ResumableDownLoader(object):
         self.__enable_crc = enable_crc
         self.__progress_callback = progress_callback
         self.__headers = kwargs
+        self.__key_simplify_check = key_simplify_check
 
         self.__max_part_count = 100  # 取决于服务端是否对并发有限制
         self.__min_part_size = 1024 * 1024  # 1M
@@ -130,7 +131,7 @@ class ResumableDownLoader(object):
             if 'TrafficLimit' in headers:
                 traffic_limit = headers['TrafficLimit']
             logger.debug("part_id: {0}, part_range: {1}, traffic_limit:{2}".format(part.part_id, range, traffic_limit))
-            result = self.__cos_client.get_object(Bucket=self.__bucket, Key=self.__key, **headers)
+            result = self.__cos_client.get_object(Bucket=self.__bucket, Key=self.__key, KeySimplifyCheck=self.__key_simplify_check, **headers)
             result["Body"].pget_stream_to_file(f, part.start, part.length)
 
         self.__finish_part(part)

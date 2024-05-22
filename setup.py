@@ -4,7 +4,6 @@ from setuptools import setup, find_packages
 from platform import python_version_tuple
 import sys
 import io
-import sys
 
 
 def requirements():

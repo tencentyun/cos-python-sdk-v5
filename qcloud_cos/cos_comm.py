@@ -331,6 +331,22 @@ def format_bucket(bucket, appid):
     return bucket + u"-" + appid
 
 
+def path_simplify_check(path):
+    """将path按照posix路径语义合并后,如果结果为空或'/'则抛异常"""
+    path = to_unicode(path)
+    stack = list()
+    tokens = path.split(u'/')
+    for token in tokens:
+        if token == u'..':
+            if stack:
+                stack.pop()
+        elif token and token != u'.':
+            stack.append(token)
+    path = u'/' + u'/'.join(stack)
+    if path == u'/':
+        raise CosClientError("GetObject Key is invalid")
+
+
 def format_path(path):
     """检查path是否合法,格式化path"""
     if not isinstance(path, string_types):
