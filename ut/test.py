@@ -779,7 +779,10 @@ def test_get_service():
     from datetime import datetime
     marker = ""
     list_over = False
+    max_count = 3000
     while list_over is False:
+        if max_count <= 0:
+            break
         create_time = 1514736000
         response = client.list_buckets(
             Region='ap-beijing', CreateTime=create_time, Range='gt', Marker=marker)
@@ -788,6 +791,7 @@ def test_get_service():
                 bucket['CreationDate'], '%Y-%m-%dT%H:%M:%SZ').timetuple()))
             assert ctime > create_time
             assert bucket['Location'] == 'ap-beijing'
+            max_count -= 1
 
         marker = response['Marker']
         if response['IsTruncated'] == 'false':
