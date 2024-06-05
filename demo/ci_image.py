@@ -36,7 +36,7 @@ watermark_url_base64 = bytes.decode(base64.b64encode(str.encode(watermark_url)))
 
 
 def ci_image_inspect():
-    # 车辆车牌检测
+    # 异常图片检测
     response = client.ci_process(
         Bucket=bucket_name,
         Key='heichan.png',
