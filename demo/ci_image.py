@@ -37,15 +37,14 @@ watermark_url_base64 = bytes.decode(base64.b64encode(str.encode(watermark_url)))
 
 def ci_image_inspect():
     # 异常图片检测
-    response = client.ci_process(
+    response, data = client.ci_image_inspect(
         Bucket=bucket_name,
         Key='heichan.png',
-        CiProcess='ImageInspect'
     )
-    result = json.loads(response)
+    print(data)
+    result = json.loads(data)
     if result["suspicious"]:
         print("ok")
-    print(response)
 
 
 def when_put_object(local_file, key, pic_operations):

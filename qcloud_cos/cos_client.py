@@ -5313,6 +5313,60 @@ class CosS3Client(object):
         response = dict(**rt.headers)
         return response
 
+    def ci_image_inspect(self, Bucket, Key, **kwargs):
+        """ci异常图片检测同步请求 https://cloud.tencent.com/document/product/460/75997
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置获取图片信息的headers.
+        :return(dict): response header.
+        :return(dict): 检测结果.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_info(
+                Bucket=bucket_name,
+                 Key='format.png',
+            )
+            print(response['x-cos-request-id'])
+            print(data)
+
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {'imageInspect': ''}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("ci_image_inspect, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            stream=True,
+            auth=CosS3Auth(self._conf, Key, params=params),
+            params=params,
+            headers=headers)
+
+        response = dict(**rt.headers)
+        data = rt.content
+        return response, data
+
     def ci_put_object_from_local_file_and_get_qrcode(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
         """本地CI文件上传接口并返回二维码，适用于小文件，最大不得超过5GB
 
