@@ -5326,7 +5326,7 @@ class CosS3Client(object):
 
             config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
             client = CosS3Client(config)
-            response, data = client.ci_get_image_info(
+            response, data = client.ci_image_inspect(
                 Bucket=bucket_name,
                  Key='format.png',
             )
