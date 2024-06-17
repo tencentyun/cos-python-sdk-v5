@@ -366,7 +366,10 @@ class CosS3Client(object):
         if 'data' in kwargs:
             body = kwargs['data']
             if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
-                file_position = body.tell()  # 记录文件当前位置
+                try:
+                    file_position = body.tell()  # 记录文件当前位置
+                except Exception as ioe:
+                    file_position = None
             kwargs['data'] = to_bytes(kwargs['data'])
         if self._conf._ip is not None and self._conf._scheme == 'https':
             kwargs['verify'] = False
