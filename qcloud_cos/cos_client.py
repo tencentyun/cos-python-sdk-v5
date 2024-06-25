@@ -136,7 +136,7 @@ class CosConfig(object):
         else:
             raise CosClientError('SecretId and SecretKey is Required!')
 
-    def uri(self, bucket=None, path=None, endpoint=None, domain=None):
+    def uri(self, bucket=None, path=None, endpoint=None, domain=None, useAppid=False):
         """拼接url
 
         :param bucket(string): 存储桶名称.
@@ -159,7 +159,10 @@ class CosConfig(object):
                 bucket = format_bucket(bucket, self._appid)
                 url = u"{bucket}.{endpoint}".format(bucket=bucket, endpoint=endpoint)
             else:
-                url = u"{endpoint}".format(endpoint=endpoint)
+                if useAppid:
+                    url = u"{appid}.{endpoint}".format(appid=self._appid, endpoint=endpoint)
+                else:
+                    url = u"{endpoint}".format(endpoint=endpoint)
         if self._ip is not None:
             url = self._ip
             if self._port is not None:
@@ -185,12 +188,15 @@ class CosConfig(object):
             )
         return request_url
 
-    def get_host(self, Bucket):
+    def get_host(self, Bucket=None, Appid=None):
         """传入bucket名称,根据endpoint获取Host名称
         :param Bucket(string): bucket名称
         :return (string): Host名称
         """
-        return u"{bucket}.{endpoint}".format(bucket=format_bucket(Bucket, self._appid), endpoint=self._endpoint)
+        if Bucket is not None:
+            return u"{bucket}.{endpoint}".format(bucket=format_bucket(Bucket, self._appid), endpoint=self._endpoint)
+        if Appid is not None:
+            return u"{appid}.{endpoint}".format(appid=Appid, endpoint=self._endpoint)
 
     def set_ip_port(self, IP, Port=None):
         """设置直接访问的ip:port,可以不指定Port,http默认为80,https默认为443
@@ -339,7 +345,7 @@ class CosS3Client(object):
             return True
         return False
 
-    def send_request(self, method, url, bucket, timeout=30, cos_request=True, ci_request=False, **kwargs):
+    def send_request(self, method, url, bucket=None, timeout=30, cos_request=True, ci_request=False, appid=None, **kwargs):
         """封装request库发起http请求"""
         if self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
@@ -356,7 +362,9 @@ class CosS3Client(object):
             if self._conf._domain is not None:
                 kwargs['headers']['Host'] = self._conf._domain
             elif bucket is not None:
-                kwargs['headers']['Host'] = self._conf.get_host(bucket)
+                kwargs['headers']['Host'] = self._conf.get_host(Bucket=bucket)
+            elif appid is not None:
+                kwargs['headers']['Host'] = self._conf.get_host(Appid=appid)
         if self._conf._keep_alive == False:
             kwargs['headers']['Connection'] = 'close'
         kwargs['headers'] = format_values(kwargs['headers'])
