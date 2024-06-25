@@ -5285,7 +5285,7 @@ def test_meta_insight():
         else:
             print("need query")
             time.sleep(0.1)
-
+    time.sleep(5)
     response, data = ci_delete_dataset()
     assert data["Dataset"]["DatasetName"] == mi_base_info_search_dataset_name
 
