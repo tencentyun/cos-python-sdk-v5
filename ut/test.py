@@ -11,7 +11,7 @@ import json
 import base64
 import multiprocessing
 
-from qcloud_cos import CosS3Client
+from qcloud_cos import CosS3Client, MetaInsightClient
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError, CosClientError
 from qcloud_cos.select_event_stream import EventStream
@@ -54,23 +54,34 @@ class CredentialDemo:
 
 if USE_CREDENTIAL_INST == 'true':
     conf = CosConfig(
+        Appid=APPID,
         Region=REGION,
         CredentialInstance=CredentialDemo()
     )
 else:
     conf = CosConfig(
+        Appid=APPID,
         Region=REGION,
         SecretId=SECRET_ID,
         SecretKey=SECRET_KEY,
     )
 
+metaConf = CosConfig(
+    Appid=APPID,
+    Region="ap-beijing",
+    SecretId=SECRET_ID,
+    SecretKey=SECRET_KEY,
+)
+
 client = CosS3Client(conf, retry=3)
+meta_insight_client = MetaInsightClient(metaConf, retry=3)
 rsa_provider = RSAProvider()
 client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
 client_for_aes = CosEncryptionClient(conf, aes_provider)
 
 ci_bucket_name = 'cos-python-v5-test-ci-' + APPID
+mi_bucket_name = 'cos-python-v5-test-mi-' + APPID
 ci_region = 'ap-guangzhou'
 ci_test_media = "test.mp4"
 ci_test_m3u8 = "test.m3u8"
@@ -80,7 +91,12 @@ ci_test_txt = "test.txt"
 ci_test_car_image = "car.jpeg"
 ci_test_guanggao_audit_image = "audit_guanggao_test.jpg"
 ci_test_zhengzhi_audit_image = "audit_zhengzhi_test.jpg"
-
+mi_base_info_search_file = "base_info_search.png"
+mi_base_info_search_dataset_name = "ci-sdk-base-info-search"
+mi_image_search_file = "image_search.png"
+mi_image_search_dataset_name = "ci-sdk-image-search"
+mi_face_search_dataset_name = "ci-sdk-face-search"
+mi_face_search_file = "face.jpeg"
 
 def _create_test_bucket(test_bucket, create_region=None):
     try:
@@ -2708,10 +2724,12 @@ def test_get_object_url():
 
 def test_qrcode():
     """二维码图片上传时识别"""
-    file_name = 'format.png'
+    file_name = 'qrcode.png'
+    response = client.get_object(ci_bucket_name, file_name)
+    response['Body'].get_stream_to_file(file_name)
     with open(file_name, 'rb') as fp:
         # fp验证
-        opts = '{"is_pic_info":1,"rules":[{"fileid":"format.png","rule":"QRcode/cover/1"}]}'
+        opts = '{"is_pic_info":1,"rules":[{"fileid":"qrcode_test.png","rule":"QRcode/cover/1"}]}'
         response, data = client.ci_put_object_from_local_file_and_get_qrcode(
             Bucket=ci_bucket_name,
             LocalFilePath=file_name,
@@ -4948,6 +4966,330 @@ def test_download_file_simplify_check():
         os.remove(file_name)
 
 
+def ci_create_file_meta_index():
+    # 创建元数据索引
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+        'File': {
+            'CustomId': "test",
+            'CustomLabels': {"age": "18", "level": "18"},
+            'MediaType': "image",
+            'ContentType': "image/png",
+            'URI': "cos://" + mi_bucket_name + "/" + mi_base_info_search_file,
+        },
+    }
+    response, data = meta_insight_client.ci_create_file_meta_index(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_create_dataset():
+    # 创建数据集
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+        'Description': "test",
+        'TemplateId': "Official:COSBasicMeta",
+    }
+    response, data = meta_insight_client.ci_create_dataset(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_create_dataset_binding():
+    # 绑定存储桶与数据集
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+        'URI': "cos://" + mi_bucket_name,
+    }
+    response, data = meta_insight_client.ci_create_dataset_binding(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_dataset_face_search():
+    # 人脸搜索
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_face_search_dataset_name,
+        'URI': "cos://" + mi_bucket_name + "/" + mi_face_search_file,
+        'MaxFaceNum': 1,
+        'Limit': 10,
+        'MatchThreshold': 10,
+    }
+    response, data = meta_insight_client.ci_dataset_face_search(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_dataset_simple_query():
+    # 简单查询
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_image_search_dataset_name,
+    }
+    response, data = meta_insight_client.ci_dataset_simple_query(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_delete_dataset():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+    }
+    response, data = meta_insight_client.ci_delete_dataset(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_delete_dataset_binding():
+    # 解绑存储桶与数据集
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+        'URI': "cos://" + mi_bucket_name,
+    }
+    response, data = meta_insight_client.ci_delete_dataset_binding(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+# 删除元数据索引
+def ci_delete_file_meta_index():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+        'URI': "cos://" + mi_bucket_name + "/" + mi_base_info_search_file,
+    }
+    response, data = meta_insight_client.ci_delete_file_meta_index(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_describe_dataset():
+    # 查询数据集
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = meta_insight_client.ci_describe_dataset(
+        DatasetName=mi_base_info_search_dataset_name,
+        Statistics='true',
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_describe_dataset_binding():
+    # 查询数据集与存储桶的绑定关系
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = meta_insight_client.ci_describe_dataset_binding(
+        DatasetName=mi_base_info_search_dataset_name,
+        Uri='cos://' + mi_bucket_name,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_describe_dataset_bindings():
+    # 查询绑定关系列表
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = meta_insight_client.ci_describe_dataset_bindings(
+        DatasetName=mi_base_info_search_dataset_name,
+        MaxResults=10,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_describe_datasets():
+    # 列出数据集
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = meta_insight_client.ci_describe_datasets(
+        MaxResults=10,
+        # NextToken='',
+        Prefix=mi_base_info_search_dataset_name,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_describe_file_meta_index():
+    # 查询元数据索引
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = meta_insight_client.ci_describe_file_meta_index(
+        DatasetName=mi_base_info_search_dataset_name,
+        Uri='cos://' + mi_bucket_name + '/' + mi_base_info_search_file,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_search_image():
+    # 图像检索
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_image_search_dataset_name,
+        'Mode': "pic",
+        'URI': "cos://" + mi_bucket_name + "/" + mi_image_search_file,
+        'Limit': 10,
+        'MatchThreshold': 80,
+    }
+    response, data = meta_insight_client.ci_search_image(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_update_dataset():
+    # 更新数据集
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+        'Description': "test_update",
+        'TemplateId': "Official:COSBasicMeta",
+    }
+    response, data = meta_insight_client.ci_update_dataset(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def ci_update_file_meta_index():
+    # 更新元数据索引
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+        'Callback': "http://www.callback.com",
+        'File': {
+            'CustomId': "test",
+            'CustomLabels': {"age": "19", "level": "18"},
+            'MediaType': "image",
+            'ContentType': "image/png",
+            'URI': "cos://" + mi_bucket_name + "/" + mi_base_info_search_file,
+        },
+    }
+    response, data = meta_insight_client.ci_update_file_meta_index(
+        Body=body,
+        ContentType='application/json',
+        **kwargs
+    )
+    return response, data
+
+
+def test_meta_insight():
+    response, data = ci_create_dataset()
+    time.sleep(1)
+    assert data["Dataset"]["DatasetName"] == mi_base_info_search_dataset_name
+    response, data = ci_describe_dataset()
+    assert data["Dataset"]["DatasetName"] == mi_base_info_search_dataset_name
+
+    response, data = ci_update_dataset()
+    time.sleep(1)
+    assert data["Dataset"]["Description"] == 'test_update'
+
+    response, data = ci_describe_datasets()
+    assert data["Datasets"]["DatasetName"] == mi_base_info_search_dataset_name
+
+    response, data = ci_create_dataset_binding()
+    time.sleep(1)
+    assert data["Binding"]["URI"] == 'cos://' + mi_bucket_name
+
+    response, data = ci_describe_dataset_binding()
+    assert data["Binding"]["URI"] == 'cos://' + mi_bucket_name
+    assert data["Binding"]["State"] == 'Running'
+
+    response, data = ci_describe_dataset_bindings()
+    assert data["Bindings"]["URI"] == 'cos://' + mi_bucket_name
+
+    response, data = ci_create_file_meta_index()
+    time.sleep(2)
+    assert data["EventId"] is not None
+
+    response, data = ci_update_file_meta_index()
+    time.sleep(2)
+    assert data["EventId"] is not None
+
+    response, data = ci_describe_file_meta_index()
+    assert data["Files"]["DatasetName"] == mi_base_info_search_dataset_name
+    assert data["Files"]["URI"] == "cos://" + mi_bucket_name + "/" + mi_base_info_search_file
+
+    response, data = ci_dataset_simple_query()
+    assert len(data["Files"]) != 0
+
+    response, data = ci_search_image()
+    assert len(data["ImageResult"]) != 0
+
+    response, data = ci_dataset_face_search()
+    assert len(data["FaceResult"]["FaceInfos"]) != 0
+
+    response, data = ci_delete_file_meta_index()
+    assert data is not None
+
+    response, data = ci_delete_dataset_binding()
+    assert data is not None
+    body = {
+        'DatasetName': mi_base_info_search_dataset_name,
+    }
+    while True:
+        response, data = meta_insight_client.ci_dataset_simple_query(
+            Body=body,
+            ContentType='application/json',
+        )
+        if "Files" not in data or data["Files"] is None  or len(data["Files"]) == 0:
+            break
+        else:
+            print("need query")
+            time.sleep(0.1)
+    while True:
+        response, data = meta_insight_client.ci_describe_dataset_bindings(
+            DatasetName=mi_base_info_search_dataset_name,
+            MaxResults=10,
+            ContentType='application/json',
+        )
+        if "Bindings" not in data or data["Bindings"] is None or len(data["Bindings"]) == 0:
+            break
+        else:
+            print("need query")
+            time.sleep(0.1)
+    time.sleep(5)
+    response, data = ci_delete_dataset()
+    assert data["Dataset"]["DatasetName"] == mi_base_info_search_dataset_name
+
+
 if __name__ == "__main__":
     setUp()
     """
@@ -5075,5 +5417,6 @@ if __name__ == "__main__":
     test_ci_auditing_virus_submit()
     test_sse_c_file()
     test_ci_file_hash()
+    test_meta_insight()
     """
     tearDown()
