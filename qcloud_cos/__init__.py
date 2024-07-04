@@ -5,6 +5,7 @@ from .cos_exception import CosClientError
 from .cos_auth import CosS3Auth
 from .cos_comm import get_date
 from .meta_insight import MetaInsightClient
+from .ai_recognition import AIRecognitionClient
 
 import logging
 
