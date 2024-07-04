@@ -1801,6 +1801,41 @@ def test_list_bucket_inventory_configrations():
             Id=id,
         )
 
+def test_post_bucket_inventory_configurations():
+    """测试一次性/即时清单"""
+    inventory_config = {
+        'Destination': {
+            'COSBucketDestination': {
+                'AccountId': '2832742109',
+                'Bucket': 'qcs::cos:' + REGION + '::' + test_bucket,
+                'Format': 'CSV',
+                'Prefix': 'list1',
+                'Encryption': {
+                    'SSECOS': {}
+                }
+            }
+        },
+        'Filter': {
+            'Prefix': 'filterPrefix'
+        },
+        'IncludedObjectVersions': 'All',
+        'OptionalFields': {
+            'Field': [
+                'Size',
+                'LastModifiedDate',
+                'ETag',
+                'StorageClass',
+                'IsMultipartUploaded',
+                'ReplicationStatus'
+            ]
+        },
+    }
+    response = client.post_bucket_inventory(
+        Bucket=test_bucket,
+        Id='list1',
+        InventoryConfiguration=inventory_config,
+    )
+
 
 def test_put_get_delete_bucket_tagging():
     """测试设置获取删除bucket标签"""
@@ -5292,6 +5327,7 @@ def test_meta_insight():
 
 if __name__ == "__main__":
     setUp()
+    test_post_bucket_inventory_configurations()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()

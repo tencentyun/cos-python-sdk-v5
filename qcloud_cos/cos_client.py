@@ -3042,6 +3042,72 @@ class CosS3Client(object):
         data = xml_to_dict(rt.content)
         return data
 
+    def post_bucket_inventory(self, Bucket, Id, InventoryConfiguration={}, **kwargs):
+        """设置bucket的清单规则(一次性清单/即时清单)
+
+        :param Bucket(string): 存储桶名称.
+        :param Id(string): 清单规则名称.
+        :param InventoryConfiguration(dict): Bucket的清单规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket清单规则
+            inventory_config = {
+                'Destination': {
+                    'COSBucketDestination': {
+                        'AccountId': '100000000001',
+                        'Bucket': 'qcs::cos:ap-guangzhou::examplebucket-1250000000',
+                        'Format': 'CSV',
+                        'Prefix': 'list1',
+                        'Encryption': {
+                            'SSECOS': {}
+                        }
+                    },
+                'Filter': {
+                    'Prefix': 'filterPrefix'
+                },
+                'IncludedObjectVersions':'All',
+                'OptionalFields': {
+                    'Field': [
+                        'Size',
+                        'LastModifiedDate',
+                        'ETag',
+                        'StorageClass',
+                        'IsMultipartUploaded',
+                        'ReplicationStatus'
+                    ]
+                },
+            }
+            response = client.put_bucket_inventory(
+                Bucket='bucket',
+                Id='list1',
+                InventoryConfiguration=inventory_config
+            )
+        """
+        InventoryConfiguration['Id'] = Id
+        xml_config = format_xml(data=InventoryConfiguration, root='InventoryConfiguration')
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'inventory': '', 'id': Id}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("post bucket inventory, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     def put_object_tagging(self, Bucket, Key, Tagging={}, **kwargs):
         """设置object的标签
 
