@@ -11,7 +11,7 @@ import json
 import base64
 import multiprocessing
 
-from qcloud_cos import CosS3Client, MetaInsightClient
+from qcloud_cos import CosS3Client, MetaInsightClient, AIRecognitionClient
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError, CosClientError
 from qcloud_cos.select_event_stream import EventStream
@@ -75,6 +75,7 @@ metaConf = CosConfig(
 
 client = CosS3Client(conf, retry=3)
 meta_insight_client = MetaInsightClient(metaConf, retry=3)
+ai_recognition_client = AIRecognitionClient(conf, retry=3)
 rsa_provider = RSAProvider()
 client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
@@ -3866,7 +3867,18 @@ def test_ci_image_detect_label():
         Bucket=ci_bucket_name,
         Key=ci_test_car_image,
     )
-    assert response
+    assert len(response['Labels']) != 0
+    response = client.ci_image_detect_label(
+        Bucket=ci_bucket_name,
+        Key=ci_test_car_image,
+        Scenes='camera',
+    )
+    assert len(response['CameraLabels']['Labels']) != 0
+    response = client.ci_image_detect_label(
+        Bucket=ci_bucket_name,
+        DetectUrl='https://' + ci_bucket_name + '.cos.' + ci_region + '.myqcloud.com/' + ci_test_car_image,
+    )
+    assert len(response['Labels']) != 0
 
 
 def test_ci_image_detect_car():
@@ -5323,6 +5335,474 @@ def test_meta_insight():
     time.sleep(5)
     response, data = ci_delete_dataset()
     assert data["Dataset"]["DatasetName"] == mi_base_info_search_dataset_name
+
+
+def test_cos_create_ai_object_detect_job():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    # 图像主体检测
+    response, data = ai_recognition_client.cos_create_ai_object_detect_job(
+        Bucket=ci_bucket_name,
+        ObjectKey="AIObjectDetect.jpeg",
+        **kwargs
+    )
+    assert len(data['DetectMultiObj']) == 16
+    response, data = ai_recognition_client.cos_create_ai_object_detect_job(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/AIObjectDetect.jpeg",
+        Accept='application/json'
+    )
+    assert len(data['DetectMultiObj']) == 16
+
+
+def test_goods_matting():
+    # 商品抠图下载时处理
+    response, data = ai_recognition_client.cos_goods_matting(
+        Bucket=ci_bucket_name,
+        ObjectKey="GoodsMatting.jpg",
+        CenterLayout=1,
+        PaddingLayout='300x300',
+        Stream=True
+    )
+    data.get_stream_to_file('test.jpg')
+    assert response['Content-Length'] == '830576'
+
+    response, data = ai_recognition_client.cos_goods_matting(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/GoodsMatting.jpg",
+        CenterLayout=1,
+        PaddingLayout='300x300',
+        Stream=True
+    )
+    data.get_stream_to_file('test.jpg')
+    assert response['Content-Length'] == '830576'
+
+
+def test_cos_ai_body_recognition():
+    # 人体识别
+    response, data = ai_recognition_client.cos_ai_body_recognition(
+        Bucket=ci_bucket_name,
+        ObjectKey="renti.jpg",
+    )
+    assert data['Status'] == '1'
+    assert len(data['PedestrianInfo']) == 3
+
+    response, data = ai_recognition_client.cos_ai_body_recognition(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/renti.jpg",
+    )
+    assert data['Status'] == '1'
+    assert len(data['PedestrianInfo']) == 3
+
+
+def test_cos_ai_detect_face():
+    # 人脸检测
+    response, data = ai_recognition_client.cos_ai_detect_face(
+        Bucket=ci_bucket_name,
+        ObjectKey="relian.jpeg",
+        MaxFaceNum=3
+    )
+    assert data['Status'] == '1'
+
+
+def test_cos_ai_detect_pet():
+    # 宠物识别
+    response, data = ai_recognition_client.cos_ai_detect_pet(
+        Bucket=ci_bucket_name,
+        ObjectKey="chongwu.jpg",
+    )
+    assert data is not None
+    assert data['ResultInfo']['Name'] == 'cat'
+
+
+def test_cos_ai_enhance_image():
+    # 图像增强
+    response, data = ai_recognition_client.cos_ai_enhance_image(
+        Bucket=ci_bucket_name,
+        ObjectKey="format.jpg",
+        Denoise=3,
+        Sharpen=3,
+        # DetectUrl="https://test-125000000.cos.ap-chongqing.myqcloud.com/test.jpeg",
+        IgnoreError=0,
+        Stream=True
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+    response, data = ai_recognition_client.cos_ai_enhance_image(
+        Bucket=ci_bucket_name,
+        Denoise=3,
+        Sharpen=3,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/format.jpg",
+        IgnoreError=0,
+        Stream=False
+    )
+    assert data is not None
+
+
+def test_cos_ai_face_effect():
+    # 人脸特效
+    response, data = ai_recognition_client.cos_ai_face_effect(
+        Bucket=ci_bucket_name,
+        ObjectKey="relian.jpeg",
+        Type="face-beautify",
+        Whitening=30,
+        Smoothing=10,
+        FaceLifting=70,
+        EyeEnlarging=70,
+    )
+    assert data is not None
+
+    response, data = ai_recognition_client.cos_ai_face_effect(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/relian.jpeg",
+        Type="face-beautify",
+        Whitening=30,
+        Smoothing=10,
+        FaceLifting=70,
+        EyeEnlarging=70,
+    )
+    assert data is not None
+
+
+def test_cos_ai_game_rec():
+    # 游戏场景识别
+    response, data = ai_recognition_client.cos_ai_game_rec(
+        Bucket=ci_bucket_name,
+        ObjectKey="youxi.png",
+    )
+    assert data['GameLabels'] is not None
+
+    response, data = ai_recognition_client.cos_ai_game_rec(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/youxi.png",
+        Accept='application/json'
+    )
+    assert data['GameLabels'] is not None
+
+
+def test_cos_ai_id_card_ocr():
+    # 身份证识别
+    response, data = ai_recognition_client.cos_ai_id_card_ocr(
+        Bucket=ci_bucket_name,
+        ObjectKey="shenfenzheng.jpeg",
+        CardSide="FRONT",
+        Config='{"CropIdCard":true,"CropPortrait":true}'
+    )
+    assert data['AdvancedInfo'] is not None
+    assert data['IdInfo'] is not None
+
+
+def test_cos_ai_image_coloring():
+    # 图片上色
+    response, data = ai_recognition_client.cos_ai_image_coloring(
+        Bucket=ci_bucket_name,
+        ObjectKey="heibai.jpeg",
+        Stream=True
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+    response, data = ai_recognition_client.cos_ai_image_coloring(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/heibai.jpeg",
+        Stream=True
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+
+def test_cos_ai_image_crop():
+    # 图像智能裁剪
+    response, data = ai_recognition_client.cos_ai_image_crop(
+        Bucket=ci_bucket_name,
+        ObjectKey="heibai.jpeg",
+        Width=100,
+        Height=100,
+        Fixed=1,
+        IgnoreError=0
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+    response, data = ai_recognition_client.cos_ai_image_crop(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/heibai.jpeg",
+        Width=100,
+        Height=100,
+        Fixed=1,
+        IgnoreError=0
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+
+def test_cos_ai_license_rec():
+    # 卡证识别
+    response, data = ai_recognition_client.cos_ai_license_rec(
+        Bucket=ci_bucket_name,
+        ObjectKey="shenfenzheng.jpeg",
+        CardType="IDCard"
+    )
+    assert data['Status'] == '1'
+    assert data['IdInfo'] is not None
+
+    response, data = ai_recognition_client.cos_ai_license_rec(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/shenfenzheng.jpeg",
+        CardType="IDCard"
+    )
+    assert data['Status'] == '1'
+    assert data['IdInfo'] is not None
+
+
+def test_cos_ai_pic_matting():
+    # 通用抠图
+    response, data = ai_recognition_client.cos_ai_pic_matting(
+        Bucket=ci_bucket_name,
+        ObjectKey="heibai.jpeg",
+        CenterLayout=1,
+        PaddingLayout="10x10",
+        Stream=True
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+    response, data = ai_recognition_client.cos_ai_pic_matting(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/heibai.jpeg",
+        CenterLayout=1,
+        PaddingLayout="10x10",
+        Stream=True
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+
+def test_cos_ai_portrait_matting():
+    # 人像抠图
+    response, data = ai_recognition_client.cos_ai_portrait_matting(
+        Bucket=ci_bucket_name,
+        ObjectKey="relian.jpeg",
+        CenterLayout=1,
+        PaddingLayout="10x10",
+        Stream=True
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+    response, data = ai_recognition_client.cos_ai_portrait_matting(
+        Bucket=ci_bucket_name,
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/relian.jpeg",
+        CenterLayout=1,
+        PaddingLayout="10x10",
+        Stream=True
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+
+def test_cos_auto_translation_block():
+    # 实时文字翻译
+    response, data = ai_recognition_client.cos_auto_translation_block(
+        Bucket=ci_bucket_name,
+        InputText="测试",
+        SourceLang="zh",
+        TargetLang="en",
+        TextDomain="general",
+        TextStyle="sentence"
+    )
+    assert data['TranslationResult'] == 'test'
+
+
+def test_cos_get_action_sequence():
+    # 获取动作顺序
+    response, data = ai_recognition_client.cos_get_action_sequence(
+        Bucket=ci_bucket_name,
+    )
+    assert data['ActionSequence'] == '2,1' or data['ActionSequence'] == '1,2'
+
+
+def test_cos_get_live_code():
+    # 获取数字验证码
+    response, data = ai_recognition_client.cos_get_live_code(
+        Bucket=ci_bucket_name,
+    )
+    assert len(data['LiveCode']) != 0
+
+
+def test_cos_image_repair():
+    # 图像修复下载时处理
+    mask_pic = "https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/mask.jpg"
+    mask_poly = '[[[100, 200], [1000, 200], [1000, 400], [100, 400]]]'
+    if len(mask_pic) != 0:
+        mask_pic = base64.b64encode(mask_pic.encode('utf-8')).decode('utf-8')
+    if len(mask_poly) != 0:
+        mask_poly = base64.b64encode(mask_poly.encode('utf-8')).decode('utf-8')
+    response, data = ai_recognition_client.cos_image_repair(
+        Bucket=ci_bucket_name,
+        ObjectKey="xiufu.jpg",
+        MaskPic=mask_pic,
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+    response, data = ai_recognition_client.cos_image_repair(
+        Bucket=ci_bucket_name,
+        ObjectKey="xiufu.jpg",
+        DetectUrl="https://" + ci_bucket_name + ".cos." + ci_region + ".myqcloud.com/xiufu.jpg",
+        MaskPoly=mask_poly
+    )
+    data.get_stream_to_file('result.jpg')
+    assert data is not None
+
+
+def test_cos_liveness_recognition():
+    # 活体人脸核身
+    try:
+        response, data = ai_recognition_client.cos_liveness_recognition(
+            Bucket=ci_bucket_name,
+            ObjectKey="silent.mp4",
+            IdCard="123456",
+            Name="测试",
+            LivenessType="SILENT",
+            ValidateData="",
+            BestFrameNum=5
+        )
+    except Exception as e:
+        print(e)
+
+
+def test_ci_image_search_bucket():
+    # 开通以图搜图
+    body = {
+        # 图库容量限制
+        # 是否必传：是
+        'MaxCapacity': 10,
+        # 图库访问限制，默认10
+        # 是否必传：否
+        'MaxQps': 10,
+    }
+    try:
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response, data = ai_recognition_client.ci_image_search_bucket(
+            Bucket=ci_bucket_name,
+            Body=body,
+            ContentType="application/xml",
+            **kwargs
+        )
+    except Exception as e:
+        print(e)
+
+
+def test_cos_add_image_search():
+    # 添加图库图片
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        # 物品 ID，最多支持64个字符。若 EntityId 已存在，则对其追加图片
+        # 是否必传：是
+        'EntityId': "test",
+        # 用户自定义的内容，最多支持4096个字符，查询时原样带回
+        # 是否必传：否
+        'CustomContent': "custom test",
+        # 图片自定义标签，最多不超过10个，json 字符串，格式为 key:value （例 key1>=1 key1>='aa' ）对
+        # 是否必传：否
+        'Tags': '{"key1":"val1","key2":"val2"}',
+    }
+    response, data = ai_recognition_client.cos_add_image_search(
+        Bucket=ci_bucket_name,
+        ObjectKey="heibai.jpeg",
+        Body=body,
+        ContentType="application/xml",
+        **kwargs
+    )
+    assert data is not None
+
+
+def test_cos_get_search_image():
+    # 图片搜索接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = ai_recognition_client.cos_get_search_image(
+        Bucket=ci_bucket_name,
+        ObjectKey="heibai.jpeg",
+        MatchThreshold=1,
+        Offset=0,
+        Limit=10,
+        **kwargs
+        # Filter="key1=val1"
+    )
+    assert data['Count'] == '1'
+    assert data['ImageInfos']['PicName'] == 'heibai.jpeg'
+
+    response, data = ai_recognition_client.cos_get_search_image(
+        Bucket=ci_bucket_name,
+        ObjectKey="heibai.jpeg",
+        MatchThreshold=1,
+        Offset=0,
+        Limit=10,
+        Accept='application/json'
+        # Filter="key1=val1"
+    )
+    assert data['Count'] == 1
+    assert data['ImageInfos'][0]['PicName'] == 'heibai.jpeg'
+
+
+def test_cos_delete_image_search():
+    # 删除图库图片
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        # 物品 ID
+        # 是否必传：是
+        'EntityId': "test",
+    }
+    response, data = ai_recognition_client.cos_delete_image_search(
+        Bucket=ci_bucket_name,
+        ObjectKey="heibai.jpeg",
+        Body=body,
+        ContentType="application/xml",
+        **kwargs
+    )
+    assert data is not None
+
+
+def test_ci_ai_bucket():
+    # 关闭AI内容识别服务
+    response, data = ai_recognition_client.ci_close_ai_bucket(
+        Bucket=ci_bucket_name
+    )
+    assert data['BucketName'] == ci_bucket_name
+    # 开通AI内容识别服务
+    response, data = ai_recognition_client.ci_open_ai_bucket(
+        Bucket=ci_bucket_name
+    )
+    assert data['AiBucket']['Name'] == ci_bucket_name
+
+    response, data = ai_recognition_client.ci_close_ai_bucket(
+        Bucket=ci_bucket_name,
+        Accept="application/json"
+    )
+    assert data['BucketName'] == ci_bucket_name
+    # 开通AI内容识别服务
+    response, data = ai_recognition_client.ci_open_ai_bucket(
+        Bucket=ci_bucket_name,
+        Accept="application/json"
+    )
+    assert data['AiBucket']['Name'] == ci_bucket_name
+
+
+def test_ci_asr_bucket():
+    # 关闭智能语音服务
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = client.ci_close_asr_bucket(
+        Bucket=ci_bucket_name,
+        **kwargs
+    )
+    assert data['BucketName'] == ci_bucket_name
+
+    response, data = client.ci_open_asr_bucket(
+        Bucket=ci_bucket_name,
+        **kwargs
+    )
+    assert data['AsrBucket']['Name'] == ci_bucket_name
 
 
 if __name__ == "__main__":
