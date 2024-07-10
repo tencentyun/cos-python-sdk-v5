@@ -63,6 +63,7 @@ maplist = {
     'Referer': 'Referer',
     'PicOperations': 'Pic-Operations',
     'TrafficLimit': 'x-cos-traffic-limit',
+    'Accept': 'Accept'
 }
 
 

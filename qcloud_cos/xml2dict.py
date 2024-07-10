@@ -7,6 +7,8 @@ class Xml2Dict(dict):
     def __init__(self, parent_node):
         if parent_node.items():
             self.updateDict(dict(parent_node.items()))
+        if len(parent_node) == 0:
+            self.updateDict({parent_node.tag: parent_node.text})
         for element in parent_node:
             if len(element):
                 aDict = Xml2Dict(element)

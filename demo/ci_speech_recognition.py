@@ -27,6 +27,16 @@ client = CosS3Client(config)
 bucket_name = 'examplebucket-1250000000'
 
 
+def ci_open_asr_bucket():
+    # 开通智能语音服务
+    response, data = client.ci_open_asr_bucket(
+        Bucket=bucket_name
+    )
+    print(response)
+    print(data)
+    return response, data
+
+
 def ci_get_asr_bucket():
     # 查询语音识别开通状态
     response = client.ci_get_asr_bucket(
@@ -37,6 +47,16 @@ def ci_get_asr_bucket():
     )
     print(response)
     return response
+
+
+def ci_close_asr_bucket():
+    # 关闭智能语音服务
+    response, data = client.ci_close_asr_bucket(
+        Bucket=bucket_name
+    )
+    print(response)
+    print(data)
+    return response, data
 
 
 def ci_get_asr_queue():
@@ -166,10 +186,13 @@ if __name__ == '__main__':
     # ci_get_asr_bucket()
     # ci_get_asr_queue()
     # ci_put_asr_queue()
-    ci_create_asr_template()
+    # ci_create_asr_template()
     # ci_get_asr_template()
     # ci_update_asr_template()
     # ci_delete_asr_template()
-    ci_create_asr_jobs()
+    # ci_create_asr_jobs()
     # ci_get_asr_jobs()
     # ci_list_asr_jobs()
+    # ci_close_asr_bucket()
+    # ci_open_asr_bucket()
+    ci_get_asr_bucket()

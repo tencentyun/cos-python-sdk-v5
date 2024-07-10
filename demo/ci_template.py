@@ -1730,10 +1730,95 @@ def ci_update_smart_cover_template():
     return response
 
 
+noise_reduction_template_config = {
+    # 固定值：NoiseReduction
+    # 是否必传：是
+    'Tag': "NoiseReduction",
+    # 模板名称，仅支持中文、英文、数字、_、-和*，长度不超过 64。
+    # 是否必传：是
+    'Name': "noise_reduction_test",
+    # 降噪参数
+    # 是否必传：是
+    'NoiseReduction': {
+        # 封装格式，支持 mp3、m4a、wav
+        # 是否必传：否
+        'Format': "wav",
+        # 采样率单位：Hz可选 8000、12000、16000、24000、32000、44100、48000
+        # 是否必传：否
+        'Samplerate': "8000",
+    },
+}
+
+
+def ci_create_noise_reduction_template():
+    # 创建音频降噪模板
+    response = client.ci_create_template(
+        Bucket=bucket_name,
+        Template=noise_reduction_template_config,
+    )
+    print(response)
+    return response
+
+
+def ci_update_noise_reduction_template():
+    # 更新音频降噪模板
+    response = client.ci_update_template(
+        Bucket=bucket_name,
+        TemplateId='t1ec6c1xxxxxxxxxxxxxxxxxxxxxx',
+        Template=noise_reduction_template_config,
+    )
+    print(response)
+    return response
+
+
+video_target_rec_template_config = {
+    # 模板类型：VideoTargetRec
+    # 是否必传：是
+    'Tag': "VideoTargetRec",
+    # 模板名称，仅支持中文、英文、数字、_、-和*，长度不超过 64
+    # 是否必传：是
+    'Name': "video_target_rec_test",
+    # 视频目标检测 参数
+    # 是否必传：是
+    'VideoTargetRec': {
+        # 是否开启人体检测，取值 true/false
+        # 是否必传：否
+        'Body': "true",
+        # 是否开启宠物检测，取值 true/false
+        # 是否必传：否
+        'Pet': "true",
+        # 是否开启车辆检测，取值 true/false
+        # 是否必传：否
+        'Car': "false",
+    },
+}
+
+
+def ci_create_video_target_template():
+    # 创建视频目标检测模板
+    response = client.ci_create_template(
+        Bucket=bucket_name,
+        Template=video_target_rec_template_config,
+    )
+    print(response)
+    return response
+
+
+def ci_update_video_target_template():
+    # 更新视频目标检测模板
+    response = client.ci_update_template(
+        Bucket=bucket_name,
+        TemplateId='t17de5xxxxxxxxxxxxxxxxxxxxxxx',
+        Template=video_target_rec_template_config,
+    )
+    print(response)
+    return response
+
+
 if __name__ == "__main__":
     # ci_create_snapshot_template()
     # ci_update_snapshot_template()
-    ci_create_transcode_template()
+    # ci_create_transcode_template()
     # ci_update_transcode_template()
     # ci_create_high_speed_hd_template()
     # ci_update_high_speed_hd_template()
@@ -1756,4 +1841,8 @@ if __name__ == "__main__":
     # ci_update_tts_template()
     # ci_create_smart_cover_template()
     # ci_update_smart_cover_template()
+    # ci_create_noise_reduction_template()
+    # ci_update_noise_reduction_template()
+    # ci_create_video_target_template()
+    ci_update_video_target_template()
 

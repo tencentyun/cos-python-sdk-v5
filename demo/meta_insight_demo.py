@@ -248,7 +248,7 @@ def ci_describe_dataset():
     # 查询数据集
 
     response, data = client.ci_describe_dataset(
-        Datasetname="数据集名称",
+        DatasetName="数据集名称",
         Statistics="",
         ContentType="application/json"
     )
@@ -261,7 +261,7 @@ def ci_describe_dataset_binding():
     # 查询数据集与存储桶的绑定关系
 
     response, data = client.ci_describe_dataset_binding(
-        Datasetname="数据集名称",
+        DatasetName="数据集名称",
         Uri="uri",
         ContentType="application/json"
     )
@@ -274,9 +274,9 @@ def ci_describe_dataset_bindings():
     # 查询绑定关系列表
 
     response, data = client.ci_describe_dataset_bindings(
-        Datasetname="数据集名称",
-        Maxresults=100,
-        Nexttoken="下一页",
+        DatasetName="数据集名称",
+        MaxResults=100,
+        NextToken="下一页",
         ContentType="application/json"
     )
     print(response)
@@ -288,8 +288,8 @@ def ci_describe_datasets():
     # 列出数据集
 
     response, data = client.ci_describe_datasets(
-        Maxresults=100,
-        Nexttoken="下一页",
+        MaxResults=100,
+        NextToken="下一页",
         Prefix="数据集前缀",
         ContentType="application/json"
     )
@@ -302,7 +302,7 @@ def ci_describe_file_meta_index():
     # 查询元数据索引
 
     response, data = client.ci_describe_file_meta_index(
-        Datasetname="数据集名称",
+        DatasetName="数据集名称",
         Uri="cos://facesearch-12500000000",
         ContentType="application/json"
     )
@@ -369,7 +369,7 @@ def ci_update_file_meta_index():
         'DatasetName': "test001",
         # 用于建立索引的文件信息。
         # 是否必传：是
-        'UpdateMetaFile': {
+        'File': {
             # 自定义ID。该文件索引到数据集后，作为该行元数据的属性存储，用于和您的业务系统进行关联、对应。您可以根据业务需求传入该值，例如将某个URI关联到您系统内的某个ID。推荐传入全局唯一的值。在查询时，该字段支持前缀查询和排序，详情请见[字段和操作符的支持列表](https://cloud.tencent.com/document/product/460/106154)。
             # 是否必传：否
             'CustomId': "001",

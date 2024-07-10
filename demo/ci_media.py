@@ -78,39 +78,6 @@ def ci_get_ai_bucket():
     return response
 
 
-def ci_get_ai_queue():
-    # 查询ai处理队列信息
-    response = client.ci_get_ai_queue(
-        Bucket=bucket_name,
-    )
-    print(response)
-    return response
-
-
-def ci_put_ai_queue():
-    # 更新ai队列信息
-    body = {
-        'Name': 'ai-queue',
-        'QueueID': 'pa2c2afbe68xxxxxxxxxxxxxxxxxxxxxx',
-        'State': 'Active',
-        'NotifyConfig': {
-            'Type': 'Url',
-            'Url': 'http://www.demo.callback.com',
-            'Event': 'TaskFinish',
-            'State': 'On',
-            'ResultFormat': 'JSON',
-        }
-    }
-    response = client.ci_update_ai_queue(
-        Bucket=bucket_name,
-        QueueId='pa2c2afbe68c44xxxxxxxxxxxxxxxxxxxx',
-        Request=body,
-        ContentType='application/xml'
-    )
-    print(response)
-    return response
-
-
 def ci_get_media_pic_queue():
     # 查询图片处理队列信息
     response = client.ci_get_media_pic_queue(
