@@ -1831,9 +1831,14 @@ def test_post_bucket_inventory_configurations():
             ]
         },
     }
+    inventory_id = 'list1'
+    response = client.delete_bucket_inventory(
+        Bucket=test_bucket,
+        Id=inventory_id,
+    )
     response = client.post_bucket_inventory(
         Bucket=test_bucket,
-        Id='list1',
+        Id=inventory_id,
         InventoryConfiguration=inventory_config,
     )
 
