@@ -392,6 +392,7 @@ class CosS3Client(object):
             try:
                 if j != 0:
                     if client_can_retry(file_position, **kwargs):
+                        kwargs['headers']['x-cos-sdk-retry'] = 'true' # SDK重试标记
                         time.sleep(j)
                     else:
                         break
