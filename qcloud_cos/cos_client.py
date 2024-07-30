@@ -44,7 +44,7 @@ class CosConfig(object):
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
                  PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True, SignParams=True,
-                 AutoSwitchDomainOnRetry=False):
+                 AutoSwitchDomainOnRetry=False, VerifySSL=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -75,6 +75,8 @@ class CosConfig(object):
         :param EnableOldDomain(bool):  是否使用旧的myqcloud.com域名访问COS
         :param EnableInternalDomain(bool):  是否使用内网域名访问COS
         :param SignParams(bool): 是否将请求参数算入签名
+        :param AutoSwitchDomainOnRetry(bool): 重试请求时是否将myqcloud.com域名切换为tencentcos.cn
+        :param VerifySSL(bool): 是否开启SSL证书校验
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -100,6 +102,7 @@ class CosConfig(object):
         self._enable_internal_domain = EnableInternalDomain
         self._sign_params = SignParams
         self._auto_switch_domain_on_retry = AutoSwitchDomainOnRetry
+        self._verify_ssl = VerifySSL
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnableInternalDomain)
@@ -379,7 +382,7 @@ class CosS3Client(object):
                 except Exception as ioe:
                     file_position = None
             kwargs['data'] = to_bytes(kwargs['data'])
-        if self._conf._ip is not None and self._conf._scheme == 'https':
+        if self._conf._ip is not None and self._conf._scheme == 'https' or self._conf._verify_ssl is False:
             kwargs['verify'] = False
         if self._conf._allow_redirects is not None:
             kwargs['allow_redirects'] = self._conf._allow_redirects
@@ -392,6 +395,7 @@ class CosS3Client(object):
             try:
                 if j != 0:
                     if client_can_retry(file_position, **kwargs):
+                        kwargs['headers']['x-cos-sdk-retry'] = 'true' # SDK重试标记
                         time.sleep(j)
                     else:
                         break

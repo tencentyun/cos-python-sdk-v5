@@ -1831,9 +1831,14 @@ def test_post_bucket_inventory_configurations():
             ]
         },
     }
+    inventory_id = 'list1'
+    response = client.delete_bucket_inventory(
+        Bucket=test_bucket,
+        Id=inventory_id,
+    )
     response = client.post_bucket_inventory(
         Bucket=test_bucket,
-        Id='list1',
+        Id=inventory_id,
         InventoryConfiguration=inventory_config,
     )
 
@@ -1962,7 +1967,7 @@ def test_put_get_delete_bucket_referer():
     response = client.get_bucket_referer(
         Bucket=test_bucket,
     )
-    assert len(response) == 0
+    assert response['RefererConfiguration'] is None
 
 
 def test_put_get_traffic_limit():
@@ -5807,7 +5812,6 @@ def test_ci_asr_bucket():
 
 if __name__ == "__main__":
     setUp()
-    test_post_bucket_inventory_configurations()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
