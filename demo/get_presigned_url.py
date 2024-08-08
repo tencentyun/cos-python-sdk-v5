@@ -5,6 +5,7 @@ import sys
 import os
 import logging
 import requests
+import time
 
 # 正常情况日志级别使用 INFO，需要定位时可以修改为 DEBUG，此时 SDK 会打印和服务端的通信信息
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -76,8 +77,16 @@ url = client.get_presigned_url(
 print(url)
 
 # 使用上传 URL
-response = requests.put(url=url, data=b'123')
-print(response)
+retry = 1 # 简单重试1次
+for i in range(retry + 1):
+    response = requests.put(url=url, data=b'123')
+    if response.status_code == 400 or response.status_code >= 500: # 只对400和5xx错误码进行重试
+        time.sleep(1) # 延迟 1s 后再重试
+        continue
+    # 请求结束, 打印结果并退出循环
+    print(response)
+    break
+
 
 '''生成下载预签名 URL
 '''
@@ -136,8 +145,16 @@ url = client.get_presigned_url(
 print(url)
 
 # 使用下载URL
-response = requests.get(url)
-print(response)
+retry = 1 # 简单重试1次
+for i in range(retry + 1):
+    response = requests.get(url)
+    if response.status_code == 400 or response.status_code >= 500: # 只对400和5xx错误码进行重试
+        time.sleep(1) # 延迟 1s 后再重试
+        continue
+    # 请求结束, 打印结果并退出循环
+    print(response)
+    break
+
 
 '''使用临时密钥生成下载预签名 URL
 '''
@@ -157,8 +174,16 @@ url = client.get_presigned_url(
 print(url)
 
 # 使用下载 URL
-response = requests.get(url)
-print(response)
+retry = 1 # 简单重试1次
+for i in range(retry + 1):
+    response = requests.get(url)
+    if response.status_code == 400 or response.status_code >= 500: # 只对400和5xx错误码进行重试
+        time.sleep(1) # 延迟 1s 后再重试
+        continue
+    # 请求结束, 打印结果并退出循环
+    print(response)
+    break
+
 
 '''生成下载对象的预签名 URL
 '''
@@ -222,5 +247,12 @@ url = client.get_presigned_download_url(
 print(url)
 
 # 使用下载 URL
-response = requests.get(url)
-print(response)
+retry = 1 # 简单重试1次
+for i in range(retry + 1):
+    response = requests.get(url)
+    if response.status_code == 400 or response.status_code >= 500: # 只对400和5xx错误码进行重试
+        time.sleep(1) # 延迟 1s 后再重试
+        continue
+    # 请求结束, 打印结果并退出循环
+    print(response)
+    break
