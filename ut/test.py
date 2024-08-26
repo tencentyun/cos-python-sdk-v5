@@ -5805,6 +5805,41 @@ def test_ci_asr_bucket():
     assert data['AsrBucket']['Name'] == ci_bucket_name
 
 
+def test_ci_hls_play_key():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+
+    response, data = client.ci_update_hls_play_key(
+        Bucket=ci_bucket_name,
+        MasterPlayKey='40c502079d484466b2e9e046ce11ae06',
+        BackupPlayKey='128d75fd2b6b4f958ccbb6fc38f60f03',
+        **kwargs
+    )
+    assert response['Content-Type'] == 'application/xml'
+    assert data['PlayKeyList']['MasterPlayKey'] == '40c502079d484466b2e9e046ce11ae06'
+    assert data['PlayKeyList']['BackupPlayKey'] == '128d75fd2b6b4f958ccbb6fc38f60f03'
+
+    response, data = client.ci_update_hls_play_key(
+        Bucket=ci_bucket_name,
+        MasterPlayKey='40c502079d484466b2e9e046ce11ae07',
+        BackupPlayKey='128d75fd2b6b4f958ccbb6fc38f60f04',
+        Accept='application/json',
+        **kwargs
+    )
+    assert response['Content-Type'] == 'application/json'
+    assert data['PlayKeyList']['MasterPlayKey'] == '40c502079d484466b2e9e046ce11ae07'
+    assert data['PlayKeyList']['BackupPlayKey'] == '128d75fd2b6b4f958ccbb6fc38f60f04'
+
+    response, data = client.ci_get_hls_play_key(ci_bucket_name)
+    assert response['Content-Type'] == 'application/xml'
+    assert data['PlayKeyList']['MasterPlayKey'] == '40c502079d484466b2e9e046ce11ae07'
+    assert data['PlayKeyList']['BackupPlayKey'] == '128d75fd2b6b4f958ccbb6fc38f60f04'
+
+    response, data = client.ci_get_hls_play_key(ci_bucket_name, Accept='application/json')
+    assert response['Content-Type'] == 'application/json'
+    assert data['PlayKeyList']['MasterPlayKey'] == '40c502079d484466b2e9e046ce11ae07'
+    assert data['PlayKeyList']['BackupPlayKey'] == '128d75fd2b6b4f958ccbb6fc38f60f04'
+
+
 if __name__ == "__main__":
     setUp()
     test_post_bucket_inventory_configurations()

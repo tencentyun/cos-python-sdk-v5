@@ -1905,6 +1905,23 @@ def ci_get_presigned_download_url():
     print(url)
 
 
+def ci_get_hls_play_key():
+    response, data = client.ci_get_hls_play_key(bucket_name, Accept='application/json')
+    print(response)
+    print(data)
+
+
+def ci_update_hls_play_key():
+    response, data = client.ci_update_hls_play_key(
+        Bucket=bucket_name,
+        MasterPlayKey='40c502079d484466b2e9e046ce11ae06',
+        BackupPlayKey='128d75fd2b6b4f958ccbb6fc38f60f03',
+        Accept='application/json'
+    )
+    print(response)
+    print(data)
+
+
 if __name__ == "__main__":
     # ci_get_media_queue()
     # ci_get_media_jobs()
@@ -1963,4 +1980,6 @@ if __name__ == "__main__":
     # ci_create_tts_jobs()
     # ci_create_translation_jobs()
     # ci_create_words_generalize_jobs()
-    ci_get_presigned_download_url()
+    # ci_get_presigned_download_url()
+    # ci_update_hls_play_key()
+    ci_get_hls_play_key()
