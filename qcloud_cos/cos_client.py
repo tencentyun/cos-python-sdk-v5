@@ -10592,6 +10592,131 @@ class CosS3Client(object):
                                        PageNumber=PageNumber, PageSize=PageSize,
                                        UrlPath="/ai_queue", **kwargs)
 
+    def ci_get_hls_play_key(self, Bucket, **kwargs):
+        """ 获取 HLS 播放密钥 https://cloud.tencent.com/document/product/436/104292
+
+            :param Bucket(string) 存储桶名称.
+            :param kwargs:(dict) 设置上传的headers.
+            :return(dict): response header.
+            :return(dict): 请求成功返回的结果,dict类型.
+
+            .. code-block:: python
+
+                config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+                client = CosS3Client(config)
+                #  获取 HLS 播放密钥
+                response, data = client.ci_get_hls_play_key(
+                    Bucket='bucket',
+                    ObjectKey='',
+                    Body={}
+                )
+                print data
+                print response
+            """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+        path = "/playKey"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+
+        logger.info(
+            "ci_get_hls_play_key result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+                url=url,
+                headers=headers,
+                params=params))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = rt.content
+        response = dict(**rt.headers)
+        if 'Content-Type' in response:
+            if response['Content-Type'] == 'application/xml' and 'Content-Length' in response and \
+                response['Content-Length'] != 0:
+                data = xml_to_dict(rt.content)
+                format_dict(data, ['Response'])
+            elif response['Content-Type'].startswith('application/json'):
+                data = rt.json()
+
+        return response, data
+
+    def ci_update_hls_play_key(self, Bucket, MasterPlayKey=None, BackupPlayKey=None, **kwargs):
+        """ 更新 HLS 播放密钥 https://cloud.tencent.com/document/product/436/104291
+
+            :param Bucket(string) 存储桶名称.
+            :param MasterPlayKey(string) 主播放密钥.
+            :param BackupPlayKey(string) 备播放密钥.
+            :param kwargs:(dict) 设置上传的headers.
+            :return(dict): response header.
+            :return(dict): 请求成功返回的结果,dict类型.
+
+            .. code-block:: python
+
+                config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+                client = CosS3Client(config)
+                #  获取 HLS 播放密钥
+                response, data = client.ci_get_hls_play_key(
+                    Bucket='bucket',
+                    ObjectKey='',
+                    Body={}
+                )
+                print data
+                print response
+            """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        if MasterPlayKey is not None:
+            params['masterPlayKey'] = MasterPlayKey
+        if BackupPlayKey is not None:
+            params['backupPlayKey'] = BackupPlayKey
+        params = format_values(params)
+        path = "/playKey"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+        logger.info("ci_update_hls_play_key result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = rt.content
+        response = dict(**rt.headers)
+        if 'Content-Type' in response:
+            if response['Content-Type'] == 'application/xml' and 'Content-Length' in response and \
+                response['Content-Length'] != 0:
+                data = xml_to_dict(rt.content)
+                format_dict(data, ['Response'])
+            elif response['Content-Type'].startswith('application/json'):
+                data = rt.json()
+
+        return response, data
+
 
 if __name__ == "__main__":
     pass
