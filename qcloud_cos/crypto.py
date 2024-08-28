@@ -202,7 +202,7 @@ class RSAProvider(BaseProvider):
 
         # 为用户自动创建rsa
         if self.__encrypt_obj is None and self.__decrypt_obj is None:
-            logger.warn('fail to get rsa key, will generate key')
+            logger.warning('fail to get rsa key, will generate key')
             private_key = RSA.generate(2048)
             public_key = private_key.publickey()
 
@@ -302,7 +302,7 @@ class AESProvider(BaseProvider):
                     self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
 
         if self.__ed_obj is None:
-            logger.warn('fail to get aes key, will generate key')
+            logger.warning('fail to get aes key, will generate key')
             aes_key = random_key(_AES_256_KEY_SIZE)
             self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
             if not os.path.exists(default_aes_dir):
