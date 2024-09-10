@@ -3534,6 +3534,36 @@ class CosS3Client(object):
             params=params)
         data = xml_to_dict(rt.content)
         return data
+
+    def get_bucket_intelligenttiering_v2(self, Bucket, Id, **kwargs):
+        """获取存储桶智能分层配置
+        
+        :param Bucket(string): 存储桶名称.
+        :param Id(string) 智能分层规则Id.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): 智能分层配置.
+
+        .. code-block:: python
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            client.get_bucket_intelligenttiering_v2(Bucket='bucket', Id='id')
+        """
+
+        headers = mapped(kwargs)
+        params = {'id': Id}
+        url = self._conf.uri(bucket=Bucket) + '?intelligent-tiering'
+        logger.info("get bucket intelligenttiering, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        return data
     
     def put_bucket_object_lock(self, Bucket, ObjectLockConfiguration={}, **kwargs):
         """设置存储桶对象锁定配置
@@ -3706,7 +3736,7 @@ class CosS3Client(object):
                 logger.debug("get_bucket_meta failed to get replication conf:{}".format(e))
         pool.add_task(_get_bucket_replication_wrapper, Bucket, **kwargs)
 
-        # Replication
+        # Encryption
         def _get_bucket_encryption_wrapper(Bucket, **kwargs):
             try:
                 resp = self.get_bucket_encryption(Bucket, **kwargs)
@@ -3734,13 +3764,13 @@ class CosS3Client(object):
         pool.add_task(_get_bucket_versioning_wrapper, Bucket, **kwargs)
 
         # IntelligentTiering
-        def _get_bucket_intelligenttiering_wrapper(Bucket, **kwargs):
+        def _get_bucket_intelligenttiering_v2_wrapper(Bucket, Id, **kwargs):
             try:
-                resp = self.get_bucket_intelligenttiering(Bucket, **kwargs)
+                resp = self.get_bucket_intelligenttiering_v2(Bucket, Id, **kwargs)
                 data.update({'IntelligentTiering': resp})
             except CosServiceError as e:
                 logger.debug("get_bucket_meta failed to get intelligenttiering conf:{}".format(e))
-        pool.add_task(_get_bucket_intelligenttiering_wrapper, Bucket, **kwargs)
+        pool.add_task(_get_bucket_intelligenttiering_v2_wrapper, Bucket, "default", **kwargs)
 
         # Tagging
         def _get_bucket_tagging_wrapper(Bucket, **kwargs):

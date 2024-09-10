@@ -2297,7 +2297,7 @@ def test_put_get_bucket_intelligenttiering():
             'Status': 'Enabled',
             'Transition': {
                 'Days': '30',
-                        'RequestFrequent': '1'
+                'RequestFrequent': '1'
             }
         }
         response = client.put_bucket_intelligenttiering(
@@ -2313,6 +2313,12 @@ def test_put_get_bucket_intelligenttiering():
 
     response = client.get_bucket_intelligenttiering(
         Bucket=test_bucket,
+    )
+
+    # v2接口
+    response = client.get_bucket_intelligenttiering_v2(
+        Bucket=test_bucket,
+        Id="default"
     )
 
 
