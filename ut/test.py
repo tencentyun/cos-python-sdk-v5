@@ -2321,6 +2321,10 @@ def test_put_get_bucket_intelligenttiering():
         Id="default"
     )
 
+    response = client.list_bucket_intelligenttiering_configurations(
+        Bucket=test_bucket
+    )
+
 
 def test_bucket_encryption():
     """测试存储桶默认加密配置"""
