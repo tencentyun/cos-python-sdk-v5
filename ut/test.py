@@ -2326,6 +2326,47 @@ def test_put_get_bucket_intelligenttiering():
     )
 
 
+def test_bucket_intelligenttiering_v2():
+    """测试设置获取智能分层 v2接口"""
+    try:
+        intelligent_tiering_conf = {
+            'Id': 'default',
+            'Status': 'Enabled',
+            'Tiering': [
+                {
+                    'AccessTier': 'INFREQUENT',
+                    'Days': 30,
+                    'RequestFrequent': '1'
+                }
+            ]
+        }
+        response = client.put_bucket_intelligenttiering_v2(
+            Bucket=test_bucket,
+            IntelligentTieringConfiguration=intelligent_tiering_conf,
+            Id='default'
+        )
+        time.sleep(2)
+    except CosServiceError as e:
+        if e.get_error_msg() == 'The default rule cannot be modified':
+            print(e.get_error_msg())
+        else:
+            raise e
+
+    response = client.get_bucket_intelligenttiering(
+        Bucket=test_bucket,
+    )
+
+    # v2接口
+    response = client.get_bucket_intelligenttiering_v2(
+        Bucket=test_bucket,
+        Id="default"
+    )
+
+    response = client.list_bucket_intelligenttiering_configurations(
+        Bucket=test_bucket
+    )
+
+
 def test_bucket_encryption():
     """测试存储桶默认加密配置"""
     # 测试设置存储桶的默认加密配置
