@@ -453,7 +453,7 @@ class CosS3Client(object):
                     info['requestid'] = res.headers['x-cos-request-id']
                 if 'x-cos-trace-id' in res.headers:
                     info['traceid'] = res.headers['x-cos-trace-id']
-                logger.warn(info)
+                logger.warning(info)
                 if len(exception_logbuf) > 0:
                     logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
                 raise CosServiceError(method, info, res.status_code)
