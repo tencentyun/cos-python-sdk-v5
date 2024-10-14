@@ -30,6 +30,8 @@ TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
+test_worm_bucket = 'cos-python-v5-test-worm' + str(sys.version_info[0]) + '-' + str(
+    sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
 test_object = "test.txt"
 special_file_name = "中文" + \
@@ -761,6 +763,54 @@ def test_get_bucket_location():
     )
     assert response['LocationConstraint'] == REGION
 
+def test_put_get_bucket_object_lock():
+    """bucket object_lock测试"""
+    
+    # 创建worm测试桶
+    try:
+        response = client.create_bucket(Bucket=test_worm_bucket)
+    except CosServiceError as e:
+        error_code = e.get_error_code()
+        if error_code == 'BucketAlreadyOwnedByYou' or error_code == 'BucketAlreadyExists':
+            pass
+        else:
+            raise e
+    
+    object_lock_conf = {
+        'ObjectLockEnabled': 'Enabled',
+    }
+    response = client.put_bucket_object_lock(Bucket=test_worm_bucket, ObjectLockConfiguration=object_lock_conf)
+
+    time.sleep(3)
+    response = client.get_bucket_object_lock(Bucket=test_worm_bucket)
+    assert response
+    assert response['ObjectLockEnabled'] == 'Enabled'
+
+    # test get_bucket_meta() by the way.
+    meta = client.get_bucket_meta(Bucket=test_worm_bucket)
+    assert meta
+
+    # 删除worm测试桶
+    client.delete_bucket(Bucket=test_worm_bucket)
+
+def test_get_bucket_meta():
+    """测试get_buckt_meta()接口"""
+    response = client.get_bucket_meta(Bucket=test_bucket)
+    assert response
+    assert 'BucketUrl' in response
+    assert 'OFS' in response
+    assert 'MAZ' in response
+    assert 'Encryption' in response
+    assert 'ACL' in response
+    assert 'Website' in response
+    assert 'Logging' in response
+    assert 'CORS' in response
+    assert 'Versioning' in response
+    assert 'IntelligentTiering' in response
+    assert 'Lifecycle' in response
+    assert 'Tagging' in response
+    assert 'ObjectLock' in response
+    assert 'Replication' in response
 
 def test_get_service():
     """列出账号下所有的bucket信息"""
@@ -2247,7 +2297,7 @@ def test_put_get_bucket_intelligenttiering():
             'Status': 'Enabled',
             'Transition': {
                 'Days': '30',
-                        'RequestFrequent': '1'
+                'RequestFrequent': '1'
             }
         }
         response = client.put_bucket_intelligenttiering(
@@ -2263,6 +2313,57 @@ def test_put_get_bucket_intelligenttiering():
 
     response = client.get_bucket_intelligenttiering(
         Bucket=test_bucket,
+    )
+
+    # v2接口
+    response = client.get_bucket_intelligenttiering_v2(
+        Bucket=test_bucket,
+        Id="default"
+    )
+
+    response = client.list_bucket_intelligenttiering_configurations(
+        Bucket=test_bucket
+    )
+
+
+def test_bucket_intelligenttiering_v2():
+    """测试设置获取智能分层 v2接口"""
+    try:
+        intelligent_tiering_conf = {
+            'Id': 'default',
+            'Status': 'Enabled',
+            'Tiering': [
+                {
+                    'AccessTier': 'INFREQUENT',
+                    'Days': 30,
+                    'RequestFrequent': '1'
+                }
+            ]
+        }
+        response = client.put_bucket_intelligenttiering_v2(
+            Bucket=test_bucket,
+            IntelligentTieringConfiguration=intelligent_tiering_conf,
+            Id='default'
+        )
+        time.sleep(2)
+    except CosServiceError as e:
+        if e.get_error_msg() == 'The default rule cannot be modified':
+            print(e.get_error_msg())
+        else:
+            raise e
+
+    response = client.get_bucket_intelligenttiering(
+        Bucket=test_bucket,
+    )
+
+    # v2接口
+    response = client.get_bucket_intelligenttiering_v2(
+        Bucket=test_bucket,
+        Id="default"
+    )
+
+    response = client.list_bucket_intelligenttiering_configurations(
+        Bucket=test_bucket
     )
 
 
