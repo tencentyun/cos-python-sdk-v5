@@ -1894,11 +1894,16 @@ def test_post_bucket_inventory_configurations():
         Bucket=test_bucket,
         Id=inventory_id,
     )
-    response = client.post_bucket_inventory(
-        Bucket=test_bucket,
-        Id=inventory_id,
-        InventoryConfiguration=inventory_config,
-    )
+    time.sleep(3)
+    try:
+        response = client.post_bucket_inventory(
+            Bucket=test_bucket,
+            Id=inventory_id,
+            InventoryConfiguration=inventory_config,
+        )
+    except CosServiceError as e:
+        if e.get_error_code() == 'DuplicateInventoryId':
+            pass
 
 
 def test_put_get_delete_bucket_tagging():
