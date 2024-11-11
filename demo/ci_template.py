@@ -1815,6 +1815,36 @@ def ci_update_video_target_template():
     return response
 
 
+ocr_template_config = {
+    # 模板类型：VideoTargetRec
+    # 是否必传：是
+    'Tag': "ImageOCR",
+    # 模板名称，仅支持中文、英文、数字、_、-和*，长度不超过 64
+    # 是否必传：是
+    'Name': "image_ocr_test",
+    # 视频目标检测 参数
+    # 是否必传：是
+    'ImageOCR': {
+        # 是否开启人体检测，取值 true/false
+        # 是否必传：否
+        'Type': "general",
+        # 是否开启宠物检测，取值 true/false
+        # 是否必传：否
+        'LanguageType': "zh",
+    },
+}
+
+
+def ci_create_ocr_template():
+    # 创建视频目标检测模板
+    response = client.ci_create_template(
+        Bucket=bucket_name,
+        Template=ocr_template_config,
+    )
+    print(response)
+    return response
+
+
 if __name__ == "__main__":
     # ci_create_snapshot_template()
     # ci_update_snapshot_template()
@@ -1844,5 +1874,6 @@ if __name__ == "__main__":
     # ci_create_noise_reduction_template()
     # ci_update_noise_reduction_template()
     # ci_create_video_target_template()
-    ci_update_video_target_template()
+    # ci_update_video_target_template()
+    ci_create_ocr_template()
 

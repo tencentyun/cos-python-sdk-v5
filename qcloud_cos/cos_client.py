@@ -6060,7 +6060,7 @@ class CosS3Client(object):
                             Average 模式：Count 参数生效。表示整个视频，按平均间隔截取共 Count 张图片。
                             Fps 模式：TimeInterval 表示每秒截取多少帧，Count 表示共截取多少帧。
         :param Count(int): 视频截帧数量，范围为(0, 10000]。
-        :param TimeInterval(int): 视频截帧频率，范围为(0, 60]，单位为秒，支持 float 格式，执行精度精确到毫秒。
+        :param TimeInterval(float): 视频截帧频率，范围为(0, 60]，单位为秒，支持 float 格式，执行精度精确到毫秒。
         :param BizType(string): 审核策略的唯一标识，由后台自动生成，在控制台中对应为Biztype值.
         :param UserInfo(dict): 用户业务字段.
         :param DataId(string): 该字段在审核结果中会返回原始内容，长度限制为512字节。您可以使用该字段对待审核的数据进行唯一业务标识。
@@ -6784,7 +6784,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_live_video_submit(self, Bucket, BizType, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
+    def ci_auditing_live_video_submit(self, Bucket, BizType=None, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
                                       UserInfo=None, StorageConf=None, **kwargs):
         """提交直播流审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
@@ -6837,6 +6837,7 @@ class CosS3Client(object):
             RequestType='live_video',
             DataId=DataId,
             UserInfo=UserInfo,
+            StorageConf=StorageConf
             **kwargs
         )
 
@@ -8098,8 +8099,8 @@ class CosS3Client(object):
         format_dict(data, ['WorkflowExecution'])
         return data
 
-    def ci_list_workflowexecution(self, Bucket, WorkflowId, Name='', StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', **kwargs):
-        """ 获取工作流实例列表 https://cloud.tencent.com/document/product/436/53993
+    def ci_list_workflowexecution(self, Bucket, WorkflowId, Name='', StartCreationTime=None, EndCreationTime=None, OrderByTime='Desc', States='All', Size=10, NextToken='', BatchJobId=None, **kwargs):
+        """ 获取工作流实例列表 https://cloud.tencent.com/document/product/436/80048
 
         :param Bucket(string): 存储桶名称.
         :param WorkflowId(string): 工作流实例ID.
@@ -8151,6 +8152,8 @@ class CosS3Client(object):
             url = u"{url}&{StartCreationTime}".format(url=to_unicode(url), StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
         if EndCreationTime is not None:
             url = u"{url}&{EndCreationTime}".format(url=to_unicode(url), EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
+        if BatchJobId is not None:
+            url = u"{url}&{BatchJobId}".format(url=to_unicode(url), BatchJobId=to_unicode('jobId='+BatchJobId))
         logger.info("ci_list_workflowexecution result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8781,7 +8784,7 @@ class CosS3Client(object):
         return response
 
     def ci_doc_preview_html_process(self, Bucket, Key, SrcType=None, Copyable='1', DstType='html', HtmlParams=None, HtmlWaterword=None, HtmlFillStyle=None,
-                                    HtmlFront=None, HtmlRotate=None, HtmlHorizontal=None, HtmlVertical=None, **kwargs):
+                                    HtmlFront=None, HtmlRotate=None, HtmlHorizontal=None, HtmlVertical=None, HtmlTitle=None, **kwargs):
         """文档转 HTML https://cloud.tencent.com/document/product/460/52518
 
         :param Bucket(string): 存储桶名称.
@@ -8796,6 +8799,7 @@ class CosS3Client(object):
         :param HtmlRotate(string): 水印文字旋转角度，0 - 360，默认315度。
         :param HtmlHorizontal(string): 水印文字水平间距，单位 px，默认为50。
         :param HtmlVertical(string): 水印文字垂直间距，单位 px，默认为100。
+        :param HtmlTitle(string): 自定义返回html的title信息，默认为“腾讯云-数据万象”，可输入自定义字符串并配合通配符使用，需要经过 URL安全的Base64 编码。
         :return(dict): 获取成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
 
         .. code-block:: python
@@ -8837,6 +8841,8 @@ class CosS3Client(object):
             params['htmlhorizontal'] = HtmlHorizontal
         if HtmlVertical:
             params['htmlvertical'] = HtmlVertical
+        if HtmlTitle:
+            params['htmltitle'] = HtmlTitle
 
         params = format_values(params)
 

@@ -44,3 +44,23 @@ response = client.ci_download_compress_image(
 )
 print(response['x-cos-request-id'])
 assert os.path.exists('sample.heif')
+
+# AVIF 压缩
+response = client.ci_download_compress_image(
+    Bucket=bucket_name,
+    Key='sample.jpeg',
+    DestImagePath='sample.avif',
+    CompressType='avif'
+)
+print(response['x-cos-request-id'])
+assert os.path.exists('sample.avif')
+
+# SVG 压缩
+response = client.ci_download_compress_image(
+    Bucket=bucket_name,
+    Key='sample.jpeg',
+    DestImagePath='sample.svg',
+    CompressType='svg'
+)
+print(response['x-cos-request-id'])
+assert os.path.exists('sample.svg')
