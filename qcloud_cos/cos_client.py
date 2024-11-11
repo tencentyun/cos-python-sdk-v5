@@ -1678,7 +1678,9 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf),
             headers=headers)
-        return rt.headers
+
+        response = dict(**rt.headers)
+        return response
 
     def put_bucket_acl(self, Bucket, AccessControlPolicy={}, **kwargs):
         """设置bucket ACL
