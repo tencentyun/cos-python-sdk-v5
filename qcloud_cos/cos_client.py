@@ -5584,7 +5584,7 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
-        params['qrcode-content'] = '<' + QrcodeContent + '>'
+        params['qrcode-content'] = QrcodeContent
         params['width'] = Width
         params['mode'] = Mode
         params = format_values(params)
