@@ -6845,7 +6845,7 @@ class CosS3Client(object):
             RequestType='live_video',
             DataId=DataId,
             UserInfo=UserInfo,
-            StorageConf=StorageConf
+            StorageConf=StorageConf,
             **kwargs
         )
 
