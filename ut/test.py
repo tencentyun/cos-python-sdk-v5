@@ -3829,6 +3829,7 @@ def test_ci_doc_preview_to_html_process():
         HtmlRotate='315',
         HtmlHorizontal='50',
         HtmlVertical='100',
+        HtmlTitle=base64.urlsafe_b64encode("title".encode('utf-8')).decode('utf-8').rstrip('='),
         **kwargs
     )
     assert response

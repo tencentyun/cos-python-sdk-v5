@@ -1,4 +1,6 @@
 # -*- coding=utf-8
+import base64
+import json
 
 from qcloud_cos import CosConfig
 from qcloud_cos import CosS3Client
@@ -125,9 +127,33 @@ def ci_doc_preview_process():
 
 def ci_doc_preview_to_html_process():
     # 文档预览同步接口（生成html）
+    html_params = {
+        'commonOptions': {
+            'isShowTopArea': 'true',
+            'isShowHeader': 'true',
+            'isBrowserViewFullscreen': 'true',
+            'isIframeViewFullscreen': 'true',
+        },
+        'wordOptions': {
+            'isShowDocMap': 'true',
+            'isBestScale': 'true',
+            'isShowBottomStatusBar': 'true',
+        }
+    }
+    html_params_json = json.dumps(html_params)
     response = client.ci_doc_preview_html_process(
         Bucket=bucket_name,
         Key='1.txt',
+        SrcType='txt',
+        DstType='html',
+        HtmlParams=base64.urlsafe_b64encode(html_params_json.encode('utf-8')).decode('utf-8').rstrip('='),
+        HtmlWaterword=base64.urlsafe_b64encode("watermark".encode('utf-8')).decode('utf-8').rstrip('='),
+        HtmlFillStyle=base64.urlsafe_b64encode("rgba(192,192,192,0.6)".encode('utf-8')).decode('utf-8').rstrip('='),
+        HtmlFront=base64.urlsafe_b64encode("bold 20px Serif".encode('utf-8')).decode('utf-8').rstrip('='),
+        HtmlRotate="180",
+        HtmlHorizontal="100",
+        HtmlVertical="50",
+        HtmlTitle=base64.urlsafe_b64encode("title".encode('utf-8')).decode('utf-8').rstrip('='),
     )
     print(response)
     response['Body'].get_stream_to_file('result.html')
