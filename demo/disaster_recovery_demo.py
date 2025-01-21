@@ -16,9 +16,10 @@ def _recover_main(src_region, src_secret_id, src_secret_key, src_bucket, prefix,
                   dst_region, dst_secret_id, dst_secret_key, dst_bucket):
     src_client = CosS3Client(CosConfig(Region=src_region, SecretId=src_secret_id, SecretKey=src_secret_key))
     dst_client = CosS3Client(CosConfig(Region=dst_region, SecretId=dst_secret_id, SecretKey=dst_secret_key))
+
+    key_marker = ''
+    versionId_marker = ''
     while True:
-        key_marker = ''
-        versionId_marker = ''
         response = src_client.list_objects_versions(
             Bucket=src_bucket,
             Prefix=prefix,
