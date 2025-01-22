@@ -38,7 +38,7 @@ def filter_headers(data):
     ]
     headers = {}
     for i in data:
-        if str.lower(i) in valid_headers or str.lower(i).startswith("x-cos-"):
+        if str.lower(i) in valid_headers or str.lower(i).startswith("x-cos-") or str.lower(i).startswith("x-ci-"):
             headers[i] = data[i]
     return headers
 

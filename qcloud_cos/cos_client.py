@@ -5873,15 +5873,13 @@ class CosS3Client(object):
         if 'versionId' in headers:
             params['versionId'] = headers['versionId']
             del headers['versionId']
+
+        params['ci-process'] = 'QRcode'
+        params['cover'] = Cover
+        params['bar-type'] = BarType
         params = format_values(params)
 
         url = self._conf.uri(bucket=Bucket, path=Key)
-        url = u"{url}?{ci}={cover}&bar-type={barType}".format(
-            url=to_unicode(url),
-            ci=to_unicode('ci-process=QRcode&cover'),
-            cover=Cover,
-            barType=BarType
-        )
 
         logger.info("get object, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
@@ -6792,7 +6790,7 @@ class CosS3Client(object):
 
         return data
 
-    def ci_auditing_live_video_submit(self, Bucket, BizType=None, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
+    def ci_auditing_live_video_submit(self, Bucket, BizType, DetectType=None, Url=None, DataId=None, Callback=None, CallbackType=None,
                                       UserInfo=None, StorageConf=None, **kwargs):
         """提交直播流审核任务接口 https://cloud.tencent.com/document/product/460/46427
 
@@ -7175,18 +7173,16 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['regions'] = Regions
+        params['bucketNames'] = BucketNames
+        params['bucketName'] = BucketName
+        params['pageNumber'] = PageNumber
+        params['pageSize'] = PageSize
+
         params = format_values(params)
 
         path = Path
         url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            regions=to_unicode('regions='+Regions),
-            bucketNames=to_unicode('bucketNames='+BucketNames),
-            bucketName=to_unicode('bucketName='+BucketName),
-            pageNumber=to_unicode('pageNumber='+PageNumber),
-            pageSize=to_unicode('pageSize='+PageSize),
-        )
         logger.info("ci_get_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7240,17 +7236,15 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['queueIds'] = QueueIds
+        params['state'] = State
+        params['pageNumber'] = PageNumber
+        params['pageSize'] = PageSize
+
         params = format_values(params)
 
         path = UrlPath
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{queueIds}&{state}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            queueIds=to_unicode('queueIds='+QueueIds),
-            state=to_unicode('state='+State),
-            pageNumber=to_unicode('pageNumber='+PageNumber),
-            pageSize=to_unicode('pageSize='+PageSize),
-        )
         logger.info("get_media_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7689,25 +7683,21 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['tag'] = Tag
+        params['orderByTime'] = OrderByTime
+        params['states'] = States
+        params['size'] = str(Size)
+        params['nextToken'] = NextToken
+        if QueueId is not None:
+            params['queueId'] = QueueId
+        if StartCreationTime is not None:
+            params['startCreationTime'] = StartCreationTime
+        if EndCreationTime is not None:
+            params['endCreationTime'] = EndCreationTime
+
         params = format_values(params)
         path = Path
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
-            url=to_unicode(url),
-            Tag=to_unicode('tag='+Tag),
-            OrderByTime=to_unicode('orderByTime='+OrderByTime),
-            States=to_unicode('states='+States),
-            Size=to_unicode('size='+str(Size)),
-            NextToken=to_unicode('nextToken='+NextToken)
-        )
-        if QueueId is not None:
-            url = u"{url}&{QueueId}".format(url=url, QueueId=to_unicode('queueId='+QueueId))
-        if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(url=url,
-                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
-        if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(url=url,
-                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_media_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7810,11 +7800,12 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params[UpdateState] = ''
+
         params = format_values(params)
 
         path = "/workflow/" + WorkflowId
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = url + '?' + UpdateState
         logger.info("ci_update_workflow_state result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -7916,17 +7907,15 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['ids'] = Ids
+        params['name'] = Name
+        params['pageNumber'] = str(PageNumber)
+        params['pageSize'] = str(PageSize)
+
         params = format_values(params)
 
         path = "/workflow"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{ids}&{name}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            ids=to_unicode('ids='+Ids),
-            name=to_unicode('name='+Name),
-            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
-            pageSize=to_unicode('pageSize='+str(PageSize)),
-        )
         logger.info("ci_get_workflow result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8027,15 +8016,12 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['workflowId'] = WorkflowId
+        params['object'] = Key
+
         params = format_values(params)
         path = "/triggerworkflow"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{WorkflowId}&{Key}".format(
-            url=to_unicode(url),
-            WorkflowId=to_unicode('workflowId='+WorkflowId),
-            Key=to_unicode('object='+Key)
-        )
-
         logger.info("ci_trigger_workflow result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8144,24 +8130,22 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['workflowId'] = WorkflowId
+        params['name'] = Name
+        params['orderByTime'] = OrderByTime
+        params['states'] = States
+        params['size'] = str(Size)
+        params['nextToken'] = NextToken
+        if StartCreationTime is not None:
+            params['startCreationTime'] = StartCreationTime
+        if EndCreationTime is not None:
+            params['endCreationTime'] = EndCreationTime
+        if BatchJobId is not None:
+            params['jobId'] = BatchJobId
+
         params = format_values(params)
         path = "/workflowexecution"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{WorkflowId}&{Name}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
-            url=to_unicode(url),
-            WorkflowId=to_unicode('workflowId='+WorkflowId),
-            Name=to_unicode('name='+Name),
-            OrderByTime=to_unicode('orderByTime='+OrderByTime),
-            States=to_unicode('states='+States),
-            Size=to_unicode('size='+str(Size)),
-            NextToken=to_unicode('nextToken='+NextToken)
-        )
-        if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url), StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
-        if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url), EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
-        if BatchJobId is not None:
-            url = u"{url}&{BatchJobId}".format(url=to_unicode(url), BatchJobId=to_unicode('jobId='+BatchJobId))
         logger.info("ci_list_workflowexecution result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8382,17 +8366,15 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['queueIds'] = QueueIds
+        params['state'] = State
+        params['pageNumber'] = str(PageNumber)
+        params['pageSize'] = str(PageSize)
+
         params = format_values(params)
 
         path = "/docqueue"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{queueIds}&{state}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            queueIds=to_unicode('queueIds='+QueueIds),
-            state=to_unicode('state='+State),
-            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
-            pageSize=to_unicode('pageSize='+str(PageSize)),
-        )
         logger.info("get_doc_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8657,25 +8639,21 @@ class CosS3Client(object):
         if 'Content-Type' not in headers:
             headers['Content-Type'] = 'application/xml'
 
+        params['tag'] = 'DocProcess'
+        params['orderByTime'] = OrderByTime
+        params['states'] = States
+        params['size'] = str(Size)
+        params['nextToken'] = NextToken
+        if QueueId is not None:
+            params['queueId'] = QueueId
+        if StartCreationTime is not None:
+            params['startCreationTime'] = StartCreationTime
+        if EndCreationTime is not None:
+            params['endCreationTime'] = EndCreationTime
+
         params = format_values(params)
         path = "/doc_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
-            url=to_unicode(url),
-            Tag=to_unicode('tag=DocProcess'),
-            OrderByTime=to_unicode('orderByTime='+OrderByTime),
-            States=to_unicode('states='+States),
-            Size=to_unicode('size='+str(Size)),
-            NextToken=to_unicode('nextToken='+NextToken)
-        )
-        if QueueId is not None:
-            url = u"{url}&{QueueId}".format(url=url, QueueId=to_unicode('queueId='+QueueId))
-        if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
-                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
-        if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
-                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_doc_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -8908,18 +8886,16 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['regions'] = Regions
+        params['bucketNames'] = BucketNames
+        params['bucketName'] = BucketName
+        params['pageNumber'] = str(PageNumber)
+        params['pageSize'] = str(PageSize)
+
         params = format_values(params)
 
         path = "/docbucket"
         url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            regions=to_unicode('regions='+Regions),
-            bucketNames=to_unicode('bucketNames='+BucketNames),
-            bucketName=to_unicode('bucketName='+BucketName),
-            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
-            pageSize=to_unicode('pageSize='+str(PageSize)),
-        )
         logger.info("ci_get_doc_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -9031,18 +9007,16 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['regions'] = Regions
+        params['bucketNames'] = BucketNames
+        params['bucketName'] = BucketName
+        params['pageNumber'] = PageNumber
+        params['pageSize'] = PageSize
+
         params = format_values(params)
 
         path = "/asrbucket"
         url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{regions}&{bucketNames}&{bucketName}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            regions=to_unicode('regions='+Regions),
-            bucketNames=to_unicode('bucketNames='+BucketNames),
-            bucketName=to_unicode('bucketName='+BucketName),
-            pageNumber=to_unicode('pageNumber='+PageNumber),
-            pageSize=to_unicode('pageSize='+PageSize),
-        )
         logger.info("ci_get_asr_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -9150,17 +9124,15 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['queueIds'] = QueueIds
+        params['state'] = State
+        params['pageNumber'] = str(PageNumber)
+        params['pageSize'] = str(PageSize)
+
         params = format_values(params)
 
         path = "/asrqueue"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{queueIds}&{state}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            queueIds=to_unicode('queueIds='+QueueIds),
-            state=to_unicode('state='+State),
-            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
-            pageSize=to_unicode('pageSize='+str(PageSize)),
-        )
         logger.info("get_asr_queue result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -9398,25 +9370,21 @@ class CosS3Client(object):
         if 'Content-Type' not in headers:
             headers['Content-Type'] = 'application/xml'
 
+        params['tag'] = 'SpeechRecognition'
+        params['orderByTime'] = OrderByTime
+        params['states'] = States
+        params['size'] = str(Size)
+        params['nextToken'] = NextToken
+        if QueueId is not None:
+            params['queueId'] = QueueId
+        if StartCreationTime is not None:
+            params['startCreationTime'] = StartCreationTime
+        if EndCreationTime is not None:
+            params['endCreationTime'] = EndCreationTime
+
         params = format_values(params)
         path = "/asr_jobs"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{Tag}&{OrderByTime}&{States}&{Size}&{NextToken}".format(
-            url=to_unicode(url),
-            Tag=to_unicode('tag=SpeechRecognition'),
-            OrderByTime=to_unicode('orderByTime='+OrderByTime),
-            States=to_unicode('states='+States),
-            Size=to_unicode('size='+str(Size)),
-            NextToken=to_unicode('nextToken='+NextToken)
-        )
-        if QueueId is not None:
-            url = u"{url}&{QueueId}".format(url=to_unicode(url), QueueId=to_unicode('queueId='+QueueId))
-        if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(url=to_unicode(url),
-                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
-        if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(url=to_unicode(url),
-                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("list_asr_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -9691,18 +9659,16 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['category'] = Category
+        params['ids'] = Ids
+        params['name'] = Name
+        params['pageNumber'] = str(PageNumber)
+        params['pageSize'] = str(PageSize)
+
         params = format_values(params)
 
         path = "/template"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{category}&{ids}&{name}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            category=to_unicode('category='+Category),
-            ids=to_unicode('ids='+Ids),
-            name=to_unicode('name='+Name),
-            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
-            pageSize=to_unicode('pageSize='+str(PageSize)),
-        )
         logger.info("ci_get_asr_template result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -10376,7 +10342,7 @@ class CosS3Client(object):
 
     def ci_list_inventory_trigger_jobs(self, Bucket, StartCreationTime=None,
         EndCreationTime=None, OrderByTime='Desc', States='All', Size=10,
-        NextToken='', Type='Workflow', WorkflowId='', JobId='', Name='', **kwargs):
+        NextToken='', Type='Workflow', WorkflowId='', JobId='', Name=None, **kwargs):
         """ 查询批量任务列表接口 https://cloud.tencent.com/document/product/460/76894
 
         :param Bucket(string): 存储桶名称.
@@ -10415,26 +10381,23 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['type'] = Type
+        params['orderByTime'] = OrderByTime
+        params['states'] = States
+        params['size'] = str(Size)
+        params['nextToken'] = NextToken
+        params['workflowId'] = WorkflowId
+        params['jobId'] = JobId
+        if Name is not None:
+            params['name'] = Name
+        if StartCreationTime is not None:
+            params['startCreationTime'] = StartCreationTime
+        if EndCreationTime is not None:
+            params['endCreationTime'] = EndCreationTime
+
         params = format_values(params)
         path = 'inventorytriggerjob'
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{Type}&{OrderByTime}&{States}&{Size}&{NextToken}&{WorkflowId}&{JobId}&{Name}".format(
-            url=to_unicode(url),
-            Type=to_unicode('type='+Type),
-            OrderByTime=to_unicode('orderByTime='+OrderByTime),
-            States=to_unicode('states='+States),
-            Size=to_unicode('size='+str(Size)),
-            NextToken=to_unicode('nextToken='+NextToken),
-            WorkflowId=to_unicode('workflowId='+WorkflowId),
-            JobId=to_unicode('jobId='+JobId),
-            Name=to_unicode('name='+Name)
-        )
-        if StartCreationTime is not None:
-            url = u"{url}&{StartCreationTime}".format(url=url,
-                                                      StartCreationTime=quote(to_bytes(to_unicode('startCreationTime='+StartCreationTime)), b'/-_.~='))
-        if EndCreationTime is not None:
-            url = u"{url}&{EndCreationTime}".format(url=url,
-                                                    EndCreationTime=quote(to_bytes(to_unicode('endCreationTime='+EndCreationTime)), b'/-_.~='))
         logger.info("ci_list_inventory_trigger_jobs result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
@@ -10652,18 +10615,16 @@ class CosS3Client(object):
                 final_headers[key] = headers[key]
         headers = final_headers
 
+        params['category'] = Category
+        params['ids'] = Ids
+        params['name'] = Name
+        params['pageNumber'] = str(PageNumber)
+        params['pageSize'] = str(PageSize)
+
         params = format_values(params)
 
         path = "/template"
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
-        url = u"{url}?{category}&{ids}&{name}&{pageNumber}&{pageSize}".format(
-            url=to_unicode(url),
-            category=to_unicode('category='+Category),
-            ids=to_unicode('ids='+Ids),
-            name=to_unicode('name='+Name),
-            pageNumber=to_unicode('pageNumber='+str(PageNumber)),
-            pageSize=to_unicode('pageSize='+str(PageSize)),
-        )
         logger.info("ci_get_template result, url=:{url} ,headers=:{headers}, params=:{params}".format(
             url=url,
             headers=headers,
