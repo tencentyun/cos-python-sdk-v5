@@ -223,10 +223,16 @@ def setUp():
     _create_test_bucket(copy_test_bucket)
     _upload_test_file(test_bucket, test_object)
     _upload_test_file(copy_test_bucket, test_object)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        client.ci_open_asr_bucket(ci_bucket_name)
 
 
 def tearDown():
     print("function teardown")
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] != '0':
+        client.ci_close_asr_bucket(ci_bucket_name)
 
 
 def test_cos_comm_format_region():
