@@ -3892,6 +3892,7 @@ def test_ci_list_workflowexecution():
             "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time - 5)),
         EndCreationTime=time.strftime(
             "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
+        BatchJobId='',
         **kwargs
     )
     assert response
