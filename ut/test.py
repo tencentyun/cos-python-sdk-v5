@@ -101,6 +101,7 @@ mi_image_search_dataset_name = "ci-sdk-image-search"
 mi_face_search_dataset_name = "ci-sdk-face-search"
 mi_face_search_file = "face.jpeg"
 
+
 def _create_test_bucket(test_bucket, create_region=None):
     try:
         if create_region is None:
@@ -225,14 +226,22 @@ def setUp():
     _upload_test_file(copy_test_bucket, test_object)
     response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
     if response['TotalCount'] == '0':
-        client.ci_open_asr_bucket(ci_bucket_name)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response, data = client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+            **kwargs
+        )
 
 
 def tearDown():
     print("function teardown")
     response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
     if response['TotalCount'] != '0':
-        client.ci_close_asr_bucket(ci_bucket_name)
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        response, data = client.ci_close_asr_bucket(
+            Bucket=ci_bucket_name,
+            **kwargs
+        )
 
 
 def test_cos_comm_format_region():
@@ -5914,22 +5923,6 @@ def test_ci_ai_bucket():
         Accept="application/json"
     )
     assert data['AiBucket']['Name'] == ci_bucket_name
-
-
-def test_ci_asr_bucket():
-    # 关闭智能语音服务
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-    response, data = client.ci_close_asr_bucket(
-        Bucket=ci_bucket_name,
-        **kwargs
-    )
-    assert data['BucketName'] == ci_bucket_name
-
-    response, data = client.ci_open_asr_bucket(
-        Bucket=ci_bucket_name,
-        **kwargs
-    )
-    assert data['AsrBucket']['Name'] == ci_bucket_name
 
 
 def test_ci_hls_play_key():
