@@ -224,24 +224,10 @@ def setUp():
     _create_test_bucket(copy_test_bucket)
     _upload_test_file(test_bucket, test_object)
     _upload_test_file(copy_test_bucket, test_object)
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
-    if response['TotalCount'] == '0':
-        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-        response, data = client.ci_open_asr_bucket(
-            Bucket=ci_bucket_name,
-            **kwargs
-        )
 
 
 def tearDown():
     print("function teardown")
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
-    if response['TotalCount'] != '0':
-        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-        response, data = client.ci_close_asr_bucket(
-            Bucket=ci_bucket_name,
-            **kwargs
-        )
 
 
 def test_cos_comm_format_region():
@@ -3634,6 +3620,13 @@ def test_append_object():
 
 
 def test_ci_delete_asr_template():
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+            **kwargs
+        )
     # 删除指定语音识别模板
     response = client.ci_delete_asr_template(
         Bucket=ci_bucket_name,
@@ -3644,6 +3637,13 @@ def test_ci_delete_asr_template():
 
 def test_ci_get_asr_template():
     # 获取语音识别模板
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+            **kwargs
+        )
     kwargs = {"ContentType": "application/xml",
               "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_template(
@@ -3655,6 +3655,11 @@ def test_ci_get_asr_template():
 
 def test_ci_create_asr_template():
     # 创建语音识别模板
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+        )
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_create_asr_template(
         Bucket=ci_bucket_name,
@@ -3694,6 +3699,11 @@ def test_ci_create_asr_template():
 
 
 def test_ci_list_asr_jobs():
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+        )
     kwargs = {"ContentType": "application/xml",
               "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_queue(
@@ -3719,6 +3729,11 @@ def test_ci_list_asr_jobs():
 
 def test_ci_get_asr_jobs():
     # 获取语音识别任务信息
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+        )
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_asr_job(
         Bucket=ci_bucket_name,
@@ -3729,6 +3744,11 @@ def test_ci_get_asr_jobs():
 
 
 def test_ci_create_asr_jobs():
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+        )
     response = client.ci_get_asr_queue(
         Bucket=ci_bucket_name,
         ContentType='application/xml'
@@ -3764,6 +3784,11 @@ def test_ci_create_asr_jobs():
 
 
 def test_ci_put_asr_queue():
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+        )
     response = client.ci_get_asr_queue(
         Bucket=ci_bucket_name,
     )
@@ -3792,6 +3817,11 @@ def test_ci_put_asr_queue():
 
 def test_ci_get_asr_queue():
     # 查询语音识别队列信息
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    if response['TotalCount'] == '0':
+        client.ci_open_asr_bucket(
+            Bucket=ci_bucket_name,
+        )
     response = client.ci_get_asr_queue(
         Bucket=ci_bucket_name,
     )
@@ -5958,6 +5988,22 @@ def test_ci_hls_play_key():
     assert response['Content-Type'] == 'application/json'
     assert data['PlayKeyList']['MasterPlayKey'] == '40c502079d484466b2e9e046ce11ae07'
     assert data['PlayKeyList']['BackupPlayKey'] == '128d75fd2b6b4f958ccbb6fc38f60f04'
+
+
+def test_ci_asr_bucket():
+    # 关闭智能语音服务
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response, data = client.ci_close_asr_bucket(
+        Bucket=ci_bucket_name,
+        **kwargs
+    )
+    assert data['BucketName'] == ci_bucket_name
+
+    response, data = client.ci_open_asr_bucket(
+        Bucket=ci_bucket_name,
+        **kwargs
+    )
+    assert data['AsrBucket']['Name'] == ci_bucket_name
 
 
 if __name__ == "__main__":
