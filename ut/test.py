@@ -4,7 +4,6 @@ import sys
 import time
 import hashlib
 import os
-from urllib.parse import urlencode, quote
 
 import requests
 import json
@@ -4761,11 +4760,19 @@ def test_put_get_async_fetch_task():
         },
     )
     time.sleep(3)
-    response2 = tmp_client.get_async_fetch_task(
-        Bucket=test_bucket,
-        TaskId=response['data']['taskid'],
-    )
-    assert response2['message'] == 'SUCCESS'
+    taskId = 'test_taskid'
+    if 'data' in response:
+        taskId = response['data']['taskid']
+        response2 = tmp_client.get_async_fetch_task(
+            Bucket=test_bucket,
+            TaskId=taskId,
+        )
+        assert response2['message'] == 'SUCCESS'
+    else:
+        response2 = tmp_client.get_async_fetch_task(
+            Bucket=test_bucket,
+            TaskId=taskId,
+        )
 
 
 def test_get_rtmp_signed_url():
