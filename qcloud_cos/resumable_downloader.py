@@ -3,6 +3,7 @@
 import json
 import os
 import sys
+import errno
 import threading
 import logging
 import uuid
@@ -45,7 +46,14 @@ class ResumableDownLoader(object):
         self.__tmp_file = None
 
         if not os.path.exists(self.__dump_record_dir):
-            os.makedirs(self.__dump_record_dir)
+            # 多进程并发情况下makedirs会出现冲突, 需要进行异常捕获
+            try:
+                os.makedirs(self.__dump_record_dir)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    logger.error('os makedir error: dir: {0}, errno {1}'.format(self.__dump_record_dir), e.errno)
+                    raise
+                pass
         logger.debug('resumale downloader init finish, bucket: {0}, key: {1}'.format(bucket, key))
 
     def start(self):

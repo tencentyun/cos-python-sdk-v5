@@ -806,7 +806,7 @@ class CosS3Client(object):
             method='DELETE',
             url=url,
             bucket=Bucket,
-            auth=CosS3Auth(self._conf, Key),
+            auth=CosS3Auth(self._conf, Key, params),
             headers=headers,
             params=params)
         data = dict(**rt.headers)
@@ -2680,11 +2680,8 @@ class CosS3Client(object):
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
         headers['Content-Type'] = 'application/xml'
-        # params = {'domaincertificate': ''}
-        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
-        # 只能将'?domaincertificate'拼接到url
+        params = {'domaincertificate': ''}
         url = self._conf.uri(bucket=Bucket)
-        url += '?domaincertificate'
         logger.info("put bucket domain certificate, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
@@ -2693,8 +2690,9 @@ class CosS3Client(object):
             url=url,
             bucket=Bucket,
             data=xml_config,
-            auth=CosS3Auth(self._conf),
-            headers=headers)
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
         return None
 
     def get_bucket_domain_certificate(self, Bucket, DomainName, **kwargs):
@@ -2715,12 +2713,8 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
-        # 只能将'?domaincertificate'拼接到url
-        # params = {'domaincertificate': '', 'domainname': DomainName}
-        params = {'domainname': DomainName}
+        params = {'domaincertificate': '', 'domainname': DomainName}
         url = self._conf.uri(bucket=Bucket)
-        url += '?domaincertificate'
         logger.info("get bucket domain certificate, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
@@ -2752,12 +2746,8 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
-        # 目前 Domain Certificate API 不能使用 params 传递 query_string '?domaincertificate=',
-        # 只能将'?domaincertificate'拼接到url
-        # params = {'domaincertificate': '', 'domainname': DomainName}
-        params = {'domainname': DomainName}
+        params = {'domaincertificate': '', 'domainname': DomainName}
         url = self._conf.uri(bucket=Bucket)
-        url += "?domaincertificate"
         logger.info("delete bucket domain certificate, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
