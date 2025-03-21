@@ -432,9 +432,7 @@ class CosS3Client(object):
                     if j < self._retry and self.should_switch_domain(domain_switched, res.headers):
                         url = switch_hostname_for_url(url)
                         domain_switched = True
-                        continue
-                    else:
-                        break
+                    continue
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
                 # 记录每次请求的exception
                 exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
