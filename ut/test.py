@@ -20,6 +20,7 @@ from qcloud_cos.crypto import AESProvider
 from qcloud_cos.crypto import RSAProvider
 from qcloud_cos.cos_comm import CiDetectType, get_md5, to_bytes, switch_hostname_for_url
 
+
 SECRET_ID = os.environ["COS_SECRET_ID"]
 SECRET_KEY = os.environ["COS_SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
@@ -29,6 +30,8 @@ TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
+test_oversea_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
+    sys.version_info[1]) + '-' + 'oversea' + '-' + APPID
 test_worm_bucket = 'cos-python-v5-test-worm' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
 copy_test_bucket = 'copy-' + test_bucket
@@ -220,6 +223,7 @@ def setUp():
     print("start test...")
     print("start create bucket " + test_bucket)
     _create_test_bucket(test_bucket)
+    print("start create bucket " + copy_test_bucket)
     _create_test_bucket(copy_test_bucket)
     _upload_test_file(test_bucket, test_object)
     _upload_test_file(copy_test_bucket, test_object)
@@ -2057,20 +2061,20 @@ def test_select_object():
         'name': 'cos',
         'age': '999'
     }
-    conf = CosConfig(
+    conf1 = CosConfig(
         Region='ap-guangzhou',
         SecretId=SECRET_ID,
         SecretKey=SECRET_KEY,
     )
     test_bucket = 'test-select-' + APPID
     _create_test_bucket(test_bucket, 'ap-guangzhou')
-    client = CosS3Client(conf)
-    response = client.put_object(
+    client1 = CosS3Client(conf1)
+    response = client1.put_object(
         Bucket=test_bucket,
         Key=select_obj,
         Body=(json.dumps(json_body) + '\n') * 100
     )
-    response = client.select_object_content(
+    response = client1.select_object_content(
         Bucket=test_bucket,
         Key=select_obj,
         Expression='Select * from COSObject',
@@ -2092,7 +2096,7 @@ def test_select_object():
         print(event)
 
     # test EventStream.get_select_result
-    response = client.select_object_content(
+    response = client1.select_object_content(
         Bucket=test_bucket,
         Key=select_obj,
         Expression='Select * from COSObject',
@@ -2114,7 +2118,7 @@ def test_select_object():
     print(data)
 
     # test EventStream.get_select_result_to_file
-    response = client.select_object_content(
+    response = client1.select_object_content(
         Bucket=test_bucket,
         Key=select_obj,
         Expression='Select * from COSObject',
@@ -2136,6 +2140,48 @@ def test_select_object():
     event_stream.get_select_result_to_file(file_name)
     if os.path.exists(file_name):
         os.remove(file_name)
+
+
+def test_select_object_oversea():
+    """海外桶不支持select object, 测试报错表现"""
+    select_obj = "select_test.json"
+    json_body = {
+        'name': 'cos',
+        'age': '999'
+    }
+    conf1 = CosConfig(
+        Region='ap-singapore',
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+    )
+    client1 = CosS3Client(conf1, retry=3)
+    _create_test_bucket(test_oversea_bucket, 'ap-singapore')
+    response = client1.put_object(
+        Bucket=test_oversea_bucket,
+        Key=select_obj,
+        Body=(json.dumps(json_body) + '\n') * 100
+    )
+    try:
+        response = client1.select_object_content(
+            Bucket=test_oversea_bucket,
+            Key=select_obj,
+            Expression='Select * from COSObject',
+            ExpressionType='SQL',
+            InputSerialization={
+                'CompressionType': 'NONE',
+                'JSON': {
+                    'Type': 'LINES'
+                }
+            },
+            OutputSerialization={
+                'CSV': {
+                    'RecordDelimiter': '\n'
+                }
+            }
+        )
+        raise Exception("select object success for oversea bucket, not good")
+    except Exception as e:
+        print(e)
 
 
 def test_select_event_stream_error_message():
@@ -5180,7 +5226,63 @@ def test_download_file_simplify_check():
             TrafficLimit='10000000',
         )
     except CosClientError as e:
-        print(e) # 'some download_part fail after max_retry, please downloade_file again'
+        print(e) # 'some download_part fail after max_retry, please download_file again'
+
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+
+def test_download_file_archive_failed():
+    file_name = 'test_20M_archive.bin'
+    file_size = 20
+    gen_file(file_name, file_size)
+
+    key = 'test_20M_archive'
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=key,
+        LocalFilePath=file_name,
+        StorageClass='ARCHIVE',
+    )
+    print(response)
+
+    try:
+        response = client.download_file(
+            Bucket=test_bucket,
+            Key=key,
+            DestFilePath=file_name,
+            PartSize=1,
+        )
+        raise Exception("archive object download success, not good")
+    except Exception as e:
+        response = client.delete_object(Bucket=test_bucket, Key=key)
+        print(e)
+
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+
+def test_download_file_disable_temp_file():
+    file_name = 'test_20M.bin'
+    file_size = 20
+    gen_file(file_name, file_size)
+
+    key = 'test_20M'
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=key,
+        LocalFilePath=file_name,
+    )
+    print(response)
+
+    response = client.download_file(
+        Bucket=test_bucket,
+        Key=key,
+        DestFilePath=file_name,
+        PartSize=20,
+        DisableTempDestFilePath=True,
+    )
+    print(response)
 
     if os.path.exists(file_name):
         os.remove(file_name)

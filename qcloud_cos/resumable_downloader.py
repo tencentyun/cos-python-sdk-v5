@@ -57,7 +57,7 @@ class ResumableDownLoader(object):
         logger.debug('resumale downloader init finish, bucket: {0}, key: {1}'.format(bucket, key))
 
     def start(self):
-        logger.debug('start resumable downloade, bucket: {0}, key: {1}'.format(self.__bucket, self.__key))
+        logger.debug('start resumable download, bucket: {0}, key: {1}'.format(self.__bucket, self.__key))
         self.__load_record()  # 从record文件中恢复读取上下文
 
         assert self.__tmp_file
@@ -80,7 +80,7 @@ class ResumableDownLoader(object):
         pool.wait_completion()
         result = pool.get_result()
         if not result['success_all']:
-            raise CosClientError('some download_part fail after max_retry, please downloade_file again')
+            raise CosClientError('some download_part fail after max_retry, please download_file again')
 
         if os.path.exists(self.__dest_file_path):
             os.remove(self.__dest_file_path)

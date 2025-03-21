@@ -522,6 +522,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
+        :param KeySimplifyCheck(bool): 是否对Key进行posix路径语义归并检查
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
 
@@ -4031,7 +4032,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, KeySimplifyCheck=True, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, KeySimplifyCheck=True, DisableTempDestFilePath=False, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -4040,6 +4041,9 @@ class CosS3Client(object):
         :param PartSize(int): 分块下载的大小设置,单位为MB.
         :param MAXThread(int): 并发下载的最大线程数.
         :param EnableCRC(bool): 校验下载文件与源文件是否一致
+        :param DumpRecordDir(string): 指定保存断点信息的文件路径
+        :param KeySimplifyCheck(bool): 是否对Key进行posix路径语义归并检查
+        :param DisableTempDestFilePath(bool): 简单下载写入目标文件时,不使用临时文件
         :param kwargs(dict): 设置请求headers.
         """
         logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB,\
@@ -4056,9 +4060,9 @@ class CosS3Client(object):
             head_headers['VersionId'] = Kwargs['VersionId']
         object_info = self.head_object(Bucket, Key, **head_headers)
         file_size = int(object_info['Content-Length'])
-        if file_size <= 1024 * 1024 * 20:
+        if file_size <= 1024 * 1024 * PartSize:
             response = self.get_object(Bucket, Key, KeySimplifyCheck, **Kwargs)
-            response['Body'].get_stream_to_file(DestFilePath)
+            response['Body'].get_stream_to_file(DestFilePath, DisableTempDestFilePath)
             return
 
         # 支持回调查看进度
