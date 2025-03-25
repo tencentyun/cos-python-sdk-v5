@@ -6032,7 +6032,7 @@ def do_retry_test(client, bucket, uri, retry_exe_times, catch_exception):
     else:
         resp = client.put_object(Bucket=bucket, Key=uri, Body=b'a'*1024)
         print(resp)
-    # assert client.get_retry_exe_times() == retry_exe_times
+    assert client.get_retry_exe_times() == retry_exe_times
     print("=== do_retry_test OK")
 
 
