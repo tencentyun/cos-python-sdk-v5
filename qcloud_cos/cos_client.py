@@ -413,7 +413,7 @@ class CosS3Client(object):
                         time.sleep(j)
                     else:
                         break
-                logger.info("send request: url: {}, headers: {}".format(url, kwargs['headers']))
+                logger.debug("send request: url: {}, headers: {}".format(url, kwargs['headers']))
                 if method == 'POST':
                     res = self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'GET':
@@ -424,7 +424,7 @@ class CosS3Client(object):
                     res = self._session.delete(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'HEAD':
                     res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
-                logger.info("recv response: status_code: {}, headers: {}".format(res.status_code, res.headers))
+                logger.debug("recv response: status_code: {}, headers: {}".format(res.status_code, res.headers))
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
                         if j < self._retry and self.should_switch_domain(url, res.headers):
@@ -443,7 +443,7 @@ class CosS3Client(object):
                         url = switch_hostname_for_url(url)
                     continue
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
-                logger.info("recv exception: {}".format(e))
+                logger.debug("recv exception: {}".format(e))
                 # 记录每次请求的exception
                 exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
                 exception_logbuf.append(exception_log)
