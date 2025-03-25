@@ -5982,6 +5982,7 @@ def test_should_switch_domain():
 
 def test_download_file_disable_temp_file():
     file_name = 'test_20M.bin'
+    file_name_dst = 'test_20M.bin.dst'
     file_size = 20
     gen_file(file_name, file_size)
 
@@ -5996,14 +5997,27 @@ def test_download_file_disable_temp_file():
     response = client.download_file(
         Bucket=test_bucket,
         Key=key,
-        DestFilePath=file_name,
+        DestFilePath=file_name_dst,
         PartSize=20,
         DisableTempDestFilePath=True,
     )
     print(response)
 
+    srcfd = open(file_name, 'rb')
+    src_md5 = get_raw_md5(srcfd.read())
+    srcfd.close() 
+
+    dstfd = open(file_name_dst, 'rb')
+    dst_md5 = get_raw_md5(dstfd.read())
+    dstfd.close() 
+
+    assert src_md5 == dst_md5
+
     if os.path.exists(file_name):
         os.remove(file_name)
+
+    if os.path.exists(file_name_dst):
+        os.remove(file_name_dst)
 
 
 def do_retry_test(client, bucket, uri, retry_exe_times, catch_exception):
