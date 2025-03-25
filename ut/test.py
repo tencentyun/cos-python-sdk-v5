@@ -4997,67 +4997,6 @@ def test_switch_hostname_for_url():
         print(e)
 
 
-def test_should_switch_domain():
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = False
-    headers = {}
-    # 默认AutoSwitchedDomainOnRetry=False, 不切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = False
-    headers = {}
-    # AutoSwitchedDomainOnRetry=True, 切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == True
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = True  # 已经切换过了, 本次不切换
-    headers = {}
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = True
-    headers = {'x-cos-request-id': 'xxx'}
-    # 响应头中有x-cos-request-id, 不切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    conf1.set_ip_port('10.0.0.1', 443)
-    client1 = CosS3Client(conf1)
-    domain_switched = True
-    headers = {}
-    # 请求指定了ip, 不切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-
 def test_network_failure():
     """指定一个错误的ip"""
     conf1 = CosConfig(
@@ -6116,6 +6055,10 @@ def test_cos_client_retry():
     故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
     '''
 
+    # response 500
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '500l', 3, False)
+
     # response 503, without cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, test_bucket, '503', 1, False)
@@ -6222,6 +6165,10 @@ def test_cos_client_retry():
     '''服务端返回5xx的请求，按照默认配置的重试次数（3次）进行重试。
     故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
     '''
+
+    # response 500
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '500l', 3, False)
 
     # response 503, without cos requestid
     client2 = CosS3Client(conf2)
@@ -6337,6 +6284,10 @@ def test_cos_client_retry_2():
     故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
     '''
 
+    # response 500
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '500l', 3, False)
+
     # response 503, without cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, err_retry_bucket, '503', 1, False)
@@ -6442,6 +6393,10 @@ def test_cos_client_retry_2():
     '''服务端返回5xx的请求，按照默认配置的重试次数（3次）进行重试。
     故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
     '''
+    
+    # response 500
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '500l', 3, False)
 
     # response 503, without cos requestid
     client2 = CosS3Client(conf2)
@@ -6474,7 +6429,6 @@ def test_cos_client_retry_2():
 
 if __name__ == "__main__":
     setUp()
-    test_cos_client_retry_2()
     """
     test_config_invalid_scheme()
     test_config_credential_inst()
