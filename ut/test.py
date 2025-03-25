@@ -6057,7 +6057,7 @@ def test_cos_client_retry():
 
     # response 500
     client1 = CosS3Client(conf1)
-    do_retry_test(client1, test_bucket, '500l', 3, False)
+    do_retry_test(client1, test_bucket, '500l', 3, True)
 
     # response 503, without cos requestid
     client1 = CosS3Client(conf1)
@@ -6168,7 +6168,7 @@ def test_cos_client_retry():
 
     # response 500
     client1 = CosS3Client(conf1)
-    do_retry_test(client1, test_bucket, '500l', 3, False)
+    do_retry_test(client1, test_bucket, '500l', 3, True)
 
     # response 503, without cos requestid
     client2 = CosS3Client(conf2)
@@ -6286,7 +6286,7 @@ def test_cos_client_retry_2():
 
     # response 500
     client1 = CosS3Client(conf1)
-    do_retry_test(client1, err_retry_bucket, '500l', 3, False)
+    do_retry_test(client1, err_retry_bucket, '500l', 3, True)
 
     # response 503, without cos requestid
     client1 = CosS3Client(conf1)
@@ -6396,7 +6396,7 @@ def test_cos_client_retry_2():
     
     # response 500
     client1 = CosS3Client(conf1)
-    do_retry_test(client1, err_retry_bucket, '500l', 3, False)
+    do_retry_test(client1, err_retry_bucket, '500l', 3, True)
 
     # response 503, without cos requestid
     client2 = CosS3Client(conf2)
