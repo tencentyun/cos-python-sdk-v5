@@ -447,7 +447,7 @@ class CosS3Client(object):
                 # 记录每次请求的exception
                 exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
                 exception_logbuf.append(exception_log)
-                if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout) or isinstance(e, RemoteDisconnected)):  # 只重试网络错误
+                if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
                     if self.should_switch_domain(url):
                         url = switch_hostname_for_url(url)
                     continue
