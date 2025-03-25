@@ -28,7 +28,7 @@ SECRET_KEY = os.environ["COS_SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ['COS_REGION']
 APPID = os.environ['COS_APPID']
-FAILURE_MOCK_SERVER = os.environ['FAILURE_MOCK_SERVER']
+FAILURE_MOCK_SERVER = os.environ['ERR_HOST']
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
@@ -6254,8 +6254,8 @@ def test_cos_client_retry():
 
 def test_cos_client_retry_2():
 
-    err_retry_region = os.environ['ERR_RETRY_REGION']
-    err_retry_bucket = os.environ['ERR_RETRY_BUCKET']
+    err_retry_region = os.environ['ErrRegion']
+    err_retry_bucket = '%s-%s' % (os.environ['ErrBucket'], os.environ['ErrAppid'])
 
     '''默认配置：重试时不打开切换cos域名
     '''
