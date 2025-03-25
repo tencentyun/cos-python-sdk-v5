@@ -14,7 +14,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session, ConnectionError, Timeout
 from datetime import datetime
-from six.moves.urllib.parse import quote, unquote, urlencode
+from six.moves.urllib.parse import quote, unquote, urlencode, urlparse
 from six import text_type, binary_type
 from hashlib import md5
 from .streambody import StreamBody
@@ -352,9 +352,10 @@ class CosS3Client(object):
         return auth(r).headers['Authorization']
 
     def should_switch_domain(self, url, headers={}):
+        host = urlparse(url).hostname
         if not 'x-cos-request-id' in headers and \
             self._conf._auto_switch_domain_on_retry and \
-            re.match(r'^.*\.cos\..*\-.*\.myqcloud\.com$', url):
+            re.match(r'^([a-z0-9-]+-[0-9]+\.)(cos\.[a-z-1]+)\.(myqcloud\.com)$', host):
             return True
         return False
 
