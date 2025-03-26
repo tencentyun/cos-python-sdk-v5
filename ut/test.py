@@ -6065,25 +6065,37 @@ def test_cos_client_retry():
     client1 = CosS3Client(conf1)
     do_retry_test(client1, test_bucket, '200', 0, False)
 
+    time.sleep(2)
+
     # response 200, with cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, test_bucket, '200r', 0, False)
+
+    time.sleep(2)
 
     # response 204, without cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, test_bucket, '204', 0, False)
 
+    time.sleep(2)
+
     # response 204, with cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, test_bucket, '204r', 0, False)
+
+    time.sleep(2)
 
     # response 206, without cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, test_bucket, '206', 0, False)
 
+    time.sleep(2)
+
     # response 206, with cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, test_bucket, '206r', 0, False)
+
+    time.sleep(2)
 
     # response 301, without cos requestid
     client1 = CosS3Client(conf1)
@@ -6176,25 +6188,37 @@ def test_cos_client_retry():
     client2 = CosS3Client(conf2)
     do_retry_test(client2, test_bucket, '200', 0, False)
 
+    time.sleep(2)
+
     # response 200, with cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, test_bucket, '200r', 0, False)
+
+    time.sleep(2)
 
     # response 204, without cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, test_bucket, '204', 0, False)
 
+    time.sleep(2)
+
     # response 204, with cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, test_bucket, '204r', 0, False)
+
+    time.sleep(2)
 
     # response 206, without cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, test_bucket, '206', 0, False)
 
+    time.sleep(2)
+
     # response 206, with cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, test_bucket, '206r', 0, False)
+
+    time.sleep(2)
 
     # response 301, without cos requestid
     client2 = CosS3Client(conf2)
@@ -6294,25 +6318,37 @@ def test_cos_client_retry_2():
     client1 = CosS3Client(conf1)
     do_retry_test(client1, err_retry_bucket, '200', 0, False)
 
+    time.sleep(2)
+
     # response 200, with cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, err_retry_bucket, '200r', 0, False)
+
+    time.sleep(2)
 
     # response 204, without cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, err_retry_bucket, '204', 0, False)
 
+    time.sleep(2)
+
     # response 204, with cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, err_retry_bucket, '204r', 0, False)
+
+    time.sleep(2)
 
     # response 206, without cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, err_retry_bucket, '206', 0, False)
 
+    time.sleep(2)
+
     # response 206, with cos requestid
     client1 = CosS3Client(conf1)
     do_retry_test(client1, err_retry_bucket, '206r', 0, False)
+
+    time.sleep(2)
 
     # response 301, without cos requestid
     client1 = CosS3Client(conf1)
@@ -6404,21 +6440,31 @@ def test_cos_client_retry_2():
     client2 = CosS3Client(conf2)
     do_retry_test(client2, err_retry_bucket, '200', 0, False)
 
+    time.sleep(2)
+
     # response 200, with cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, err_retry_bucket, '200r', 0, False)
+
+    time.sleep(2)
 
     # response 204, without cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, err_retry_bucket, '204', 0, False)
 
+    time.sleep(2)
+
     # response 204, with cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, err_retry_bucket, '204r', 0, False)
 
+    time.sleep(2)
+
     # response 206, without cos requestid
     client2 = CosS3Client(conf2)
     do_retry_test(client2, err_retry_bucket, '206', 0, False)
+
+    time.sleep(2)
 
     # response 206, with cos requestid
     client2 = CosS3Client(conf2)
