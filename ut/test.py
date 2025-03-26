@@ -6417,7 +6417,7 @@ def test_cos_client_retry_2():
 
     # response 301, without cos requestid
     client2 = CosS3Client(conf2)
-    do_retry_test(client2, err_retry_bucket, '301', 0, False)
+    do_retry_test(client2, err_retry_bucket, '301', 1, False)
 
     # response 301, with cos requestid
     client2 = CosS3Client(conf2)
@@ -6425,7 +6425,7 @@ def test_cos_client_retry_2():
 
     # response 302, without cos requestid
     client2 = CosS3Client(conf2)
-    do_retry_test(client2, err_retry_bucket, '302', 0, False)
+    do_retry_test(client2, err_retry_bucket, '302', 1, False)
 
     # response 302, with cos requestid
     client2 = CosS3Client(conf2)
