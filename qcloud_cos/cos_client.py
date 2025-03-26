@@ -428,7 +428,7 @@ class CosS3Client(object):
                 logger.debug("recv response: status_code: {}, headers: {}".format(res.status_code, res.headers))
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
-                        if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
+                        if j < self._retry and self.should_switch_domain(url, res.headers):
                             url = switch_hostname_for_url(url)
                             continue
                     return res
