@@ -6222,7 +6222,7 @@ def test_cos_client_retry():
 
     # response 403, without cos requestid
     client2 = CosS3Client(conf2)
-    do_retry_test(client2, test_bucket, '403', 1, True)
+    do_retry_test(client2, test_bucket, '403', 0, True)
 
     # response 403, with cos requestid
     client2 = CosS3Client(conf2)
@@ -6230,7 +6230,7 @@ def test_cos_client_retry():
 
     # response 404, without cos requestid
     client2 = CosS3Client(conf2)
-    do_retry_test(client2, test_bucket, '404', 1, True)
+    do_retry_test(client2, test_bucket, '404', 0, True)
 
     # response 404, with cos requestid
     client2 = CosS3Client(conf2)
