@@ -355,7 +355,7 @@ class CosS3Client(object):
         host = urlparse(url).hostname
         if not 'x-cos-request-id' in headers and \
             self._conf._auto_switch_domain_on_retry and \
-            re.match(r'^([a-z0-9-]+-[0-9]+\.)(cos\.[a-z-1]+)\.(myqcloud\.com)$', host):
+            re.match(r'^([a-z0-9-]+-[0-9]+\.)(cos\.[a-z]+-[a-z]+(-[a-z]+)?(-1)?)\.(myqcloud\.com)$', host):
             return True
         return False
 
@@ -428,19 +428,19 @@ class CosS3Client(object):
                 logger.debug("recv response: status_code: {}, headers: {}".format(res.status_code, res.headers))
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
-                        if j < self._retry and self.should_switch_domain(url, res.headers):
+                        if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
                             url = switch_hostname_for_url(url)
                             continue
                     return res
                 elif res.status_code < 500:  # 4xx 分类重试
-                    if j < self._retry and self.should_switch_domain(url, res.headers):
+                    if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
                         url = switch_hostname_for_url(url)
                         continue
                     if not 'x-cos-request-id' in res.headers:
                         continue
                     break
                 else:
-                    if j < self._retry and self.should_switch_domain(url, res.headers):
+                    if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
                         url = switch_hostname_for_url(url)
                     continue
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
@@ -449,7 +449,7 @@ class CosS3Client(object):
                 exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
                 exception_logbuf.append(exception_log)
                 if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
-                    if self.should_switch_domain(url):
+                    if j == (self._retry - 1) and self.should_switch_domain(url):
                         url = switch_hostname_for_url(url)
                     continue
                 logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception

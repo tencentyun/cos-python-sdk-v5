@@ -5973,11 +5973,20 @@ def test_should_switch_domain():
     url = "http://a-1250000000.cos.ap-beijing-1.myqcloud.com"
     assert test_client.should_switch_domain(url) == True
 
+    url = "http://a-1250000000.cos.ap-beijing-adc.myqcloud.com"
+    assert test_client.should_switch_domain(url) == True
+
     url = "https://cos.ap-beijing-1.myqcloud.com"
     assert test_client.should_switch_domain(url) == False # path-style 不匹配
 
     url = "http://cos.ap-beijing-1.myqcloud.com/123-1250000000/test"
     assert test_client.should_switch_domain(url) == False # path-style 不匹配
+
+    url = "http://a-1250000000.cos.accelerate.myqcloud.com/xxx"
+    assert test_client.should_switch_domain(url) == False # 加速域名 不匹配
+
+    url = "http://a-1250000000.cos.ap-beijing.tencentcos.cn/xxx"
+    assert test_client.should_switch_domain(url) == False # tenentcos.cn 不匹配
 
 
 def test_download_file_disable_temp_file():

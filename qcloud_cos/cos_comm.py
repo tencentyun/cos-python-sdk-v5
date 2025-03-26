@@ -249,8 +249,8 @@ def switch_hostname(host):
     if not host:
         raise CosClientError("Host is required not empty!")
     
-    # *.cos.*-*.myqcloud.com
-    if re.match(r'^([a-z0-9-]+-[0-9]+\.)(cos\.[a-z-1]+)\.(myqcloud\.com)$', host):
+    # {bucket}-{appid}.cos.{region}.myqcloud.com
+    if re.match(r'^([a-z0-9-]+-[0-9]+\.)(cos\.[a-z]+-[a-z]+(-[a-z]+)?(-1)?)\.(myqcloud\.com)$', host):
         host = host[:-len(".myqcloud.com")] + ".tencentcos.cn"
     
     return host
