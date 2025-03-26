@@ -432,12 +432,7 @@ class CosS3Client(object):
                             url = switch_hostname_for_url(url)
                             continue
                     return res
-                elif res.status_code < 500:  # 4xx 分类重试
-                    if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
-                        url = switch_hostname_for_url(url)
-                        continue
-                    if not 'x-cos-request-id' in res.headers:
-                        continue
+                elif res.status_code < 500:  # 4xx 不重试
                     break
                 else:
                     if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
