@@ -20,11 +20,15 @@ from qcloud_cos.crypto import AESProvider
 from qcloud_cos.crypto import RSAProvider
 from qcloud_cos.cos_comm import CiDetectType, get_md5, to_bytes, switch_hostname_for_url
 
+import logging
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
 SECRET_ID = os.environ["COS_SECRET_ID"]
 SECRET_KEY = os.environ["COS_SECRET_KEY"]
 TRAVIS_FLAG = os.environ["TRAVIS_FLAG"]
 REGION = os.environ['COS_REGION']
 APPID = os.environ['COS_APPID']
+FAILURE_MOCK_SERVER = os.environ['ERR_HOST']
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
@@ -4993,67 +4997,6 @@ def test_switch_hostname_for_url():
         print(e)
 
 
-def test_should_switch_domain():
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = False
-    headers = {}
-    # 默认AutoSwitchedDomainOnRetry=False, 不切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = False
-    headers = {}
-    # AutoSwitchedDomainOnRetry=True, 切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == True
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = True  # 已经切换过了, 本次不切换
-    headers = {}
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    client1 = CosS3Client(conf1)
-    domain_switched = True
-    headers = {'x-cos-request-id': 'xxx'}
-    # 响应头中有x-cos-request-id, 不切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-    conf1 = CosConfig(
-        Region=REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
-        AutoSwitchDomainOnRetry=True,
-    )
-    conf1.set_ip_port('10.0.0.1', 443)
-    client1 = CosS3Client(conf1)
-    domain_switched = True
-    headers = {}
-    # 请求指定了ip, 不切换域名
-    assert client1.should_switch_domain(domain_switched, headers) == False
-
-
 def test_network_failure():
     """指定一个错误的ip"""
     conf1 = CosConfig(
@@ -6011,6 +5954,597 @@ def test_ci_asr_bucket():
         **kwargs
     )
     assert data['AsrBucket']['Name'] == ci_bucket_name
+
+
+def test_should_switch_domain():
+    test_conf = CosConfig(
+        Region=REGION, SecretId=SECRET_ID, SecretKey=SECRET_KEY, AutoSwitchDomainOnRetry=True)
+    test_client = CosS3Client(test_conf)
+
+    url = "http://dev-000-123-1250000000.cos.ap-beijing.myqcloud.com/test"
+    assert test_client.should_switch_domain(url) == True
+
+    url = "https://000-123-1250000000.cos.ap-beijing.myqcloud.com/"
+    assert test_client.should_switch_domain(url) == True
+
+    url = "https://a-1250000000.cos.ap-beijing-1.myqcloud.com/test"
+    assert test_client.should_switch_domain(url) == True
+
+    url = "http://a-1250000000.cos.ap-beijing-1.myqcloud.com"
+    assert test_client.should_switch_domain(url) == True
+
+    url = "http://a-1250000000.cos.ap-beijing-adc.myqcloud.com"
+    assert test_client.should_switch_domain(url) == True
+
+    url = "https://cos.ap-beijing-1.myqcloud.com"
+    assert test_client.should_switch_domain(url) == False # path-style 不匹配
+
+    url = "http://cos.ap-beijing-1.myqcloud.com/123-1250000000/test"
+    assert test_client.should_switch_domain(url) == False # path-style 不匹配
+
+    url = "http://a-1250000000.cos.accelerate.myqcloud.com/xxx"
+    assert test_client.should_switch_domain(url) == False # 加速域名 不匹配
+
+    url = "http://a-1250000000.cos.ap-beijing.tencentcos.cn/xxx"
+    assert test_client.should_switch_domain(url) == False # tenentcos.cn 不匹配
+
+
+def test_download_file_disable_temp_file():
+    file_name = 'test_20M.bin'
+    file_name_dst = 'test_20M.bin.dst'
+    file_size = 20
+    gen_file(file_name, file_size)
+
+    key = 'test_20M'
+    response = client.upload_file(
+        Bucket=test_bucket,
+        Key=key,
+        LocalFilePath=file_name,
+    )
+    print(response)
+
+    response = client.download_file(
+        Bucket=test_bucket,
+        Key=key,
+        DestFilePath=file_name_dst,
+        PartSize=20,
+        DisableTempDestFilePath=True,
+    )
+    print(response)
+
+    srcfd = open(file_name, 'rb')
+    src_md5 = get_raw_md5(srcfd.read())
+    srcfd.close() 
+
+    dstfd = open(file_name_dst, 'rb')
+    dst_md5 = get_raw_md5(dstfd.read())
+    dstfd.close() 
+
+    assert src_md5 == dst_md5
+
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+    if os.path.exists(file_name_dst):
+        os.remove(file_name_dst)
+
+
+def do_retry_test(client, bucket, uri, retry_exe_times, catch_exception):
+    print("=== do_retry_test")
+    if catch_exception:
+        try:
+            resp = client.put_object(Bucket=bucket, Key=uri, Body=b'a'*1024)
+            # 执行请求时没有如期抛异常，不符合预期
+            raise Exception("expect Exception, not good")
+        except Exception:
+            pass
+    else:
+        resp = client.put_object(Bucket=bucket, Key=uri, Body=b'a'*1024)
+        print(resp)
+    assert client.get_retry_exe_times() == retry_exe_times
+    print("=== do_retry_test OK")
+
+
+
+def test_cos_client_retry():
+
+    '''默认配置：重试时不打开切换cos域名
+    '''
+    conf1 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        Scheme='http',
+    )
+    conf1.set_ip_port(FAILURE_MOCK_SERVER)
+
+    '''服务端返回2xx、3xx、4xx的请求，直接返回，不重试
+    '''
+
+    # response 200, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '200', 0, False)
+
+    time.sleep(2)
+
+    # response 200, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '200r', 0, False)
+
+    time.sleep(2)
+
+    # response 204, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '204', 0, False)
+
+    time.sleep(2)
+
+    # response 204, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '204r', 0, False)
+
+    time.sleep(2)
+
+    # response 206, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '206', 0, False)
+
+    time.sleep(2)
+
+    # response 206, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '206r', 0, False)
+
+    time.sleep(2)
+
+    # response 301, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '301', 0, False)
+
+    # response 301, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '301r', 0, False)
+
+    # response 302, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '302', 0, False)
+
+    # response 302, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '302r', 0, False)
+
+    # response 400, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '400', 0, True)
+
+    # response 400, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '400r', 0, True)
+
+    # response 403, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '403', 0, True)
+
+    # response 403, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '403r', 0, True)
+
+    # response 404, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '404', 0, True)
+
+    # response 404, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '404r', 0, True)
+
+    '''服务端返回5xx的请求，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+
+    # response 500
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '500l', 3, True)
+
+    # response 503, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '503', 1, False)
+
+    # response 503, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '503r', 1, False)
+
+    # response 504, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '504', 1, False)
+
+    # response 504, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, '504r', 1, False)
+
+    '''对于timeout和connection reset两种网络错误，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+
+    # client timeout
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, 'timeout', 1, False)
+
+    # connection reset
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, test_bucket, 'shutdown', 1, False)
+
+    ##################################################################
+
+    conf2 = CosConfig(
+        Region=REGION,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        Scheme='http',
+        AutoSwitchDomainOnRetry=True,
+    )
+    conf2.set_ip_port(FAILURE_MOCK_SERVER)
+
+    # response 200, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '200', 0, False)
+
+    time.sleep(2)
+
+    # response 200, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '200r', 0, False)
+
+    time.sleep(2)
+
+    # response 204, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '204', 0, False)
+
+    time.sleep(2)
+
+    # response 204, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '204r', 0, False)
+
+    time.sleep(2)
+
+    # response 206, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '206', 0, False)
+
+    time.sleep(2)
+
+    # response 206, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '206r', 0, False)
+
+    time.sleep(2)
+
+    # response 301, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '301', 0, False)
+
+    # response 301, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '301r', 0, False)
+
+    # response 302, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '302', 0, False)
+
+    # response 302, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '302r', 0, False)
+
+    # response 400, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '400', 0, True)
+
+    # response 400, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '400r', 0, True)
+
+    # response 403, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '403', 0, True)
+
+    # response 403, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '403r', 0, True)
+
+    # response 404, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '404', 0, True)
+
+    # response 404, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '404r', 0, True)
+
+    '''服务端返回5xx的请求，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+
+    # response 500
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '500l', 3, True)
+
+    # response 503, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '503', 1, False)
+
+    # response 503, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '503r', 1, False)
+
+    # response 504, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '504', 1, False)
+
+    # response 504, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, '504r', 1, False)
+
+    '''对于timeout和connection reset两种网络错误，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+
+    # client timeout
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, 'timeout', 1, False)
+
+    # connection reset
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, test_bucket, 'shutdown', 1, False) 
+
+
+def test_cos_client_retry_2():
+
+    err_retry_region = os.environ['ErrRegion']
+    err_retry_bucket = '%s-%s' % (os.environ['ErrBucket'], os.environ['ErrAppid'])
+
+    '''默认配置：重试时不打开切换cos域名
+    '''
+    conf1 = CosConfig(
+        Region=err_retry_region,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        Scheme='http',
+    )
+
+    '''服务端返回2xx、3xx、4xx的请求，直接返回，不重试
+    '''
+
+    # response 200, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '200', 0, False)
+
+    time.sleep(2)
+
+    # response 200, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '200r', 0, False)
+
+    time.sleep(2)
+
+    # response 204, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '204', 0, False)
+
+    time.sleep(2)
+
+    # response 204, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '204r', 0, False)
+
+    time.sleep(2)
+
+    # response 206, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '206', 0, False)
+
+    time.sleep(2)
+
+    # response 206, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '206r', 0, False)
+
+    time.sleep(2)
+
+    # response 301, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '301', 0, False)
+
+    # response 301, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '301r', 0, False)
+
+    # response 302, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '302', 0, False)
+
+    # response 302, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '302r', 0, False)
+
+    # response 400, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '400', 0, True)
+
+    # response 400, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '400r', 0, True)
+
+    # response 403, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '403', 0, True)
+
+    # response 403, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '403r', 0, True)
+
+    # response 404, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '404', 0, True)
+
+    # response 404, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '404r', 0, True)
+
+    '''服务端返回5xx的请求，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+
+    # response 500
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '500l', 3, True)
+
+    # response 503, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '503', 1, False)
+
+    # response 503, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '503r', 1, False)
+
+    # response 504, without cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '504', 1, False)
+
+    # response 504, with cos requestid
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, '504r', 1, False)
+
+    '''对于timeout和connection reset两种网络错误，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+
+    # client timeout
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, 'timeout', 1, False)
+
+    # connection reset
+    client1 = CosS3Client(conf1)
+    do_retry_test(client1, err_retry_bucket, 'shutdown', 1, False)
+
+    ##################################################################
+
+    conf2 = CosConfig(
+        Region=err_retry_region,
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        Scheme='http',
+        AutoSwitchDomainOnRetry=True,
+    )
+
+    # response 200, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '200', 0, False)
+
+    time.sleep(2)
+
+    # response 200, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '200r', 0, False)
+
+    time.sleep(2)
+
+    # response 204, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '204', 0, False)
+
+    time.sleep(2)
+
+    # response 204, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '204r', 0, False)
+
+    time.sleep(2)
+
+    # response 206, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '206', 0, False)
+
+    time.sleep(2)
+
+    # response 206, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '206r', 0, False)
+
+    # response 301, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '301', 1, False)
+
+    # response 301, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '301r', 0, False)
+
+    # response 302, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '302', 1, False)
+
+    # response 302, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '302r', 0, False)
+
+    # response 400, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '400', 0, True)
+
+    # response 400, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '400r', 0, True)
+
+    # response 403, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '403', 0, True)
+
+    # response 403, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '403r', 0, True)
+
+    # response 404, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '404', 0, True)
+
+    # response 404, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '404r', 0, True)
+
+    '''服务端返回5xx的请求，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+    
+    # response 500
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '500l', 3, True)
+
+    # response 503, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '503', 1, False)
+
+    # response 503, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '503r', 1, False)
+
+    # response 504, without cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '504', 1, False)
+
+    # response 504, with cos requestid
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, '504r', 1, False)
+
+    '''对于timeout和connection reset两种网络错误，按照默认配置的重试次数（3次）进行重试。
+    故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
+    '''
+
+    # client timeout
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, 'timeout', 1, False)
+
+    # connection reset
+    client2 = CosS3Client(conf2)
+    do_retry_test(client2, err_retry_bucket, 'shutdown', 1, False) 
 
 
 if __name__ == "__main__":

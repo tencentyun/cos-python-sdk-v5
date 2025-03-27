@@ -14,7 +14,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session, ConnectionError, Timeout
 from datetime import datetime
-from six.moves.urllib.parse import quote, unquote, urlencode
+from six.moves.urllib.parse import quote, unquote, urlencode, urlparse
 from six import text_type, binary_type
 from hashlib import md5
 from .streambody import StreamBody
@@ -241,7 +241,7 @@ class CosS3Client(object):
     __built_in_sessions = None  # 内置的静态连接池，多个Client间共享使用
     __built_in_pid = 0
 
-    def __init__(self, conf, retry=1, session=None):
+    def __init__(self, conf, retry=3, session=None):
         """初始化client对象
 
         :param conf(CosConfig): 用户的配置.
@@ -250,6 +250,7 @@ class CosS3Client(object):
         """
         self._conf = conf
         self._retry = retry  # 重试的次数，分片上传时可适当增大
+        self._retry_exe_times = 0 # 重试已执行次数
 
         if session is None:
             if not CosS3Client.__built_in_sessions:
@@ -299,6 +300,14 @@ class CosS3Client(object):
     def get_conf(self):
         """获取配置"""
         return self._conf
+    
+    def get_retry_exe_times(self):
+        """获取重试已执行次数"""
+        return self._retry_exe_times
+    
+    def inc_retry_exe_times(self):
+        """重试执行次数递增"""
+        self._retry_exe_times += 1
 
     def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}, SignHost=None, UseCiEndPoint=False):
         """获取签名
@@ -342,11 +351,11 @@ class CosS3Client(object):
         auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
         return auth(r).headers['Authorization']
 
-    def should_switch_domain(self, domain_switched, headers={}):
+    def should_switch_domain(self, url, headers={}):
+        host = urlparse(url).hostname
         if not 'x-cos-request-id' in headers and \
-            not domain_switched and \
             self._conf._auto_switch_domain_on_retry and \
-            self._conf._ip is None:
+            re.match(r'^([a-z0-9-]+-[0-9]+\.)(cos\.[a-z]+-[a-z]+(-[a-z]+)?(-1)?)\.(myqcloud\.com)$', host):
             return True
         return False
 
@@ -375,7 +384,6 @@ class CosS3Client(object):
         kwargs['headers'] = format_values(kwargs['headers'])
 
         file_position = None
-        domain_switched = False # 重试时如果要切换域名, 只切换一次
         if 'data' in kwargs:
             body = kwargs['data']
             if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
@@ -402,9 +410,11 @@ class CosS3Client(object):
                 if j != 0:
                     if client_can_retry(file_position, **kwargs):
                         kwargs['headers']['x-cos-sdk-retry'] = 'true' # SDK重试标记
+                        self.inc_retry_exe_times()
                         time.sleep(j)
                     else:
                         break
+                logger.debug("send request: url: {}, headers: {}".format(url, kwargs['headers']))
                 if method == 'POST':
                     res = self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'GET':
@@ -415,34 +425,27 @@ class CosS3Client(object):
                     res = self._session.delete(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
                 elif method == 'HEAD':
                     res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
+                logger.debug("recv response: status_code: {}, headers: {}".format(res.status_code, res.headers))
                 if res.status_code < 400:  # 2xx和3xx都认为是成功的
                     if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
-                        if j < self._retry and self.should_switch_domain(domain_switched, res.headers):
+                        if j < self._retry and self.should_switch_domain(url, res.headers):
                             url = switch_hostname_for_url(url)
-                            domain_switched = True
                             continue
                     return res
                 elif res.status_code < 500:  # 4xx 不重试
-                    if j < self._retry and self.should_switch_domain(domain_switched, res.headers):
-                        url = switch_hostname_for_url(url)
-                        domain_switched = True
-                        continue
                     break
                 else:
-                    if j < self._retry and self.should_switch_domain(domain_switched, res.headers):
+                    if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
                         url = switch_hostname_for_url(url)
-                        domain_switched = True
-                        continue
-                    else:
-                        break
+                    continue
             except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
+                logger.debug("recv exception: {}".format(e))
                 # 记录每次请求的exception
                 exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
                 exception_logbuf.append(exception_log)
                 if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
-                    if self.should_switch_domain(domain_switched):
+                    if j == (self._retry - 1) and self.should_switch_domain(url):
                         url = switch_hostname_for_url(url)
-                        domain_switched = True
                     continue
                 logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
                 raise CosClientError(str(e))
@@ -524,6 +527,7 @@ class CosS3Client(object):
 
         :param Bucket(string): 存储桶名称.
         :param Key(string): COS路径.
+        :param KeySimplifyCheck(bool): 是否对Key进行posix路径语义归并检查
         :param kwargs(dict): 设置下载的headers.
         :return(dict): 下载成功返回的结果,包含Body对应的StreamBody,可以获取文件流或下载文件到本地.
 
@@ -4033,7 +4037,7 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, KeySimplifyCheck=True, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, KeySimplifyCheck=True, DisableTempDestFilePath=False, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -4042,6 +4046,9 @@ class CosS3Client(object):
         :param PartSize(int): 分块下载的大小设置,单位为MB.
         :param MAXThread(int): 并发下载的最大线程数.
         :param EnableCRC(bool): 校验下载文件与源文件是否一致
+        :param DumpRecordDir(string): 指定保存断点信息的文件路径
+        :param KeySimplifyCheck(bool): 是否对Key进行posix路径语义归并检查
+        :param DisableTempDestFilePath(bool): 简单下载写入目标文件时,不使用临时文件
         :param kwargs(dict): 设置请求headers.
         """
         logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB,\
@@ -4058,9 +4065,9 @@ class CosS3Client(object):
             head_headers['VersionId'] = Kwargs['VersionId']
         object_info = self.head_object(Bucket, Key, **head_headers)
         file_size = int(object_info['Content-Length'])
-        if file_size <= 1024 * 1024 * 20:
+        if file_size <= 1024 * 1024 * PartSize:
             response = self.get_object(Bucket, Key, KeySimplifyCheck, **Kwargs)
-            response['Body'].get_stream_to_file(DestFilePath)
+            response['Body'].get_stream_to_file(DestFilePath, DisableTempDestFilePath)
             return
 
         # 支持回调查看进度
