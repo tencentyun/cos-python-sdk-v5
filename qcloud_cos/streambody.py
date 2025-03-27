@@ -46,13 +46,16 @@ class StreamBody(object):
                 return ''
         return chunk
 
-    def get_stream_to_file(self, file_name, auto_decompress=False):
+    def get_stream_to_file(self, file_name, disable_tmp_file=False, auto_decompress=False):
         """保存流到本地文件"""
         self._read_len = 0
         tmp_file_name = "{file_name}_{uuid}".format(file_name=file_name, uuid=uuid.uuid4().hex)
+        if disable_tmp_file:
+            tmp_file_name = file_name
+        chunk_size = 1024 * 1024
         with open(tmp_file_name, 'wb') as fp:
-            while 1:
-                chunk = self.read(1024, auto_decompress)
+            while True:
+                chunk = self.read(chunk_size, auto_decompress)
                 if not chunk:
                     break
                 self._read_len += len(chunk)
@@ -63,16 +66,17 @@ class StreamBody(object):
             if os.path.exists(tmp_file_name):
                 os.remove(tmp_file_name)
             raise IOError("download failed with incomplete file")
-        if os.path.exists(file_name):
-            os.remove(file_name)
-        os.rename(tmp_file_name, file_name)
+        if file_name != tmp_file_name:
+            if os.path.exists(file_name):
+                os.remove(file_name)
+            os.rename(tmp_file_name, file_name)
 
     def pget_stream_to_file(self, fdst, offset, expected_len, auto_decompress=False):
         """保存流到本地文件的offset偏移"""
         self._read_len = 0
         fdst.seek(offset, 0)
         chunk_size = 1024 * 1024
-        while 1:
+        while True:
             chunk = self.read(chunk_size, auto_decompress)
             if not chunk:
                 break
