@@ -4592,6 +4592,7 @@ def test_ci_get_ai_bucket():
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_ai_bucket(
         BucketName=ci_bucket_name,
+        PageSize = "1",
         **kwargs
     )
     print(response)
