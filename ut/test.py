@@ -3623,7 +3623,7 @@ def test_append_object():
 
 
 def test_ci_delete_asr_template():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
         client.ci_open_asr_bucket(
@@ -3640,7 +3640,7 @@ def test_ci_delete_asr_template():
 
 def test_ci_get_asr_template():
     # 获取语音识别模板
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
         client.ci_open_asr_bucket(
@@ -3658,7 +3658,7 @@ def test_ci_get_asr_template():
 
 def test_ci_create_asr_template():
     # 创建语音识别模板
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3702,7 +3702,7 @@ def test_ci_create_asr_template():
 
 
 def test_ci_list_asr_jobs():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3732,7 +3732,7 @@ def test_ci_list_asr_jobs():
 
 def test_ci_get_asr_jobs():
     # 获取语音识别任务信息
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3747,7 +3747,7 @@ def test_ci_get_asr_jobs():
 
 
 def test_ci_create_asr_jobs():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3787,7 +3787,7 @@ def test_ci_create_asr_jobs():
 
 
 def test_ci_put_asr_queue():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3820,7 +3820,7 @@ def test_ci_put_asr_queue():
 
 def test_ci_get_asr_queue():
     # 查询语音识别队列信息
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
