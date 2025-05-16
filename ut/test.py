@@ -3946,28 +3946,6 @@ def test_ci_list_workflowexecution():
     assert response
 
 
-def test_ci_trigger_workflow():
-    # 触发工作流接口
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-    response = client.ci_trigger_workflow(
-        Bucket=ci_bucket_name,
-        WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
-        Key=ci_test_image,
-        **kwargs
-    )
-    assert response
-    print(response)
-    instance_id = response['InstanceId']
-    # 查询工作流实例接口
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-    response = client.ci_get_workflowexecution(
-        Bucket=ci_bucket_name,
-        RunId=instance_id,
-        **kwargs
-    )
-    assert response
-
-
 def test_ci_get_media_transcode_jobs():
     # 转码任务详情
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
@@ -4770,6 +4748,8 @@ def test_ci_workflow():
     )
     assert response['MediaWorkflow']['State'] == 'Paused'
 
+    ci_trigger_workflow(workflow_id)
+
     response = client.ci_delete_workflow(
         Bucket=ci_bucket_name,  # 桶名称
         WorkflowId=workflow_id,  # 需要删除的工作流ID
@@ -4777,6 +4757,27 @@ def test_ci_workflow():
     )
     print(response)
     assert response['WorkflowId'] == workflow_id
+
+def ci_trigger_workflow(workflow_id):
+    # 触发工作流接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_trigger_workflow(
+        Bucket=ci_bucket_name,
+        WorkflowId=workflow_id,
+        Key=ci_test_image,
+        **kwargs
+    )
+    assert response
+    print(response)
+    instance_id = response['InstanceId']
+    # 查询工作流实例接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_get_workflowexecution(
+        Bucket=ci_bucket_name,
+        RunId=instance_id,
+        **kwargs
+    )
+    assert response
 
 
 def test_ci_auditing_report_badcase():
