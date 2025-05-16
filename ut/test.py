@@ -5906,6 +5906,31 @@ def test_ci_ai_bucket():
     assert data['AiBucket']['Name'] == ci_bucket_name
 
 
+def test_ci_pic_bucket():
+    # 关闭图片处理异步服务
+    response, data = ai_recognition_client.ci_close_pic_bucket(
+        Bucket=ci_bucket_name
+    )
+    assert data['BucketName'] == ci_bucket_name
+    # 开通图片处理异步服务
+    response, data = ai_recognition_client.ci_open_pic_bucket(
+        Bucket=ci_bucket_name
+    )
+    assert data['PicBucket']['Name'] == ci_bucket_name
+
+    response, data = ai_recognition_client.ci_close_pic_bucket(
+        Bucket=ci_bucket_name,
+        Accept="application/json"
+    )
+    assert data['BucketName'] == ci_bucket_name
+    # 开通AI内容识别服务
+    response, data = ai_recognition_client.ci_open_pic_bucket(
+        Bucket=ci_bucket_name,
+        Accept="application/json"
+    )
+    assert data['PicBucket']['Name'] == ci_bucket_name
+
+
 def test_ci_hls_play_key():
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
 

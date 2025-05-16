@@ -52,6 +52,16 @@ def ci_get_media_queue():
     return response
 
 
+def ci_open_pic_bucket():
+    # 图片处理异步服务开通
+    response, data = client.ci_open_pic_bucket(
+        Bucket=bucket_name,
+    )
+    print(response)
+    print(data)
+    return response, data
+
+
 def ci_get_pic_bucket():
     # 查询图片处理异步服务开通状态
     response = client.ci_get_pic_bucket(
@@ -63,6 +73,16 @@ def ci_get_pic_bucket():
     )
     print(response)
     return response
+
+
+def ci_close_pic_bucket():
+    # 图片处理异步服务关闭
+    response, data = client.ci_close_pic_bucket(
+        Bucket=bucket_name,
+    )
+    print(response)
+    print(data)
+    return response, data
 
 
 def ci_get_ai_bucket():
@@ -1970,7 +1990,9 @@ if __name__ == "__main__":
     # ci_create_image_inspect_jobs()
     # ci_create_sound_hound_jobs()
     # ci_list_inventory_trigger_jobs()
+    # ci_open_pic_bucket()
     # ci_get_pic_bucket()
+    # ci_close_pic_bucket()
     # ci_get_inventory_trigger_jobs()
     # ci_get_ai_bucket()
     # ci_get_ai_queue()
