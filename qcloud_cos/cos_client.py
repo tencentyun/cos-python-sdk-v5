@@ -7316,6 +7316,63 @@ class CosS3Client(object):
         format_dict(data, ['Queue'])
         return data
 
+    def ci_open_pic_bucket(self, Bucket, **kwargs):
+        """ 开通图片处理异步服务 https://cloud.tencent.com/document/product/460/95749
+
+        :param Bucket(string) 存储桶名称.
+        :param kwargs:(dict) 设置上传的headers.
+        :return(dict): response header.
+        :return(dict): 请求成功返回的结果, dict类型.
+
+        . code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token) # 获取配置对象
+            client = CosS3Client(config)
+            # 开通图片处理异步服务
+            response, data = client.ci_open_pic_bucket(
+                Bucket='bucket')
+            print data
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/" + "picbucket"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+
+        logger.info("ci_open_pic_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = rt.content
+        response = dict(**rt.headers)
+        if 'Content-Type' in response:
+            if response['Content-Type'] == 'application/xml' and 'Content-Length' in response and \
+                response['Content-Length'] != 0:
+                data = xml_to_dict(rt.content)
+                format_dict(data, ['Response'])
+            elif response['Content-Type'].startswith('application/json'):
+                data = rt.json()
+
+        return response, data
+
     def ci_get_pic_bucket(self, Regions='', BucketName='', BucketNames='', PageNumber='', PageSize='', **kwargs):
         """查询图片异步处理开通状态接口
 
@@ -7344,6 +7401,63 @@ class CosS3Client(object):
         return self.ci_get_bucket(Regions=Regions, BucketName=BucketName,
                                   BucketNames=BucketNames, PageNumber=PageNumber,
                                   PageSize=PageSize, Path='/picbucket', **kwargs)
+
+    def ci_close_pic_bucket(self, Bucket, **kwargs):
+        """ 关闭图片处理异步服务 https://cloud.tencent.com/document/product/460/95751
+
+        :param Bucket(string) 存储桶名称.
+        :param kwargs:(dict) 设置上传的headers.
+        :return(dict): response header.
+        :return(dict): 请求成功返回的结果, dict类型.
+
+        . code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token) # 获取配置对象
+            client = CosS3Client(config)
+            # 关闭图片处理异步服务
+            response, data = client.ci_close_pic_bucket(
+                Bucket='bucket')
+            print data
+            print response
+        """
+        headers = mapped(kwargs)
+        final_headers = {}
+        params = {}
+        for key in headers:
+            if key.startswith("response"):
+                params[key] = headers[key]
+            else:
+                final_headers[key] = headers[key]
+        headers = final_headers
+
+        params = format_values(params)
+
+        path = "/" + "picbucket"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
+
+        logger.info("ci_close_pic_bucket result, url=:{url} ,headers=:{headers}, params=:{params}".format(
+            url=url,
+            headers=headers,
+            params=params))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            auth=CosS3Auth(self._conf, path, params=params),
+            params=params,
+            headers=headers,
+            ci_request=True)
+
+        data = rt.content
+        response = dict(**rt.headers)
+        if 'Content-Type' in response:
+            if response['Content-Type'] == 'application/xml' and 'Content-Length' in response and \
+                response['Content-Length'] != 0:
+                data = xml_to_dict(rt.content)
+                format_dict(data, ['Response'])
+            elif response['Content-Type'].startswith('application/json'):
+                data = rt.json()
+
+        return response, data
 
     def ci_update_media_pic_queue(self, Bucket, QueueId, Request={}, **kwargs):
         """ 更新图片处理队列接口

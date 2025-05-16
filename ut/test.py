@@ -3623,7 +3623,7 @@ def test_append_object():
 
 
 def test_ci_delete_asr_template():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
         client.ci_open_asr_bucket(
@@ -3640,7 +3640,7 @@ def test_ci_delete_asr_template():
 
 def test_ci_get_asr_template():
     # 获取语音识别模板
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
         client.ci_open_asr_bucket(
@@ -3658,7 +3658,7 @@ def test_ci_get_asr_template():
 
 def test_ci_create_asr_template():
     # 创建语音识别模板
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3702,7 +3702,7 @@ def test_ci_create_asr_template():
 
 
 def test_ci_list_asr_jobs():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3732,7 +3732,7 @@ def test_ci_list_asr_jobs():
 
 def test_ci_get_asr_jobs():
     # 获取语音识别任务信息
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3747,7 +3747,7 @@ def test_ci_get_asr_jobs():
 
 
 def test_ci_create_asr_jobs():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3787,7 +3787,7 @@ def test_ci_create_asr_jobs():
 
 
 def test_ci_put_asr_queue():
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3820,7 +3820,7 @@ def test_ci_put_asr_queue():
 
 def test_ci_get_asr_queue():
     # 查询语音识别队列信息
-    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name)
+    response = client.ci_get_asr_bucket(BucketName=ci_bucket_name, PageSize="1")
     if response['TotalCount'] == '0':
         client.ci_open_asr_bucket(
             Bucket=ci_bucket_name,
@@ -3941,28 +3941,6 @@ def test_ci_list_workflowexecution():
         EndCreationTime=time.strftime(
             "%Y-%m-%dT%H:%m:%S%z", time.localtime(now_time)),
         BatchJobId='',
-        **kwargs
-    )
-    assert response
-
-
-def test_ci_trigger_workflow():
-    # 触发工作流接口
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-    response = client.ci_trigger_workflow(
-        Bucket=ci_bucket_name,
-        WorkflowId='w5307ee7a60d6489383c3921c715dd1c5',
-        Key=ci_test_image,
-        **kwargs
-    )
-    assert response
-    print(response)
-    instance_id = response['InstanceId']
-    # 查询工作流实例接口
-    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
-    response = client.ci_get_workflowexecution(
-        Bucket=ci_bucket_name,
-        RunId=instance_id,
         **kwargs
     )
     assert response
@@ -4592,6 +4570,7 @@ def test_ci_get_ai_bucket():
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
     response = client.ci_get_ai_bucket(
         BucketName=ci_bucket_name,
+        PageSize = "1",
         **kwargs
     )
     print(response)
@@ -4769,6 +4748,8 @@ def test_ci_workflow():
     )
     assert response['MediaWorkflow']['State'] == 'Paused'
 
+    ci_trigger_workflow(workflow_id)
+
     response = client.ci_delete_workflow(
         Bucket=ci_bucket_name,  # 桶名称
         WorkflowId=workflow_id,  # 需要删除的工作流ID
@@ -4776,6 +4757,27 @@ def test_ci_workflow():
     )
     print(response)
     assert response['WorkflowId'] == workflow_id
+
+def ci_trigger_workflow(workflow_id):
+    # 触发工作流接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_trigger_workflow(
+        Bucket=ci_bucket_name,
+        WorkflowId=workflow_id,
+        Key=ci_test_image,
+        **kwargs
+    )
+    assert response
+    print(response)
+    instance_id = response['InstanceId']
+    # 查询工作流实例接口
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_get_workflowexecution(
+        Bucket=ci_bucket_name,
+        RunId=instance_id,
+        **kwargs
+    )
+    assert response
 
 
 def test_ci_auditing_report_badcase():
@@ -5903,6 +5905,31 @@ def test_ci_ai_bucket():
         Accept="application/json"
     )
     assert data['AiBucket']['Name'] == ci_bucket_name
+
+
+def test_ci_pic_bucket():
+    # 关闭图片处理异步服务
+    response, data = ai_recognition_client.ci_close_pic_bucket(
+        Bucket=ci_bucket_name
+    )
+    assert data['BucketName'] == ci_bucket_name
+    # 开通图片处理异步服务
+    response, data = ai_recognition_client.ci_open_pic_bucket(
+        Bucket=ci_bucket_name
+    )
+    assert data['PicBucket']['Name'] == ci_bucket_name
+
+    response, data = ai_recognition_client.ci_close_pic_bucket(
+        Bucket=ci_bucket_name,
+        Accept="application/json"
+    )
+    assert data['BucketName'] == ci_bucket_name
+    # 开通AI内容识别服务
+    response, data = ai_recognition_client.ci_open_pic_bucket(
+        Bucket=ci_bucket_name,
+        Accept="application/json"
+    )
+    assert data['PicBucket']['Name'] == ci_bucket_name
 
 
 def test_ci_hls_play_key():
