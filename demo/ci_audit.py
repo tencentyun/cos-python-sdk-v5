@@ -210,7 +210,7 @@ def ci_auditing_text_txt_submit():
         Bucket=bucket_name,  # 桶名称
         # Content='123456test'.encode("utf-8"),  # 需要审核的文本内容
         Key='shenhe.txt',
-        Url='https://test-1250000000.cos.ap-chongqing.myqcloud.com/shenhe.txt?q-sign-algorithm=sha1&q-ak=AKIDPdbIjuoRt40g5D4ex0nKaaJlvoRKzNVN&q-sign-time=1690968685;1690975885&q-key-time=1690968685;1690975885&q-header-list=&q-url-param-list=&q-signature=c93b2350e946ad1d5336286221edc66e53f18989',
+        Url='https://test-1250000000.cos.ap-chongqing.myqcloud.com/shenhe.txt?q-sign-algorithm=sha1&q-ak=&q-sign-time=&q-key-time=&q-header-list=&q-url-param-list=&q-signature=',
         BizType='',  # 表示审核策略的唯一标识
         UserInfo=user_info,  # 用户业务字段
         DataId='456456456',  # 待审核的数据进行唯一业务标识
