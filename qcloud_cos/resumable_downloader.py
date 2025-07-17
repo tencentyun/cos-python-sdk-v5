@@ -51,7 +51,7 @@ class ResumableDownLoader(object):
                 os.makedirs(self.__dump_record_dir)
             except OSError as e:
                 if e.errno != errno.EEXIST:
-                    logger.error('os makedir error: dir: {0}, errno {1}'.format(self.__dump_record_dir), e.errno)
+                    logger.error('os makedir error: dir: {0}, errno {1}'.format(self.__dump_record_dir, e.errno))
                     raise
                 pass
         logger.debug('resumale downloader init finish, bucket: {0}, key: {1}'.format(bucket, key))
