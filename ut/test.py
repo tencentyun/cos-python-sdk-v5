@@ -5967,6 +5967,32 @@ def test_ci_hls_play_key():
     assert data['PlayKeyList']['BackupPlayKey'] == '128d75fd2b6b4f958ccbb6fc38f60f04'
 
 
+def get_media_aigc_metadata():
+    if TEST_CI != 'true':
+        return
+    # 获取媒体信息
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_get_media_aigc_metadata(
+        Bucket=ci_bucket_name,
+        Key=ci_test_media,
+        **kwargs
+    )
+    assert response
+
+
+def get_image_aigc_metadata():
+    if TEST_CI != 'true':
+        return
+    # 获取媒体信息
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    response = client.ci_get_image_aigc_metadata(
+        Bucket=ci_bucket_name,
+        Key=ci_test_media,
+        **kwargs
+    )
+    assert response
+
+
 def test_ci_asr_bucket():
     # 关闭智能语音服务
     kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}

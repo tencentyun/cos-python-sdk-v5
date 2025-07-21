@@ -410,6 +410,31 @@ transcode_template_config = {
             # 非必选
             'UriKey': ''
         },
+        # aigc元数据信息配置
+        # 非必选
+        'AIGCMetadata': {
+            # 生成合成标签要素，用于表示视频属于、可能、疑似为人工智能生成合成的属性信息
+            # 必选
+            'Label': 'label',
+            # 生成合成服务提供者要素，内容为视频生成合成服务提供者的名称或编码
+            # 必选
+            'ContentProducer': 'testProducer',
+            # 内容制作编号要素，内容为视频生成合成服务提供者对该内容的唯一编号
+            # 必选
+            'ProduceID': 'testProduceId',
+            # 预留字段1，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+            # 非必选
+            'ReservedCode1': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+            # 预留字段2，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+            # 非必选
+            'ReservedCode2': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+            # 内容传播服务提供者要素，内容为视频传播服务提供者的名称或编码
+            # 非必选
+            'ContentPropagator': 'contentPropagator',
+            # 内容传播编号要素，内容为视频传播服务提供者对该视频的唯一编号
+            # 非必选
+            'PropagateID': 'propagateID'
+        },
     },
     # 混音参数
     # 非必选
@@ -1313,9 +1338,30 @@ pic_process_template_config = {
     },
 }
 
+pic_process_template_aigc_metadata_config = {
+    # 模板名称，仅支持中文、英文、数字、_、-和*，长度不超过 64
+    # 必选
+    'Name': 'pic_process_template',
+    # 模板类型：图片处理模板固定值为 PicProcess
+    # 必选
+    'Tag': 'PicProcess',
+    # 图片处理信息
+    # 必选
+    'PicProcess': {
+        # 是否返回原图信息
+        # 取值 true/false
+        # 非必选 默认 false
+        'IsPicInfo': 'false',
+        # 图片处理规则
+        # 详见 https://cloud.tencent.com/document/product/436/44879
+        # 必选
+        'ProcessRule': 'imageMogr2/AIGCMetadata/Label/bGFiZWw/ContentProducer/Q29udGVudFByb2R1Y2Vy/ProduceID/UHJvZHVjZUlE/ReservedCode1/UmVzZXJ2ZWRDb2RlMQ/ContentPropagator/Q29udGVudFByb3BhZ2F0b3I',
+    },
+}
+
 
 def ci_create_pic_process_template():
-    # 创建人声分离模板
+    # 创建图片处理模板
     response = client.ci_create_template(
         Bucket=bucket_name,
         Template=pic_process_template_config,
@@ -1481,7 +1527,7 @@ def ci_update_watermark_template():
 
 
 def ci_get_template():
-    # 更新人声分离模板
+    # 查询模板
     response = client.ci_get_template(
         Bucket=bucket_name,
     )

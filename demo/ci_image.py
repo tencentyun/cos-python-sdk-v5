@@ -625,6 +625,63 @@ def ci_super_resolution_process():
     response['Body'].get_stream_to_file('super-resolution-result.jpg')
 
 
+def add_aigc_metadata_when_put_object():
+    # 图片AIGC元数据添加
+    label = base64.b64encode('label'.encode('utf-8')).decode('utf-8')
+    content_producer = base64.b64encode('contentProducer'.encode('utf-8')).decode('utf-8')
+    produce_id = base64.b64encode('produceId'.encode('utf-8')).decode('utf-8')
+    reserved_code1 = base64.b64encode('reservedCode1'.encode('utf-8')).decode('utf-8')
+    reserved_code2 = base64.b64encode('reservedCode2'.encode('utf-8')).decode('utf-8')
+    content_propagator = base64.b64encode('contentPropagator'.encode('utf-8')).decode('utf-8')
+    propagate_id = base64.b64encode('propagateID'.encode('utf-8')).decode('utf-8')
+
+    rule=('imageMogr2/AIGCMetadata/Label/' + label
+          + '/ContentProducer/' + content_producer
+          + '/ProduceID/' + produce_id
+          + '/ReservedCode1/' + reserved_code1
+          + '/ReservedCode2/' + reserved_code2
+          + '/PropagateID/' + propagate_id
+          + '/ContentPropagator/' + content_propagator)
+
+    operations = '{"is_pic_info":1,"rules":[{"fileid": "aigc-result.png",' \
+                 '"rule": "' + rule + '" }]}'
+    when_put_object('format.png', "aigc.png", operations)
+
+
+def add_aigc_metadata_process_on_cloud():
+    # 图片AIGC元数据添加
+    label = base64.b64encode('label'.encode('utf-8')).decode('utf-8')
+    content_producer = base64.b64encode('contentProducer'.encode('utf-8')).decode('utf-8')
+    produce_id = base64.b64encode('produceId'.encode('utf-8')).decode('utf-8')
+    reserved_code1 = base64.b64encode('reservedCode1'.encode('utf-8')).decode('utf-8')
+    reserved_code2 = base64.b64encode('reservedCode2'.encode('utf-8')).decode('utf-8')
+    content_propagator = base64.b64encode('contentPropagator'.encode('utf-8')).decode('utf-8')
+    propagate_id = base64.b64encode('propagateID'.encode('utf-8')).decode('utf-8')
+
+    rule=('imageMogr2/AIGCMetadata/Label/' + label
+          + '/ContentProducer/' + content_producer
+          + '/ProduceID/' + produce_id
+          + '/ReservedCode1/' + reserved_code1
+          + '/ReservedCode2/' + reserved_code2
+          + '/PropagateID/' + propagate_id
+          + '/ContentPropagator/' + content_propagator)
+
+    operations = '{"is_pic_info":1,"rules":[{"fileid": "aigc-result.png",' \
+                 '"rule": "' + rule + '" }]}'
+    process_on_cloud('aigc.png', operations)
+
+
+def get_image_aigc_metadata():
+    # 查询图片中保存的AIGC元数据标识信息
+    response, data = client.ci_get_image_aigc_metadata(
+        Bucket=bucket_name,
+        Key='aigc.png'
+    )
+    print(response)
+    print(data)
+    return response, data
+
+
 if __name__ == '__main__':
     # format.png
     # thumbnail_when_put_object()
@@ -694,4 +751,7 @@ if __name__ == '__main__':
     # ci_image_detect_label()
     # ci_recognize_logo_process()
     # ci_image_inspect()
-    ci_super_resolution_process()
+    # ci_super_resolution_process()
+    # add_aigc_metadata_when_put_object()
+    # add_aigc_metadata_process_on_cloud()
+    get_image_aigc_metadata()

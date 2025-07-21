@@ -1,4 +1,5 @@
 # -*- coding=utf-8
+import base64
 import time
 
 from qcloud_cos import CosConfig
@@ -370,6 +371,69 @@ def ci_create_media_transcode_jobs():
                     Lst={},
                     ContentType='application/xml'
                 )
+    print(response)
+    return response
+
+
+def ci_create_media_transcode_jobs_with_aigc_metadata():
+    # 创建转码任务(包含aigc metadata信息)
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'Tag': 'Transcode',
+        'Operation': {
+            "Transcode": {
+                "Container": {
+                    "Format": "mp4"
+                },
+                "Video": {
+                    "Codec": "H.264",
+                },
+                "Audio": {
+                    "Codec": "aac",
+                },
+                "TransConfig": {
+                    # aigc元数据信息配置
+                    # 非必选
+                    'AIGCMetadata': {
+                        # 生成合成标签要素，用于表示视频属于、可能、疑似为人工智能生成合成的属性信息
+                        # 必选
+                        'Label': 'label',
+                        # 生成合成服务提供者要素，内容为视频生成合成服务提供者的名称或编码
+                        # 必选
+                        'ContentProducer': 'testProducer',
+                        # 内容制作编号要素，内容为视频生成合成服务提供者对该内容的唯一编号
+                        # 必选
+                        'ProduceID': 'testProduceId',
+                        # 预留字段1，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+                        # 非必选
+                        'ReservedCode1': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+                        # 预留字段2，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+                        # 非必选
+                        'ReservedCode2': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+                        # 内容传播服务提供者要素，内容为视频传播服务提供者的名称或编码
+                        # 非必选
+                        'ContentPropagator': 'contentPropagator',
+                        # 内容传播编号要素，内容为视频传播服务提供者对该视频的唯一编号
+                        # 非必选
+                        'PropagateID': 'propagateID'
+                    },
+                },
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'transcode_with_aigc_metadata_output.mp4'
+            },
+        }
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
     print(response)
     return response
 
@@ -857,6 +921,59 @@ def ci_create_media_segment_jobs():
     return response
 
 
+def ci_create_media_segment_with_aigc_metadata_jobs():
+    # 创建转封装任务(包含aigc metadata)
+    body = {
+        'Input': {
+            'Object': 'demo.mp4'
+        },
+        'Tag': 'Segment',
+        'Operation': {
+            "Segment": {
+                "Format": "mp4",
+                # aigc元数据信息配置
+                # 非必选
+                'AIGCMetadata': {
+                    # 生成合成标签要素，用于表示视频属于、可能、疑似为人工智能生成合成的属性信息
+                    # 必选
+                    'Label': 'label',
+                    # 生成合成服务提供者要素，内容为视频生成合成服务提供者的名称或编码
+                    # 必选
+                    'ContentProducer': 'testProducer',
+                    # 内容制作编号要素，内容为视频生成合成服务提供者对该内容的唯一编号
+                    # 必选
+                    'ProduceID': 'testProduceId',
+                    # 预留字段1，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+                    # 非必选
+                    'ReservedCode1': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+                    # 预留字段2，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+                    # 非必选
+                    'ReservedCode2': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+                    # 内容传播服务提供者要素，内容为视频传播服务提供者的名称或编码
+                    # 非必选
+                    'ContentPropagator': 'contentPropagator',
+                    # 内容传播编号要素，内容为视频传播服务提供者对该视频的唯一编号
+                    # 非必选
+                    'PropagateID': 'propagateID'
+                },
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'segment-output-with-aigc-metadata.mp4'
+            },
+        },
+    }
+    response = client.ci_create_media_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
 def ci_create_multi_jobs():
     # 创建多任务
     body = {
@@ -948,6 +1065,51 @@ def ci_create_media_pic_jobs():
     return response
 
 
+def ci_create_media_pic_with_aigc_metadata_jobs():
+    # 创建图片处理任务(包含aigc元数据信息)
+    label = base64.b64encode('label'.encode('utf-8')).decode('utf-8')
+    content_producer = base64.b64encode('contentProducer'.encode('utf-8')).decode('utf-8')
+    produce_id = base64.b64encode('produceId'.encode('utf-8')).decode('utf-8')
+    reserved_code1 = base64.b64encode('reservedCode1'.encode('utf-8')).decode('utf-8')
+    reserved_code2 = base64.b64encode('reservedCode2'.encode('utf-8')).decode('utf-8')
+    content_propagator = base64.b64encode('contentPropagator'.encode('utf-8')).decode('utf-8')
+    propagate_id = base64.b64encode('propagateID'.encode('utf-8')).decode('utf-8')
+
+    rule = ('imageMogr2/AIGCMetadata/Label/' + label
+          + '/ContentProducer/' + content_producer
+          + '/ProduceID/' + produce_id
+          + '/ReservedCode1/' + reserved_code1
+          + '/ReservedCode2/' + reserved_code2
+          + '/PropagateID/' + propagate_id
+          + '/ContentPropagator/' + content_propagator)
+
+    body = {
+        'Input': {
+            'Object': 'test.png'
+        },
+        'Tag': 'PicProcess',
+        'Operation': {
+            "PicProcess": {
+                "IsPicInfo": "true",
+                "ProcessRule": rule,
+            },
+            'Output': {
+                'Bucket': bucket_name,
+                'Region': region,
+                'Object': 'pic-process-with-aigc-metadata-result.png'
+            },
+        }
+    }
+    response = client.ci_create_media_pic_jobs(
+        Bucket=bucket_name,
+        Jobs=body,
+        Lst={},
+        ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
 def ci_list_media_transcode_jobs():
     # 转码任务列表
     response = client.ci_list_media_jobs(
@@ -1005,6 +1167,17 @@ def get_media_info():
         Key='demo.mp4'
     )
     print(response)
+
+
+def get_media_aigc_metadata():
+    # 查询音视频中保存的AIGC元数据标识信息接口
+    response, data = client.ci_get_media_aigc_metadata(
+        Bucket=bucket_name,
+        Key='demo.mp4'
+    )
+    print(response)
+    print(data)
+    return response, data
 
 
 def get_snapshot():
@@ -1229,6 +1402,148 @@ def ci_cancel_jobs():
         Bucket=bucket_name,
         JobID='a65xxxxxxxxxxxxxxxx1f213dcd0151',
         ContentType='application/xml'
+    )
+    print(response)
+    return response
+
+
+def ci_create_workflow_segment_with_aigc_metadata():
+    # 创建转封装工作流（包含aigc元数据信息）
+
+    # 工作流配置详情
+    body = {
+        # 工作流节点 固定值传入即可
+        'MediaWorkflow': {
+            # 创建的工作流名称，可自定义输入名称
+            # 支持中文、英文、数字、—和_，长度限制128字符
+            # 必传参数
+            'Name': 'segment-with-aigc',
+            # 工作流状态，表示创建时是否开启COS上传对象事件通知
+            # 支持 Active / Paused
+            # 非必选，默认Paused 不开启
+            'State': 'Paused',
+            # 工作流拓扑结构
+            # 必传参数
+            'Topology': {
+                # 工作流节点依赖关系
+                # 必传参数
+                'Dependencies': {
+                    # Start 工作流开始节点，用于存储工作流回调，前缀，后缀等配置信息，只有一个开始节点
+                    # End 工作流结束节点
+                    # SegmentNode 转封装节点信息
+                    # 此示例表示 Start -> SegmentNode -> End 的依赖关系
+                    'Start': 'SegmentNode',
+                    'SegmentNode': 'End',
+                },
+                # 工作流各节点的详细配置信息
+                # 必传参数
+                'Nodes': {
+                    # 工作流开始节点配置信息
+                    'Start': {
+                        # 节点类型，开始节点固定为 Start
+                        # 必传参数
+                        'Type': 'Start',
+                        # 工作流的输入信息
+                        # 必传参数
+                        'Input': {
+                            # Object 前缀，COS上传对象的前缀，只有当前缀匹配时，才会触发该工作流
+                            # 如该示例，会触发根目录下的对象
+                            # 必传参数
+                            'ObjectPrefix': '/',
+                            # 工作流自定义回调配置信息，当配置了该项后，当工作流执行完成或工作流中的子节点中的任务执行完成，会发送回调给指定Url或tdmq
+                            # 非必传配置
+                            'NotifyConfig': {
+                                # 回调类型，支持Url TDMQ两种类型
+                                'Type': 'Url',
+                                # 回调地址，当回调类型为Url时有效
+                                'Url': 'http://www.callback.com',
+                                # 回调事件 支持多种事件，以逗号分割
+                                'Event': 'WorkflowFinish,TaskFinish',
+                                # 回调信息格式，支持XML JSON两种格式，非必传，默认为XML
+                                'ResultFormat': '',
+                                # TDMQ 所属园区，当回调类型为TDMQ时有效，支持园区详见https://cloud.tencent.com/document/product/406/12667
+                                'MqRegion': '',
+                                # TDMQ 使用模式，当回调类型为TDMQ时有效
+                                # Topic：主题订阅
+                                # Queue：队列服务
+                                'MqMode': '',
+                                # TDMQ 主题名称，当回调类型为TDMQ时有效
+                                'MqName': '',
+                            },
+                            # 文件后缀过滤器，当需要只处理部分后缀文件时，可配置此项
+                            # 非必传配置
+                            'ExtFilter': {
+                                # 是否开始后缀过滤，On/Off，非必选，默认为Off
+                                'State': 'On',
+                                # 打开视频后缀限制，false/true，非必选，默认为false
+                                'Video': 'true',
+                                # 打开音频后缀限制，false/true，非必选，默认为false
+                                'Audio': '',
+                                # 打开图片后缀限制，false/true，非必选，默认为false
+                                'Image': '',
+                                # 打开 ContentType 限制，false/true，非必选，默认为false
+                                'ContentType': '',
+                                # 打开自定义后缀限制，false/true，非必选，默认为false
+                                'Custom': '',
+                                # 自定义后缀，当Custom为true时有效，多种文件后缀以/分隔，后缀个数不超过10个
+                                'CustomExts': '',
+                                # 所有文件，false/true，非必选，默认为false
+                                'AllFile': '',
+                            },
+                        }
+                    },
+                    # 转封装节点配置信息
+                    'SegmentNode': {
+                        # 节点类型，转封装固定为Segment
+                        'Type': 'Segment',
+                        # 节点执行操作集合
+                        # 非必选配置
+                        'Operation': {
+                            # 转封装配置详情
+                            'Segment': {
+                                "Format": "mp4",
+                                # aigc元数据信息配置
+                                # 非必选
+                                'AIGCMetadata': {
+                                    # 生成合成标签要素，用于表示视频属于、可能、疑似为人工智能生成合成的属性信息
+                                    # 必选
+                                    'Label': 'label',
+                                    # 生成合成服务提供者要素，内容为视频生成合成服务提供者的名称或编码
+                                    # 必选
+                                    'ContentProducer': 'testProducer',
+                                    # 内容制作编号要素，内容为视频生成合成服务提供者对该内容的唯一编号
+                                    # 必选
+                                    'ProduceID': 'testProduceId',
+                                    # 预留字段1，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+                                    # 非必选
+                                    'ReservedCode1': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+                                    # 预留字段2，内容为用户自主开展安全防护，保护内容、标识完整性的信息，需经过 Base64 编码后传入
+                                    # 非必选
+                                    'ReservedCode2': 'e1wibmFtZVwiOlwidGVzdE5hbWVcIn0=',
+                                    # 内容传播服务提供者要素，内容为视频传播服务提供者的名称或编码
+                                    # 非必选
+                                    'ContentPropagator': 'contentPropagator',
+                                    # 内容传播编号要素，内容为视频传播服务提供者对该视频的唯一编号
+                                    # 非必选
+                                    'PropagateID': 'propagateID'
+                                },
+                            },
+                            'Output': {
+                                'Bucket': bucket_name,
+                                'Region': region,
+                                'Object': 'segment-with-aigc-metadata-workflow.mp4'
+                            },
+                        }
+                    },
+                },
+            },
+        },
+    }
+    response = client.ci_create_workflow(
+        Bucket=bucket_name,  # 桶名称
+        Body=body,  # 工作流配置信息
+        ContentType='application/xml',
+        Accept="application/xml"
     )
     print(response)
     return response
@@ -2004,4 +2319,10 @@ if __name__ == "__main__":
     # ci_create_words_generalize_jobs()
     # ci_get_presigned_download_url()
     # ci_update_hls_play_key()
-    ci_get_hls_play_key()
+    # ci_get_hls_play_key()
+    # ci_create_media_transcode_jobs_with_aigc_metadata()
+    # ci_create_media_segment_with_aigc_metadata_jobs()
+    # ci_create_workflow_segment_with_aigc_metadata()
+    # ci_create_media_pic_with_aigc_metadata_jobs()
+    get_media_aigc_metadata()
+
