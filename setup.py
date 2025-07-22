@@ -33,7 +33,7 @@ def long_description():
 
 setup(
     name='cos_python_sdk_v5', # comply with PEP 625
-    version='1.9.37',
+    version='1.9.38',
     url='https://www.qcloud.com/',
     license='MIT',
     author='tiedu, lewzylu, channingliu',
