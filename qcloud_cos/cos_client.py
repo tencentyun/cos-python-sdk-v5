@@ -5806,6 +5806,30 @@ class CosS3Client(object):
         data = rt.content
         return response, data
 
+    def ci_get_image_aigc_metadata(self, Bucket, Key, **kwargs):
+        """ci_get_image_aigc_metadata查询图片中保存的AIGC元数据标识信息接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): response header.
+        :return(dict): AIGC元数据标识信息结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_image_aigc_metadata(
+                    Bucket='bucket',
+                    ObjectKey=''
+                )
+            print data
+            print response
+        """
+
+        path = "/" + Key
+        return self.ci_process(Bucket, path, "ImageAIGCMetadata", NeedHeader=True, **kwargs)
+
     def ci_put_object_from_local_file_and_get_qrcode(self, Bucket, LocalFilePath, Key, EnableMD5=False, **kwargs):
         """本地CI文件上传接口并返回二维码，适用于小文件，最大不得超过5GB
 
@@ -8445,6 +8469,30 @@ class CosS3Client(object):
         response['Body'] = StreamBody(rt)
 
         return response
+
+    def ci_get_media_aigc_metadata(self, Bucket, Key, **kwargs):
+        """ci_get_media_aigc_metadata查询音视频中保存的AIGC元数据标识信息接口
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): COS路径.
+        :param kwargs(dict): 设置下载的headers.
+        :return(dict): response header.
+        :return(dict): AIGC元数据标识信息结果,dict类型.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            response, data = client.ci_get_media_aigc_metadata(
+                    Bucket='bucket',
+                    ObjectKey='',
+                )
+            print data
+            print response
+        """
+
+        path = "/" + Key
+        return self.ci_process(Bucket, path, "MediaAIGCMetadata", NeedHeader=True, **kwargs)
 
     def ci_get_doc_queue(self, Bucket, State='All', QueueIds='', PageNumber=1, PageSize=10, **kwargs):
         """查询文档转码处理队列接口 https://cloud.tencent.com/document/product/460/46946
