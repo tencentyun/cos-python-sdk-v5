@@ -5970,7 +5970,7 @@ def test_ci_hls_play_key():
 def test_get_media_aigc_metadata():
     if TEST_CI != 'true':
         return
-    # 获取媒体信息
+    # 获取音视频aigc元数据信息
     try:
         kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
         response = client.ci_get_media_aigc_metadata(
@@ -5986,7 +5986,7 @@ def test_get_media_aigc_metadata():
 def test_get_image_aigc_metadata():
     if TEST_CI != 'true':
         return
-    # 获取媒体信息
+    # 获取图片aigc元数据信息
     try:
         kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
         response = client.ci_get_image_aigc_metadata(
