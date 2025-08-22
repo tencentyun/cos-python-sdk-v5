@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class ResumableDownLoader(object):
     def __init__(self, cos_client, bucket, key, dest_filename, object_info, part_size=20, max_thread=5,
-                 enable_crc=False, progress_callback=None, dump_record_dir=None, key_simplify_check=True, **kwargs):
+                 max_part_count=100, enable_crc=False, progress_callback=None, dump_record_dir=None, key_simplify_check=True, **kwargs):
         self.__cos_client = cos_client
         self.__bucket = bucket
         self.__key = key
@@ -30,7 +30,7 @@ class ResumableDownLoader(object):
         self.__headers = kwargs
         self.__key_simplify_check = key_simplify_check
 
-        self.__max_part_count = 100  # 取决于服务端是否对并发有限制
+        self.__max_part_count = max_part_count  # 取决于服务端是否对并发有限制
         self.__min_part_size = 1024 * 1024  # 1M
         self.__part_size = self.__determine_part_size_internal(int(object_info['Content-Length']), part_size)
         self.__finished_parts = []
