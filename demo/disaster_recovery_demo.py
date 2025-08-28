@@ -35,8 +35,7 @@ def _recover_main(src_region, src_secret_id, src_secret_key, src_bucket, prefix,
                     delete_marker_keys.append(version['Key'])
         
         if len(delete_marker_keys) == 0:
-            print('no delete markers found, no data to recover')
-            return
+            print('no delete markers found, no data to recover, continue listing')
 
         # 从 Version 取最新的版本号
         if 'Version' in response:
