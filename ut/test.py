@@ -78,6 +78,9 @@ metaConf = CosConfig(
     SecretKey=SECRET_KEY,
 )
 
+anonymous_conf = CosConfig(Appid=APPID, Region=REGION, Anonymous=True)
+anonymous_client = CosS3Client(anonymous_conf)
+
 client = CosS3Client(conf, retry=3)
 meta_insight_client = MetaInsightClient(metaConf, retry=3)
 ai_recognition_client = AIRecognitionClient(conf, retry=3)
@@ -6604,6 +6607,21 @@ def test_cos_client_retry_2():
     # connection reset
     client2 = CosS3Client(conf2)
     do_retry_test(client2, err_retry_bucket, 'shutdown', 1, False) 
+
+
+def test_head_exception():
+    """正确解析head请求响应的非404错误码"""
+    try:
+        anonymous_client.head_bucket(Bucket=test_bucket)
+    except CosServiceError as e:
+        assert 'x-cos-request-id' in e.get_digest_msg()
+        assert 403 == e.get_status_code()
+
+    try:
+        anonymous_client.head_object(Bucket=test_bucket, Key='foobar')
+    except CosServiceError as e:
+        assert 'x-cos-request-id' in e.get_digest_msg()
+        assert 403 == e.get_status_code()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 # -*- coding=utf-8
 
 import xml.dom.minidom
+from requests.structures import CaseInsensitiveDict
 
 
 class CosException(Exception):
@@ -51,7 +52,7 @@ class CosServiceError(CosException):
 
     def __init__(self, method, message, status_code):
         CosException.__init__(self, message)
-        if isinstance(message, dict):
+        if isinstance(message, dict) or isinstance(message, CaseInsensitiveDict):
             self._origin_msg = ''
             self._digest_msg = message
         else:
