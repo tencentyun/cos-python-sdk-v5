@@ -6624,6 +6624,46 @@ def test_head_exception():
         assert 403 == e.get_status_code()
 
 
+def test_put_object_with_tagging():
+    """上传对象时设置标签"""
+    key = 'tagging.obj'
+    # 设置单个tag: key=value
+    client.put_object(Bucket=test_bucket, Key=key, Body=b'hello', Tagging='A=B')
+    resp = client.get_object_tagging(Bucket=test_bucket, Key=key)
+    print(resp)
+    tag = resp['TagSet']['Tag']
+    assert tag[0]['Key'] == 'A'
+    assert tag[0]['Value'] == 'B'
+    resp = client.delete_object(Bucket=test_bucket, Key=key)
+    # 设置多个tag: key1=value1&key2=value2
+    client.put_object(Bucket=test_bucket, Key=key, Body=b'hello', Tagging='tagKey1=tagValue1&tagKey2=tagValue2')
+    resp = client.get_object_tagging(Bucket=test_bucket, Key=key)
+    print(resp)
+    tag = resp['TagSet']['Tag']
+    assert tag[0]['Key'] == 'tagKey1'
+    assert tag[0]['Value'] == 'tagValue1'
+    assert tag[1]['Key'] == 'tagKey2'
+    assert tag[1]['Value'] == 'tagValue2'
+    resp = client.delete_object(Bucket=test_bucket, Key=key)
+
+    # 高级接口upload_file
+    filename = 'BIG_20M'
+    gen_file(filename, 20)
+
+    resp = client.upload_file(Bucket=test_bucket, Key=key, LocalFilePath=filename, PartSize=1, Tagging='A=B')
+    print(resp)
+    resp = client.get_object_tagging(Bucket=test_bucket, Key=key)
+    print(resp)
+    tag = resp['TagSet']['Tag']
+    assert tag[0]['Key'] == 'A'
+    assert tag[0]['Value'] == 'B'
+    resp = client.delete_object(Bucket=test_bucket, Key=key)
+
+    if os.path.exists(filename):
+        os.remove(filename)
+    
+
+
 if __name__ == "__main__":
     setUp()
     """
