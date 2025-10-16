@@ -37,6 +37,7 @@ maplist = {
     'ResponseContentEncoding': 'response-content-encoding',
     'Metadata': 'Metadata',
     'ACL': 'x-cos-acl',
+    'Tagging': 'x-cos-tagging',
     'GrantFullControl': 'x-cos-grant-full-control',
     'GrantWrite': 'x-cos-grant-write',
     'GrantRead': 'x-cos-grant-read',
@@ -63,7 +64,8 @@ maplist = {
     'Referer': 'Referer',
     'PicOperations': 'Pic-Operations',
     'TrafficLimit': 'x-cos-traffic-limit',
-    'Accept': 'Accept'
+    'Accept': 'Accept',
+    'AcceptEncoding': 'Accept-Encoding',
 }
 
 

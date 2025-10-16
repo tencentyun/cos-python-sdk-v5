@@ -4037,7 +4037,8 @@ class CosS3Client(object):
             already_exist_parts[part_num] = part['ETag']
         return True
 
-    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None, DumpRecordDir=None, KeySimplifyCheck=True, DisableTempDestFilePath=False, **Kwargs):
+    def download_file(self, Bucket, Key, DestFilePath, PartSize=20, MAXThread=5, EnableCRC=False, progress_callback=None,
+                      DumpRecordDir=None, KeySimplifyCheck=True, DisableTempDestFilePath=False, MaxPartCount=10000, **Kwargs):
         """小于等于20MB的文件简单下载，大于20MB的文件使用续传下载
 
         :param Bucket(string): 存储桶名称.
@@ -4049,10 +4050,11 @@ class CosS3Client(object):
         :param DumpRecordDir(string): 指定保存断点信息的文件路径
         :param KeySimplifyCheck(bool): 是否对Key进行posix路径语义归并检查
         :param DisableTempDestFilePath(bool): 简单下载写入目标文件时,不使用临时文件
+        :param MaxPartCount(int): 分块下载的最大分块数
         :param kwargs(dict): 设置请求headers.
         """
         logger.debug("Start to download file, bucket: {0}, key: {1}, dest_filename: {2}, part_size: {3}MB,\
-                     max_thread: {4}".format(Bucket, Key, DestFilePath, PartSize, MAXThread))
+                     max_thread: {4}, max_part_count: {5}".format(Bucket, Key, DestFilePath, PartSize, MAXThread, MaxPartCount))
 
         head_headers = dict()
         # SSE-C对象在head时也要求传入加密头域
@@ -4075,7 +4077,7 @@ class CosS3Client(object):
         if progress_callback:
             callback = ProgressCallback(file_size, progress_callback)
 
-        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, EnableCRC,
+        downloader = ResumableDownLoader(self, Bucket, Key, DestFilePath, object_info, PartSize, MAXThread, MaxPartCount, EnableCRC,
                                          callback, DumpRecordDir, KeySimplifyCheck, **Kwargs)
         downloader.start()
 
