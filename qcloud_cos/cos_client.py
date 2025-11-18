@@ -11174,5 +11174,99 @@ class CosS3Client(object):
         return response, data
 
 
+    def create_vector_bucket(self, Bucket, **kwargs):
+        """ 创建向量存储桶
+
+            :param Bucket(string) 向量存储桶名称.
+            :param kwargs:(dict) 设置上传的headers.
+            :return(dict): response header.
+
+            .. code-block:: python
+
+                endpoint = "cos-vectors.ap-beijing.myqcloud.com" # 设置访问向量桶的endpoint
+                config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Endpoint=endpoint)
+                client = CosS3Client(config)
+                # 创建向量桶
+                resp = client.create_vector_bucket(Bucket="examplevectorbucket-1250000000")
+                print(resp)
+        """
+        headers = mapped(kwargs)
+        data = dict()
+        data['vectorBucketName'] = Bucket
+        headers['Content-Type'] = 'application/json'
+
+        path = "/" + "CreateVectorBucket"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint)
+
+        logger.debug("create vector bucket, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            data=json.dumps(data),
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path),
+            headers=headers)
+        return rt.headers
+
+
+    def put_vectors(self, Bucket, IndexName, Vectors, **kwargs):
+        """ 在向量桶的索引中添加或更新向量
+
+            :param Bucket(string) 向量存储桶名称.
+            :param IndexName(string) 索引名称.
+            :param Vectors(list) 向量列表.
+            :param kwargs:(dict) 设置上传的headers.
+            :return(dict): response header.
+
+            .. code-block:: python
+
+                endpoint = "cos-vectors.ap-beijing.myqcloud.com" # 设置访问向量桶的endpoint
+                config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Endpoint=endpoint)
+                client = CosS3Client(config)
+                # 向量
+                vectors = [
+                    {
+                        "data": {"float32":  [0.1] * 128},
+                        "key": "key1",
+                        "metadata": {"metadata1": "value1", "metadata2": "value2"}
+                    },
+                    {
+                        "data": {"float32":  [0.1] * 128},
+                        "key": "key2",
+                        "metadata": {"metadata1": "value3", "metadata2": "value4"}
+                    },
+                ]
+                # 添加或更新向量
+                resp = client.put_vectors(
+                    Bucket="examplevectorbucket-1250000000",
+                    IndexName="example-index",
+                    Vectors=vectors)
+                print(resp)
+        """
+        headers = mapped(kwargs)
+        data = dict()
+        data['indexName'] = IndexName
+        data['vectorBucketName'] = Bucket
+        data['vectors'] = Vectors
+        headers['Content-Type'] = 'application/json'
+
+        path = "/" + "PutVectors"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint)
+
+        logger.debug("put vectors, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='POST',
+            url=url,
+            data=json.dumps(data),
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path),
+            headers=headers)
+        return rt.headers
+
+
 if __name__ == "__main__":
     pass

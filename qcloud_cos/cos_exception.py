@@ -1,5 +1,6 @@
 # -*- coding=utf-8
 
+import json
 import xml.dom.minidom
 from requests.structures import CaseInsensitiveDict
 
@@ -39,6 +40,18 @@ def digest_xml(data):
     except Exception as e:
         return "Response Error Msg Is INVALID"
 
+def digest_json(data):
+    try:
+        msg = json.loads(data)
+        return msg
+    except Exception as e:
+        return "Response Error Msg Is INVALID"
+
+def digest_xml_or_json(data):
+    msg = digest_xml(data)
+    if isinstance(msg, dict):
+        return msg
+    return digest_json(data)
 
 class CosClientError(CosException):
     """Client端错误，如timeout"""
@@ -57,7 +70,7 @@ class CosServiceError(CosException):
             self._digest_msg = message
         else:
             self._origin_msg = message
-            self._digest_msg = digest_xml(message)
+            self._digest_msg = digest_xml_or_json(message)
         self._status_code = status_code
 
     def __str__(self):
