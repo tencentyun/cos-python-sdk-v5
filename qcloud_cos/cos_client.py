@@ -9568,7 +9568,7 @@ class CosS3Client(object):
 
     def ci_create_asr_template(self, Bucket, Name, EngineModelType, ChannelNum=None,
                                ResTextFormat=None, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
-                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, HotVocabularyTableId=None, **kwargs):
         """ 创建语音识别模板接口 https://cloud.tencent.com/document/product/460/78939
 
         :param Bucket(string): 存储桶名称.
@@ -9654,6 +9654,8 @@ class CosS3Client(object):
             body['SpeechRecognition']['Format'] = Format
         body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
         body['SpeechRecognition']['WordInfo'] = WordInfo
+        if HotVocabularyTableId:
+            body['SpeechRecognition']['HotVocabularyTableId'] = HotVocabularyTableId
 
         xml_config = format_xml(data=body, root='Request')
         path = "/template"
@@ -9678,7 +9680,7 @@ class CosS3Client(object):
 
     def ci_update_asr_template(self, Bucket, TemplateId, Name, EngineModelType, ChannelNum,
                                ResTextFormat, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
-                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, HotVocabularyTableId=None, **kwargs):
         """ 更新语音识别模板接口 https://cloud.tencent.com/document/product/460/78942
 
         :param Bucket(string): 存储桶名称.
@@ -9766,6 +9768,8 @@ class CosS3Client(object):
             body['SpeechRecognition']['Format'] = Format
         body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
         body['SpeechRecognition']['WordInfo'] = WordInfo
+        if HotVocabularyTableId:
+            body['SpeechRecognition']['HotVocabularyTableId'] = HotVocabularyTableId
         xml_config = format_xml(data=body, root='Request')
         path = "/template/" + TemplateId
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)

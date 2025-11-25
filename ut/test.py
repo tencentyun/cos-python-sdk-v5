@@ -13,6 +13,7 @@ import multiprocessing
 from qcloud_cos import CosS3Client, MetaInsightClient, AIRecognitionClient
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError, CosClientError
+from qcloud_cos.intelligent_speech import IntelligentSpeechClient
 from qcloud_cos.select_event_stream import EventStream
 from qcloud_cos import get_date
 from qcloud_cos.cos_encryption_client import CosEncryptionClient
@@ -84,6 +85,7 @@ anonymous_client = CosS3Client(anonymous_conf)
 client = CosS3Client(conf, retry=3)
 meta_insight_client = MetaInsightClient(metaConf, retry=3)
 ai_recognition_client = AIRecognitionClient(conf, retry=3)
+intelligent_speech_client = IntelligentSpeechClient(conf, retry=3)
 rsa_provider = RSAProvider()
 client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
@@ -6016,6 +6018,91 @@ def test_ci_asr_bucket():
         **kwargs
     )
     assert data['AsrBucket']['Name'] == ci_bucket_name
+
+
+def test_ci_asr_hot_vocabulary_table():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        "TableName": "test",
+        "TableDescription": "test",
+        "VocabularyWeights": {
+            "Vocabulary": "abc",
+            "Weight": "10"
+        },
+        # "VocabularyWeightStr": ""
+    }
+    response, data = intelligent_speech_client.ci_create_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+        Body=body,
+        ContentType='application/xml',
+        **kwargs
+    )
+    assert data['TableId'] is not None
+
+    body = {
+        "TableId": data['TableId'],
+        "TableName": "test1",
+        "TableDescription": "test1",
+        "VocabularyWeights": {
+            "Vocabulary": "abc",
+            "Weight": "8"
+        },
+        # "VocabularyWeightStr": ""
+    }
+    response, data = intelligent_speech_client.ci_update_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+        Body=body,
+        ContentType='application/xml'
+    )
+    assert data['TableId'] is not None
+
+    response, data = intelligent_speech_client.ci_get_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+        TableId=data['TableId'],
+    )
+    assert data['TableName'] == "test1"
+
+    response = intelligent_speech_client.ci_create_asr_template(
+        Bucket=ci_bucket_name,
+        Name='speech_with_hot_table_template',
+        EngineModelType='16k_zh',
+        ChannelNum=1,
+        ResTextFormat=2,
+        HotVocabularyTableId=data['TableId']
+    )
+
+    assert response["Template"]['SpeechRecognition']['HotVocabularyTableId'] == data['TableId']
+
+    intelligent_speech_client.ci_delete_asr_template(
+        Bucket=ci_bucket_name,
+        TemplateId=response["Template"]['TemplateId'],
+    )
+
+    response, data = intelligent_speech_client.ci_list_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+    )
+    assert data["TotalCount"] != '0'
+
+    if data["TotalCount"] == '1':
+        intelligent_speech_client.ci_delete_asr_hot_vocabulary_table(
+            Bucket=ci_bucket_name,
+            TableId=data['VocabularyTable']['TableId'],
+        )
+    else:
+        for index in range (0, int(data["TotalCount"])):
+            intelligent_speech_client.ci_delete_asr_hot_vocabulary_table(
+                Bucket=ci_bucket_name,
+                TableId=data['VocabularyTable'][index]['TableId'],
+            )
+
+    response, data = intelligent_speech_client.ci_list_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+    )
+    assert data["TotalCount"] == '0'
+
+
+
+
 
 
 def test_should_switch_domain():
