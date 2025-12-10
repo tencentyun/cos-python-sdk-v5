@@ -6750,6 +6750,83 @@ def test_put_object_with_tagging():
         os.remove(filename)
     
 
+def test_put_get_symlink_multiver():
+    """测试创建和获取软链接功能"""
+    # 先上传一个目标文件
+    target_file_name = "test_symlink_target.txt"
+    symlink_name = "test_symlink.txt"
+
+    # 开启版本控制 测试带版本控制的软链接功能
+    response = client.put_bucket_versioning(
+        Bucket=test_bucket,
+        Status='Enabled',
+    )
+    
+    # 上传目标文件
+    response = client.put_object(
+        Bucket=test_bucket,
+        Body=b'hello',
+        Key=target_file_name
+    )
+    
+    # 创建软链接，指向目标文件
+    response = client.put_symlink(
+        Bucket=test_bucket,
+        SymlinkName=symlink_name,
+        SymlinkTarget=target_file_name
+    )
+    print(response)
+    
+    # 验证put_symlink响应
+    assert 'x-cos-request-id' in response
+    assert 'x-cos-version-id' in response
+    version_id = response['x-cos-version-id']
+    
+    # 获取软链接信息
+    response = client.get_symlink(
+        Bucket=test_bucket,
+        SymlinkName=symlink_name,
+        VersionId=version_id,
+    )
+    print(response)
+    
+    # 验证get_symlink响应
+    assert 'x-cos-request-id' in response
+    assert 'x-cos-symlink-target' in response
+    assert response['x-cos-symlink-target'] == target_file_name
+
+    # 读取软链接指向文件
+    response = client.get_object(
+        Bucket=test_bucket,
+        Key=symlink_name,
+    )
+    body = response['Body'].read()
+    print(response)
+    print(body)
+    assert body == b'hello'
+
+    # 获取软链接信息 -- 使用无效的verionId
+    try:
+        client.get_symlink(
+            Bucket=test_bucket,
+            SymlinkName=symlink_name,
+            VersionId='invalid-version-id',
+        )
+    except CosServiceError as e:
+        assert e.get_error_code() == 'NoSuchVersion'
+
+    # 获取软链接信息 -- 使用无效的symlinkName
+    try:
+        client.get_symlink(
+            Bucket=test_bucket,
+            SymlinkName='invalid-sym',
+        )
+    except CosServiceError as e:
+        assert e.get_error_code() == 'NoSuchKey'
+
+    # 清理测试文件
+    client.delete_object(Bucket=test_bucket, Key=symlink_name)
+    client.delete_object(Bucket=test_bucket, Key=target_file_name)
 
 if __name__ == "__main__":
     setUp()
