@@ -97,7 +97,7 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
     
-    def list_vector_buckets(self, maxResults=None, nextToken=None, prefix=None, **kwargs):
+    def list_vector_buckets(self, MaxResults=None, NextToken=None, Prefix=None, **kwargs):
         """ 获取向量存储桶列表
 
             :param kwargs:(dict) 设置上传的headers.
@@ -118,12 +118,12 @@ class CosVectorsClient(CosS3Client):
         headers = mapped(kwargs)
         headers['Content-Type'] = 'application/json'
         data = dict()
-        if maxResults is not None:
-            data['maxResults'] = maxResults
-        if nextToken is not None:
-            data['nextToken'] = nextToken
-        if prefix is not None:
-            data['prefix'] = prefix
+        if MaxResults is not None:
+            data['maxResults'] = MaxResults
+        if NextToken is not None:
+            data['nextToken'] = NextToken
+        if Prefix is not None:
+            data['prefix'] = Prefix
         
         path = "/" + "ListVectorBuckets"
         url = self._conf.uri(bucket=None, path=path, endpoint=self._conf._endpoint)
@@ -187,7 +187,7 @@ class CosVectorsClient(CosS3Client):
 
         return response
     
-    def create_index(self, Bucket, Index, dataType, dimension, distanceMetric, nonFilterableMetadataKeys, **kwargs):
+    def create_index(self, Bucket, Index, DataType, Dimension, DistanceMetric, NonFilterableMetadataKeys, **kwargs):
         """ 创建向量索引
 
             :param Bucket(string) 向量存储桶名称.
@@ -215,11 +215,11 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        data["dataType"] = dataType
-        data["dimension"] = dimension
-        data["distanceMetric"] = distanceMetric
+        data["dataType"] = DataType
+        data["dimension"] = Dimension
+        data["distanceMetric"] = DistanceMetric
         data["nonFilterableMetadataKeys"] = {}
-        data["nonFilterableMetadataKeys"]["nonFilterableMetadataKeys"] = nonFilterableMetadataKeys
+        data["nonFilterableMetadataKeys"]["nonFilterableMetadataKeys"] = NonFilterableMetadataKeys
         data["indexName"] = Index
         data["vectorBucketName"] = Bucket
 
@@ -292,7 +292,7 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
     
-    def list_indexes(self, Bucket, maxResults=None, nextToken=None, prefix=None, **kwargs):
+    def list_indexes(self, Bucket, MaxResults=None, NextToken=None, Prefix=None, **kwargs):
         """ 获取向量桶的索引列表
             :param Bucket(string) 向量存储桶名称.
             :param maxResults(int) 最大返回结果数.
@@ -308,12 +308,12 @@ class CosVectorsClient(CosS3Client):
         data = dict()
         # 构造请求数据
         data["vectorBucketName"] = Bucket
-        if maxResults is not None:
-            data["maxResults"] = maxResults
-        if nextToken is not None:
-            data["nextToken"] = nextToken
-        if prefix is not None:
-            data["prefix"] = prefix
+        if MaxResults is not None:
+            data["maxResults"] = MaxResults
+        if NextToken is not None:
+            data["nextToken"] = NextToken
+        if Prefix is not None:
+            data["prefix"] = Prefix
 
         # 构造请求URL
         path = "/" + "ListIndexes"
@@ -426,7 +426,7 @@ class CosVectorsClient(CosS3Client):
             headers=headers)
         return rt.headers
     
-    def get_vectors(self, Bucket, IndexName, Keys, returnData=None, returnMetaData=None, **kwargs):
+    def get_vectors(self, Bucket, IndexName, Keys, ReturnData=None, ReturnMetaData=None, **kwargs):
         """ 获取向量桶的索引中的向量
             :param Bucket(string) 向量存储桶名称.
             :param IndexName(string) 向量索引名称.
@@ -458,10 +458,10 @@ class CosVectorsClient(CosS3Client):
         data["indexName"] = IndexName
         data["vectorBucketName"] = Bucket
         data["keys"] = Keys
-        if returnData is not None:
-            data["returnData"] = returnData
-        if returnMetaData is not None:
-            data["returnMetaData"] = returnMetaData
+        if ReturnData is not None:
+            data["returnData"] = ReturnData
+        if ReturnMetaData is not None:
+            data["returnMetaData"] = ReturnMetaData
         
         # 构造请求URL
         path = "/" + "GetVectors"
@@ -485,8 +485,8 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
     
-    def list_vectors(self, Bucket, IndexName, maxResults=None, nextToken=None, prefix=None,
-                     returnData=None, returnMetaData=None, segmentCount=None, segmentIndex=None, **kwargs):
+    def list_vectors(self, Bucket, IndexName, MaxResults=None, NextToken=None, Prefix=None,
+                     ReturnData=None, ReturnMetaData=None, SegmentCount=None, SegmentIndex=None, **kwargs):
         """ 获取向量桶的索引中的向量列表
             :param Bucket(string) 向量存储桶名称.
             :param IndexName(string) 向量索引名称.
@@ -519,19 +519,19 @@ class CosVectorsClient(CosS3Client):
         # 构造请求数据
         data["indexName"] = IndexName
         data["vectorBucketName"] = Bucket
-        if maxResults is not None:
-            data["maxResults"] = maxResults
-        if nextToken is not None:
-            data["nextToken"] = nextToken
-        if prefix is not None:
-            data["prefix"] = prefix
-        if returnData is not None:
-            data["returnData"] = returnData
-        if returnMetaData is not None:
-            data["returnMetaData"] = returnMetaData
-        if segmentCount is not None and segmentIndex is not None:
-            data["segmentCount"] = segmentCount
-            data["segmentIndex"] = segmentIndex
+        if MaxResults is not None:
+            data["maxResults"] = MaxResults
+        if NextToken is not None:
+            data["nextToken"] = NextToken
+        if Prefix is not None:
+            data["prefix"] = Prefix
+        if ReturnData is not None:
+            data["returnData"] = ReturnData
+        if ReturnMetaData is not None:
+            data["returnMetaData"] = ReturnMetaData
+        if SegmentCount is not None and SegmentIndex is not None:
+            data["segmentCount"] = SegmentCount
+            data["segmentIndex"] = SegmentIndex
         
         # 构造请求URL
         path = "/" + "ListVectors"
@@ -600,8 +600,8 @@ class CosVectorsClient(CosS3Client):
         response = dict(**rt.headers)
         return response
     
-    def query_vectors(self, Bucket, IndexName, QueryVectorDataType, QueryVector,topK, Filter=None,
-                      returnDistance=None, returnMetaData=None, **kwargs):
+    def query_vectors(self, Bucket, IndexName, QueryVectorDataType, QueryVector,TopK, Filter=None,
+                      ReturnDistance=None, ReturnMetaData=None, **kwargs):
         """ 查询向量桶的索引中的向量
             :param Bucket(string) 向量存储桶名称.
             :param IndexName(string) 向量索引名称.
@@ -638,13 +638,13 @@ class CosVectorsClient(CosS3Client):
         data["vectorBucketName"] = Bucket
         data["queryVector"] = {}
         data["queryVector"][QueryVectorDataType] = QueryVector
-        data["topK"] = topK
+        data["topK"] = TopK
         if Filter is not None:
             data["filter"] = Filter
-        if returnDistance is not None:
-            data["returnDistance"] = returnDistance
-        if returnMetaData is not None:
-            data["returnMetaData"] = returnMetaData
+        if ReturnDistance is not None:
+            data["returnDistance"] = ReturnDistance
+        if ReturnMetaData is not None:
+            data["returnMetaData"] = ReturnMetaData
 
         # 构造请求URL
         path = "/" + "QueryVectors"
