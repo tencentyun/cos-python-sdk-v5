@@ -6722,6 +6722,47 @@ def get_vector_bucket():
     )
     return resp, data
 
+def put_vector_bucket_policy():
+    """设置向量桶策略"""
+    resource = "qcs::cosvector:" + REGION + ":uid/" + APPID + ":bucket/" + cos_vectors_bucket_name + "/*"
+    resource_list = [resource]
+    resp = cos_vectors_client.put_vector_bucket_policy(
+        Bucket=cos_vectors_bucket_name,
+        Policy={
+            "Version": "2.0",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "qcs": [
+                            "qcs::cam::anonymous:anonymous"
+                        ]
+                    },
+                    "Action": [
+                        "name/cos:GetVectorBucket",
+                        "name/cos:ListVectors"
+                    ],
+                    "Resource": resource_list
+                }
+            ]
+        }
+    )
+    return resp
+
+def get_vector_bucket_policy():
+    """获取向量桶策略"""
+    resp, data = cos_vectors_client.get_vector_bucket_policy(
+        Bucket=cos_vectors_bucket_name
+    )
+    return resp, data
+
+def delete_vector_bucket_policy():
+    """删除向量桶策略"""
+    resp = cos_vectors_client.delete_vector_bucket_policy(
+        Bucket=cos_vectors_bucket_name
+    )
+    return resp
+
 def create_index():
     """创建索引"""
     resp, data = cos_vectors_client.create_index(
@@ -6876,6 +6917,17 @@ def test_cos_vectors():
     assert 'vectorBucket' in data
     assert isinstance(data['vectorBucket'], dict)
     assert data['vectorBucket']['vectorBucketName'] == cos_vectors_bucket_name
+
+    # 创建policy
+    resp = put_vector_bucket_policy()
+
+    # 获取policy
+    resp, data = get_vector_bucket_policy()
+    assert isinstance(data, dict)
+    assert 'policy' in data
+
+    # 删除policy
+    resp = delete_vector_bucket_policy()
 
     # 创建索引
     resp, data = create_index()

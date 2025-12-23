@@ -668,5 +668,135 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
 
+    def put_vector_bucket_policy(self, Bucket, Policy, **kwargs):
+        """ 设置向量桶的策略
+            :param Bucket(string) 向量存储桶名称.
+            :param Policy(string) 策略内容.
+            :param kwargs:(dict) 设置上传的headers.
+            :return(dict): response header.
 
+            .. code-block:: python
 
+                endpoint = "cos-vectors.ap-beijing.myqcloud.com" # 设置访问向量桶的endpoint
+                config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Endpoint=endpoint)
+                client = CosVectorsClient(config)
+                # 设置向量桶的策略
+                resp = client.put_vector_bucket_policy(
+                    Bucket="examplevectorbucket-1250000000",
+                    Policy="{\"Statement\":[{\"Action\":[\"name/cos:DeleteVectorBucket\",\"name/cos:GetVectorBucket\",\"name/cos:PutVectorIndex\",\"name/cos:ListVectorIndexes\",\"name/cos:PutVectorBucketPolicy\",\"name/cos:GetVectorBucketPolicy\",\"name/cos:DeleteVectorBucketPolicy\"],\"Effect\":\"Allow\",\"Principal\":{\"qcs\":[\"qcs::cam::uin/700000000000:uin/700001234567\"]},\"Resource\":[\"qcs::cosvector:ap-guangzhou:uid/125000000:bucket/example-bucket-125000000/*\"],\"Sid\":\"bucket_action\"},{\"Action\":[\"name/cos:DeleteVectorIndex\",\"name/cos:GetVectorIndex\",\"name/cos:PutVectors\",\"name/cos:GetVectors\",\"name/cos:DeleteVectors\",\"name/cos:ListVectors\",\"name/cos:QueryVectors\"],\"Effect\":\"Allow\",\"Principal\":{\"qcs\":[\"qcs::cam::uin/700000000000:uin/700001234567\"]},\"Resource\":[\"qcs::cosvector:ap-guangzhou:uid/125000000:bucket/example-bucket-125000000/index/idx-dim3/*\"],\"Sid\":\"index_idx_dim3_action\"}],\"version\":\"2.0\"}")
+                print(resp)
+        """
+        headers = mapped(kwargs)
+        headers['Content-Type'] = 'application/json'
+        data = dict()
+        # 构造请求数据
+        policy_str = Policy # 策略内容, 可以是json格式字符串或者json格式字典
+        policy_type = type(policy_str)
+        if policy_type != str and policy_type != dict:
+            raise CosClientError("Policy must be a json format string or json format dict")
+        if policy_type == dict:
+            policy_str = json.dumps(policy_str)
+            
+        data["policy"] = policy_str
+        data["vectorBucketName"] = Bucket
+
+        # 构造请求URL
+        path = "/" + "PutVectorBucketPolicy"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint)
+
+        logger.debug("put vector bucket policy, url=:{url} ,headers=:{headers}".format(url=url, headers=headers))
+        
+        rt = self.send_request(
+            method="POST",
+            url=url,
+            data=json.dumps(data),
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path),
+            headers=headers
+        )
+        response = dict(**rt.headers)
+        return response
+
+    def get_vector_bucket_policy(self, Bucket, **kwargs):
+        """ 获取向量桶的策略
+            :param Bucket(string) 向量存储桶名称.
+            :param kwargs:(dict) 设置上传的headers.
+            :return(dict): response header.
+            :return(dict): 请求成功返回的结果,dict类型.
+
+            .. code-block:: python
+
+                endpoint = "cos-vectors.ap-beijing.myqcloud.com" # 设置访问向量桶的endpoint
+                config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Endpoint=endpoint)
+                client = CosVectorsClient(config)
+                # 获取向量桶的策略
+                resp, data = client.get_vector_bucket_policy(
+                    Bucket="examplevectorbucket-1250000000")
+                print(resp)
+                print(data)
+        """
+        headers = mapped(kwargs)
+        headers['Content-Type'] = 'application/json'
+        data = dict()
+        # 构造请求数据
+        data["vectorBucketName"] = Bucket
+
+        # 构造请求URL
+        path = "/" + "GetVectorBucketPolicy"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint)
+        
+        logger.debug("get vector bucket policy, url=:{url} ,headers=:{headers}".format(url=url, headers=headers))
+        
+        rt = self.send_request(
+            method="POST",
+            url=url,
+            data=json.dumps(data),
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path),
+            headers=headers
+        )
+        data = rt.content
+        response = dict(**rt.headers)
+        if 'Content-Type' in response and response['Content-Type'].startswith('application/json'):
+            data = rt.json()
+
+        return response, data
+
+    def delete_vector_bucket_policy(self, Bucket, **kwargs):
+        """ 删除向量桶的策略
+            :param Bucket(string) 向量存储桶名称.
+            :param kwargs:(dict) 设置上传的headers.
+            :return(dict): response header.
+
+            .. code-block:: python
+
+                endpoint = "cos-vectors.ap-beijing.myqcloud.com" # 设置访问向量桶的endpoint
+                config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Endpoint=endpoint)
+                client = CosVectorsClient(config)
+                # 删除向量桶的策略
+                resp = client.delete_vector_bucket_policy(
+                    Bucket="examplevectorbucket-1250000000")
+                print(resp)
+        """
+        headers = mapped(kwargs)
+        headers['Content-Type'] = 'application/json'
+        data = dict()
+        # 构造请求数据
+        data["vectorBucketName"] = Bucket
+
+        # 构造请求URL
+        path = "/" + "DeleteVectorBucketPolicy"
+        url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint)
+        
+        logger.debug("delete vector bucket policy, url=:{url} ,headers=:{headers}".format(url=url, headers=headers))
+        
+        rt = self.send_request(
+            method="POST",
+            url=url,
+            data=json.dumps(data),
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, path),
+            headers=headers
+        )
+        response = dict(**rt.headers)
+        return response
