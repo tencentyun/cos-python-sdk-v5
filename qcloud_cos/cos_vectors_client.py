@@ -8,10 +8,11 @@ from .cos_comm import *
 
 class CosVectorsClient(CosS3Client):
 
-    def create_vector_bucket(self, Bucket, **kwargs):
+    def create_vector_bucket(self, Bucket, SseType=None, **kwargs):
         """ 创建向量存储桶
 
             :param Bucket(string) 向量存储桶名称.
+            :param SseType(string) 存储桶加密类型.
             :param kwargs:(dict) 设置上传的headers.
             :return(dict): response header.
 
@@ -21,13 +22,15 @@ class CosVectorsClient(CosS3Client):
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Endpoint=endpoint)
                 client = CosVectorsClient(config)
                 # 创建向量桶
-                resp, data = client.create_vector_bucket(Bucket="examplevectorbucket-1250000000")
+                resp, data = client.create_vector_bucket(Bucket="examplevectorbucket-1250000000", SseType="AES256")
                 print(resp)
                 print(data)
         """
         headers = mapped(kwargs)
         data = dict()
         data['vectorBucketName'] = Bucket
+        if SseType is not None:
+            data['encryptionConfiguration'] = {'sseType': SseType}
         headers['Content-Type'] = 'application/json'
 
         path = "/" + "CreateVectorBucket"
@@ -187,7 +190,7 @@ class CosVectorsClient(CosS3Client):
 
         return response
     
-    def create_index(self, Bucket, Index, DataType, Dimension, DistanceMetric, NonFilterableMetadataKeys, **kwargs):
+    def create_index(self, Bucket, Index, DataType, Dimension, DistanceMetric, NonFilterableMetadataKeys=None, **kwargs):
         """ 创建向量索引
 
             :param Bucket(string) 向量存储桶名称.
@@ -218,8 +221,8 @@ class CosVectorsClient(CosS3Client):
         data["dataType"] = DataType
         data["dimension"] = Dimension
         data["distanceMetric"] = DistanceMetric
-        data["nonFilterableMetadataKeys"] = {}
-        data["nonFilterableMetadataKeys"]["nonFilterableMetadataKeys"] = NonFilterableMetadataKeys
+        if NonFilterableMetadataKeys is not None:
+            data["metadataConfiguration"] = {"nonFilterableMetadataKeys": NonFilterableMetadataKeys}
         data["indexName"] = Index
         data["vectorBucketName"] = Bucket
 
@@ -245,10 +248,10 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
     
-    def get_index(self, Bucket, IndexName, **kwargs):
+    def get_index(self, Bucket, Index, **kwargs):
         """ 获取向量桶的索引信息
             :param Bucket(string) 向量存储桶名称.
-            :param IndexName(string) 向量索引名称.
+            :param Index(string) 向量索引名称.
             :param kwargs:(dict) 设置上传的headers.
             :return(dict): response header.
             :return(dict): 请求成功返回的结果,dict类型.
@@ -259,7 +262,7 @@ class CosVectorsClient(CosS3Client):
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Endpoint=endpoint)
                 client = CosVectorsClient(config)
                 # 获取向量桶的索引信息
-                resp, data = client.get_index(Bucket="examplevectorbucket-1250000000", IndexName="exampleindex")
+                resp, data = client.get_index(Bucket="examplevectorbucket-1250000000", Index="exampleindex")
                 print(resp)
                 print(data)
         """
@@ -267,7 +270,7 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        data["indexName"] = IndexName
+        data["indexName"] = Index
         data["vectorBucketName"] = Bucket
 
         # 构造请求URL
@@ -337,10 +340,10 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
     
-    def delete_index(self, Bucket, IndexName, **kwargs):
+    def delete_index(self, Bucket, Index, **kwargs):
         """ 删除向量桶的索引
             :param Bucket(string) 向量存储桶名称.
-            :param IndexName(string) 向量索引名称.
+            :param Index(string) 向量索引名称.
             :param kwargs:(dict) 设置上传的headers.
             :return(dict): response header.
         """
@@ -348,7 +351,7 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        data["indexName"] = IndexName
+        data["indexName"] = Index
         data["vectorBucketName"] = Bucket
 
         # 构造请求URL
@@ -370,12 +373,12 @@ class CosVectorsClient(CosS3Client):
 
         return response
     
-    def put_vectors(self, Bucket, IndexName, Vectors, **kwargs):
+    def put_vectors(self, Bucket, Index, Vectors, **kwargs):
         """ 在向量桶的索引中添加或更新向量
 
             :param Bucket(string) 向量存储桶名称.
-            :param IndexName(string) 索引名称.
-            :param Vectors(list) 向量列表.
+            :param Index(string) 索引名称.
+            :param Vectors(list) 向量列表, 例如[{"key": "key1", "data": {"float32": [0.1] * 128}, "metadata": {"d1": "value1"}}].
             :param kwargs:(dict) 设置上传的headers.
             :return(dict): response header.
 
@@ -400,13 +403,13 @@ class CosVectorsClient(CosS3Client):
                 # 添加或更新向量
                 resp = client.put_vectors(
                     Bucket="examplevectorbucket-1250000000",
-                    IndexName="example-index",
+                    Index="example-index",
                     Vectors=vectors)
                 print(resp)
         """
         headers = mapped(kwargs)
         data = dict()
-        data['indexName'] = IndexName
+        data['indexName'] = Index
         data['vectorBucketName'] = Bucket
         data['vectors'] = Vectors
         headers['Content-Type'] = 'application/json'
@@ -426,10 +429,10 @@ class CosVectorsClient(CosS3Client):
             headers=headers)
         return rt.headers
     
-    def get_vectors(self, Bucket, IndexName, Keys, ReturnData=None, ReturnMetaData=None, **kwargs):
+    def get_vectors(self, Bucket, Index, Keys, ReturnData=None, ReturnMetaData=None, **kwargs):
         """ 获取向量桶的索引中的向量
             :param Bucket(string) 向量存储桶名称.
-            :param IndexName(string) 向量索引名称.
+            :param Index(string) 向量索引名称.
             :param Keys(list) 向量键列表.
             :param returnData(bool) 是否返回向量数据.
             :param returnMetaData(bool) 是否返回向量元数据.
@@ -445,7 +448,7 @@ class CosVectorsClient(CosS3Client):
                 # 获取向量
                 resp, data = client.get_vectors(
                     Bucket="examplevectorbucket-1250000000",
-                    IndexName="example-index",
+                    Index="example-index",
                     Keys=["key1", "key2"])
                 print(resp)
                 print(data)
@@ -455,7 +458,7 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        data["indexName"] = IndexName
+        data["indexName"] = Index
         data["vectorBucketName"] = Bucket
         data["keys"] = Keys
         if ReturnData is not None:
@@ -485,11 +488,11 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
     
-    def list_vectors(self, Bucket, IndexName, MaxResults=None, NextToken=None, Prefix=None,
+    def list_vectors(self, Bucket, Index, MaxResults=None, NextToken=None, 
                      ReturnData=None, ReturnMetaData=None, SegmentCount=None, SegmentIndex=None, **kwargs):
         """ 获取向量桶的索引中的向量列表
             :param Bucket(string) 向量存储桶名称.
-            :param IndexName(string) 向量索引名称.
+            :param Index(string) 向量索引名称.
             :param maxResults(int) 最大返回结果数.
             :param nextToken(string) 下一次请求的token.
             :param prefix(string) 向量键前缀.
@@ -509,7 +512,7 @@ class CosVectorsClient(CosS3Client):
                 # 获取向量列表
                 resp, data = client.list_vectors(
                     Bucket="examplevectorbucket-1250000000",
-                    IndexName="example-index")
+                    Index="example-index")
                 print(resp)
                 print(data)
         """
@@ -517,14 +520,12 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        data["indexName"] = IndexName
+        data["indexName"] = Index
         data["vectorBucketName"] = Bucket
         if MaxResults is not None:
             data["maxResults"] = MaxResults
         if NextToken is not None:
             data["nextToken"] = NextToken
-        if Prefix is not None:
-            data["prefix"] = Prefix
         if ReturnData is not None:
             data["returnData"] = ReturnData
         if ReturnMetaData is not None:
@@ -555,10 +556,10 @@ class CosVectorsClient(CosS3Client):
 
         return response, data
     
-    def delete_vectors(self, Bucket, IndexName, Keys, **kwargs):
+    def delete_vectors(self, Bucket, Index, Keys, **kwargs):
         """ 删除向量桶的索引中的向量
             :param Bucket(string) 向量存储桶名称.
-            :param IndexName(string) 向量索引名称.
+            :param Index(string) 向量索引名称.
             :param Keys(list) 向量键列表.
             :param kwargs:(dict) 设置上传的headers.
             :return(dict): response header.
@@ -571,7 +572,7 @@ class CosVectorsClient(CosS3Client):
                 # 删除向量
                 resp = client.delete_vectors(
                     Bucket="examplevectorbucket-1250000000",
-                    IndexName="example-index",
+                    Index="example-index",
                     Keys=["key1", "key2"])
                 print(resp)
         """
@@ -579,7 +580,7 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        data["indexName"] = IndexName
+        data["indexName"] = Index
         data["vectorBucketName"] = Bucket
         data["keys"] = Keys
 
@@ -600,13 +601,12 @@ class CosVectorsClient(CosS3Client):
         response = dict(**rt.headers)
         return response
     
-    def query_vectors(self, Bucket, IndexName, QueryVectorDataType, QueryVector,TopK, Filter=None,
+    def query_vectors(self, Bucket, Index, QueryVector, TopK, Filter=None,
                       ReturnDistance=None, ReturnMetaData=None, **kwargs):
         """ 查询向量桶的索引中的向量
             :param Bucket(string) 向量存储桶名称.
-            :param IndexName(string) 向量索引名称.
-            :param QueryVectorDataType(string) 查询向量数据类型, 如float32.
-            :param QueryVector(list) 查询向量的列表表示, 如[1.0, 2.0, 3.0].
+            :param Index(string) 向量索引名称.
+            :param QueryVector(dict) 查询向量的表示, 如{"float32":[1.0, 2.0, 3.0]}.
             :param topK(int) 返回结果数.
             :param Filter(dict) 过滤条件, 语法详见接口文档.
             :param returnDistance(bool) 是否返回距离.
@@ -623,9 +623,8 @@ class CosVectorsClient(CosS3Client):
                 # 查询向量
                 resp, data = client.query_vectors(
                     Bucket="examplevectorbucket-1250000000",
-                    IndexName="example-index",
-                    QueryVectorDataType="float32",
-                    QueryVector=[1.0, 2.0, 3.0],
+                    Index="example-index",
+                    QueryVector={"float32":[1.0, 2.0, 3.0]},
                     topK=10)
                 print(resp)
                 print(data)
@@ -634,10 +633,9 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        data["indexName"] = IndexName
+        data["indexName"] = Index
         data["vectorBucketName"] = Bucket
-        data["queryVector"] = {}
-        data["queryVector"][QueryVectorDataType] = QueryVector
+        data["queryVector"] = QueryVector
         data["topK"] = TopK
         if Filter is not None:
             data["filter"] = Filter

@@ -32,6 +32,10 @@ FAILURE_MOCK_SERVER = os.environ['ERR_HOST']
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 
+# 向量桶配置
+COS_VECTORS_APPID = os.environ["COS_VECTORS_APPID"]
+COS_VECTORS_SECRET_ID = os.environ["COS_VECTORS_SECRET_ID"]
+COS_VECTORS_SECRET_KEY = os.environ["COS_VECTORS_SECRET_KEY"]
 COS_VECTORS_REGION = os.environ["COS_VECTORS_REGION"]
 COS_VECTORS_USE_IP = os.environ["COS_VECTORS_USE_IP"] # 为true则需指定IP,Port,Domain
 if COS_VECTORS_USE_IP == 'true':
@@ -88,20 +92,22 @@ metaConf = CosConfig(
 
 if COS_VECTORS_USE_IP == 'true':
     cosVectorsConf = CosConfig(
-        Appid=APPID,
+        Scheme='http',
+        Appid=COS_VECTORS_APPID,
         Region=COS_VECTORS_REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
+        SecretId=COS_VECTORS_SECRET_ID,
+        SecretKey=COS_VECTORS_SECRET_KEY,
         IP=COS_VECTORS_IP,
         Port=COS_VECTORS_PORT,
         Domain=COS_VECTORS_DOMAIN,
     )
 else:
     cosVectorsConf = CosConfig(
-        Appid=APPID,
+        Scheme='http',
+        Appid=COS_VECTORS_APPID,
         Region=COS_VECTORS_REGION,
-        SecretId=SECRET_ID,
-        SecretKey=SECRET_KEY,
+        SecretId=COS_VECTORS_SECRET_ID,
+        SecretKey=COS_VECTORS_SECRET_KEY,
     )
 
 anonymous_conf = CosConfig(Appid=APPID, Region=REGION, Anonymous=True)
@@ -134,7 +140,7 @@ mi_image_search_dataset_name = "ci-sdk-image-search"
 mi_face_search_dataset_name = "ci-sdk-face-search"
 mi_face_search_file = "face.jpeg"
 
-cos_vectors_bucket_name = 'cos-python-v5-test-vec-' + APPID
+cos_vectors_bucket_name = 'cos-python-v5-test-vec-' + COS_VECTORS_APPID
 cos_vectors_index_name = 'idx-float32-dim3'
 
 
@@ -6696,7 +6702,8 @@ def test_put_object_with_tagging():
 def create_vector_bucket():
     """创建向量桶"""
     resp, data = cos_vectors_client.create_vector_bucket(
-        Bucket=cos_vectors_bucket_name
+        Bucket=cos_vectors_bucket_name,
+        SseType='AES256'
     )
     return resp, data
 
@@ -6724,7 +6731,7 @@ def get_vector_bucket():
 
 def put_vector_bucket_policy():
     """设置向量桶策略"""
-    resource = "qcs::cosvector:" + REGION + ":uid/" + APPID + ":bucket/" + cos_vectors_bucket_name + "/*"
+    resource = "qcs::cosvector:" + COS_VECTORS_REGION + ":uid/" + COS_VECTORS_APPID + ":bucket/" + cos_vectors_bucket_name + "/*"
     resource_list = [resource]
     resp = cos_vectors_client.put_vector_bucket_policy(
         Bucket=cos_vectors_bucket_name,
@@ -6878,9 +6885,8 @@ def query_vectors(query_vector, filter = None):
     """查询向量"""
     resp, data = cos_vectors_client.query_vectors(
         Bucket=cos_vectors_bucket_name,
-        IndexName=cos_vectors_index_name,
-        QueryVectorDataType='float32',
-        QueryVector=query_vector,
+        Index=cos_vectors_index_name,
+        QueryVector={"float32":query_vector},
         topK=1,
         Filter=filter,
         ReturnDistance=True,
