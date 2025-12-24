@@ -6887,7 +6887,7 @@ def query_vectors(query_vector, filter = None):
         Bucket=cos_vectors_bucket_name,
         Index=cos_vectors_index_name,
         QueryVector={"float32":query_vector},
-        topK=1,
+        TopK=1,
         Filter=filter,
         ReturnDistance=True,
         ReturnMetaData=True
@@ -6983,7 +6983,7 @@ def test_cos_vectors():
     assert vector['key'] == 'vector1'   # vector1距离最近
 
     # 删除向量再查询
-    resp = delete_vectors('vector1')
+    resp = delete_vectors(['vector1'])
     resp, data = query_vectors([0.1, 0.2, 0.3])
     assert isinstance(data, dict)
     assert 'vectors' in data
@@ -6993,7 +6993,7 @@ def test_cos_vectors():
     assert vector['key'] == 'vector2'   # vectorr1被删除, vector2距离最近
 
     # 过滤查询
-    resp, data = query_vectors([0.1, 0.2, 0.3], filter='key1=value111')
+    resp, data = query_vectors([0.1, 0.2, 0.3], filter={'key1':{'$eq':'value111'}})
     assert isinstance(data, dict)
     assert 'vectors' in data
     assert isinstance(data['vectors'], list)
