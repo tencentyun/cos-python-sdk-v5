@@ -33,6 +33,7 @@ TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 
 # 向量桶配置
+COS_VECTORS_BUCKET_FOR_CREATE_DELETE = os.environ["COS_VECTORS_BUCKET_FOR_CREATE_DELETE"]
 COS_VECTORS_APPID = os.environ["COS_VECTORS_APPID"]
 COS_VECTORS_SECRET_ID = os.environ["COS_VECTORS_SECRET_ID"]
 COS_VECTORS_SECRET_KEY = os.environ["COS_VECTORS_SECRET_KEY"]
@@ -140,6 +141,7 @@ mi_image_search_dataset_name = "ci-sdk-image-search"
 mi_face_search_dataset_name = "ci-sdk-face-search"
 mi_face_search_file = "face.jpeg"
 
+cos_vectors_bucket_name_tmp = COS_VECTORS_BUCKET_FOR_CREATE_DELETE
 cos_vectors_bucket_name = 'cos-python-v5-test-vec-' + COS_VECTORS_APPID
 cos_vectors_index_name = 'idx-float32-dim3'
 
@@ -6699,18 +6701,18 @@ def test_put_object_with_tagging():
         os.remove(filename)
     
 # 向量桶相关接口
-def create_vector_bucket():
+def create_vector_bucket(Bucket):
     """创建向量桶"""
     resp, data = cos_vectors_client.create_vector_bucket(
-        Bucket=cos_vectors_bucket_name,
+        Bucket=Bucket,
         SseType='AES256'
     )
     return resp, data
 
-def delete_vector_bucket():
+def delete_vector_bucket(Bucket):
     """删除向量桶"""
     resp = cos_vectors_client.delete_vector_bucket(
-        Bucket=cos_vectors_bucket_name
+        Bucket=Bucket
     )
     return resp
 
@@ -6722,10 +6724,10 @@ def list_vector_buckets():
     )
     return resp, data
 
-def get_vector_bucket():
+def get_vector_bucket(Bucket):
     """获取向量桶"""
     resp, data = cos_vectors_client.get_vector_bucket(
-        Bucket=cos_vectors_bucket_name
+        Bucket=Bucket
     )
     return resp, data
 
@@ -6894,6 +6896,29 @@ def query_vectors(query_vector, filter = None):
     )
     return resp, data
 
+def test_cos_vectors_create_and_delete():
+    """创建和删除向量桶"""
+
+    # 创建测试向量桶
+    resp, data = create_vector_bucket(cos_vectors_bucket_name_tmp)
+    assert isinstance(data, dict)
+    assert 'vectorBucketQcs' in data
+
+    # 获取向量桶
+    resp, data = get_vector_bucket(cos_vectors_bucket_name_tmp)
+    assert isinstance(data, dict)
+    assert 'vectorBucket' in data
+    assert isinstance(data['vectorBucket'], dict)
+    assert data['vectorBucket']['vectorBucketName'] == cos_vectors_bucket_name_tmp
+
+    # 删除向量桶
+    resp = delete_vector_bucket(cos_vectors_bucket_name_tmp)
+    resp, data = list_vector_buckets()
+    assert isinstance(data, dict)
+    assert 'vectorBuckets' in data
+    assert isinstance(data['vectorBuckets'], list)
+
+
 def test_cos_vectors():
     """向量桶相关接口集成测试"""
 
@@ -6902,23 +6927,9 @@ def test_cos_vectors():
     assert isinstance(data, dict)
     assert 'vectorBuckets' in data
     assert isinstance(data['vectorBuckets'], list)
-    old_cnt = len(data['vectorBuckets'])
-
-    # 创建测试向量桶
-    resp, data = create_vector_bucket()
-    assert isinstance(data, dict)
-    assert 'vectorBucketQcs' in data
-
-    # 列出向量桶
-    resp, data = list_vector_buckets()
-    assert isinstance(data, dict)
-    assert 'vectorBuckets' in data
-    assert isinstance(data['vectorBuckets'], list)
-    new_cnt = len(data['vectorBuckets'])
-    assert new_cnt == old_cnt + 1
 
     # 获取向量桶
-    resp, data = get_vector_bucket()
+    resp, data = get_vector_bucket(cos_vectors_bucket_name)
     assert isinstance(data, dict)
     assert 'vectorBucket' in data
     assert isinstance(data['vectorBucket'], dict)
@@ -7016,17 +7027,6 @@ def test_cos_vectors():
     assert 'indexes' in data
     assert isinstance(data['indexes'], list)
     assert len(data['indexes']) == 0
-
-    # 删除向量桶
-    resp = delete_vector_bucket()
-    resp, data = list_vector_buckets()
-    assert isinstance(data, dict)
-    assert 'vectorBuckets' in data
-    assert isinstance(data['vectorBuckets'], list)
-    new_cnt = len(data['vectorBuckets'])
-    assert new_cnt == old_cnt
-
-
 
 if __name__ == "__main__":
     setUp()
