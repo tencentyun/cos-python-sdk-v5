@@ -1,7 +1,7 @@
 # -*- coding=utf-8
 
 from qcloud_cos import CosConfig
-from qcloud_cos import CosS3Client
+from qcloud_cos.intelligent_speech import IntelligentSpeechClient
 
 import os
 import sys
@@ -22,7 +22,7 @@ token = None  # 如果使用永久密钥不需要填入token，如果使用临�
 
 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key,
                    Token=token)  # 获取配置对象
-client = CosS3Client(config)
+client = IntelligentSpeechClient(config)
 
 bucket_name = 'examplebucket-1250000000'
 
@@ -181,6 +181,79 @@ def ci_delete_asr_template():
     print(response)
     return response
 
+def ci_create_asr_hot_vocabulary_table():
+    # 创建语音识别热词表
+    body = {
+        "TableName": "test",
+        "TableDescription": "test",
+        "VocabularyWeights": {
+            "Vocabulary": "abc",
+            "Weight": "10"
+        },
+        # "VocabularyWeightStr": ""
+    }
+    response, data = client.ci_create_asr_hot_vocabulary_table(
+        Bucket=bucket_name,
+        Body=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    print(data)
+    return response, data
+
+
+def ci_update_asr_hot_vocabulary_table():
+    # 更新语音识别热词表
+    body = {
+        "TableId": "08417b95c91xxxxxxxxxxxxx",
+        "TableName": "test1",
+        "TableDescription": "test1",
+        "VocabularyWeights": {
+            "Vocabulary": "abc",
+            "Weight": "8"
+        },
+        # "VocabularyWeightStr": ""
+    }
+    response, data = client.ci_update_asr_hot_vocabulary_table(
+        Bucket=bucket_name,
+        Body=body,
+        ContentType='application/xml'
+    )
+    print(response)
+    print(data)
+    return response, data
+
+
+def ci_get_asr_hot_vocabulary_table():
+    # 获取指定语音识别热词表
+    response, data = client.ci_get_asr_hot_vocabulary_table(
+        Bucket=bucket_name,
+        TableId='08417b95c91xxxxxxxxxxxxx',
+    )
+    print(response)
+    print(data)
+    return response, data
+
+
+def ci_list_asr_hot_vocabulary_table():
+    # 获取语音识别热词表列表
+    response, data = client.ci_list_asr_hot_vocabulary_table(
+        Bucket=bucket_name,
+    )
+    print(response)
+    print(data)
+    return response, data
+
+def ci_delete_asr_hot_vocabulary_table():
+    # 删除指定语音识别热词表
+    response, data = client.ci_delete_asr_hot_vocabulary_table(
+        Bucket=bucket_name,
+        TableId='08417b95c91xxxxxxxxxxxxx',
+    )
+    print(response)
+    print(data)
+    return response, data
+
 
 if __name__ == '__main__':
     # ci_get_asr_bucket()
@@ -195,4 +268,9 @@ if __name__ == '__main__':
     # ci_list_asr_jobs()
     # ci_close_asr_bucket()
     # ci_open_asr_bucket()
-    ci_get_asr_bucket()
+    # ci_get_asr_bucket()
+    # ci_create_asr_hot_vocabulary_table()
+    # ci_update_asr_hot_vocabulary_table()
+    # ci_get_asr_hot_vocabulary_table()
+    # ci_list_asr_hot_vocabulary_table()
+    ci_delete_asr_hot_vocabulary_table()

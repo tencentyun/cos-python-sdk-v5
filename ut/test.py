@@ -13,6 +13,7 @@ import multiprocessing
 from qcloud_cos import CosS3Client, MetaInsightClient, CosVectorsClient, AIRecognitionClient
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError, CosClientError
+from qcloud_cos.intelligent_speech import IntelligentSpeechClient
 from qcloud_cos.select_event_stream import EventStream
 from qcloud_cos import get_date
 from qcloud_cos.cos_encryption_client import CosEncryptionClient
@@ -118,6 +119,7 @@ client = CosS3Client(conf, retry=3)
 meta_insight_client = MetaInsightClient(metaConf, retry=3)
 cos_vectors_client = CosVectorsClient(cosVectorsConf, retry=3)
 ai_recognition_client = AIRecognitionClient(conf, retry=3)
+intelligent_speech_client = IntelligentSpeechClient(conf, retry=3)
 rsa_provider = RSAProvider()
 client_for_rsa = CosEncryptionClient(conf, rsa_provider)
 aes_provider = AESProvider()
@@ -6056,6 +6058,91 @@ def test_ci_asr_bucket():
     assert data['AsrBucket']['Name'] == ci_bucket_name
 
 
+def test_ci_asr_hot_vocabulary_table():
+    kwargs = {"CacheControl": "no-cache", "ResponseCacheControl": "no-cache"}
+    body = {
+        "TableName": "test",
+        "TableDescription": "test",
+        "VocabularyWeights": {
+            "Vocabulary": "abc",
+            "Weight": "10"
+        },
+        # "VocabularyWeightStr": ""
+    }
+    response, data = intelligent_speech_client.ci_create_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+        Body=body,
+        ContentType='application/xml',
+        **kwargs
+    )
+    assert data['TableId'] is not None
+
+    body = {
+        "TableId": data['TableId'],
+        "TableName": "test1",
+        "TableDescription": "test1",
+        "VocabularyWeights": {
+            "Vocabulary": "abc",
+            "Weight": "8"
+        },
+        # "VocabularyWeightStr": ""
+    }
+    response, data = intelligent_speech_client.ci_update_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+        Body=body,
+        ContentType='application/xml'
+    )
+    assert data['TableId'] is not None
+
+    response, data = intelligent_speech_client.ci_get_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+        TableId=data['TableId'],
+    )
+    assert data['TableName'] == "test1"
+
+    response = intelligent_speech_client.ci_create_asr_template(
+        Bucket=ci_bucket_name,
+        Name='speech_with_hot_table_template',
+        EngineModelType='16k_zh',
+        ChannelNum=1,
+        ResTextFormat=2,
+        HotVocabularyTableId=data['TableId']
+    )
+
+    assert response["Template"]['SpeechRecognition']['HotVocabularyTableId'] == data['TableId']
+
+    intelligent_speech_client.ci_delete_asr_template(
+        Bucket=ci_bucket_name,
+        TemplateId=response["Template"]['TemplateId'],
+    )
+
+    response, data = intelligent_speech_client.ci_list_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+    )
+    assert data["TotalCount"] != '0'
+
+    if data["TotalCount"] == '1':
+        intelligent_speech_client.ci_delete_asr_hot_vocabulary_table(
+            Bucket=ci_bucket_name,
+            TableId=data['VocabularyTable']['TableId'],
+        )
+    else:
+        for index in range (0, int(data["TotalCount"])):
+            intelligent_speech_client.ci_delete_asr_hot_vocabulary_table(
+                Bucket=ci_bucket_name,
+                TableId=data['VocabularyTable'][index]['TableId'],
+            )
+
+    response, data = intelligent_speech_client.ci_list_asr_hot_vocabulary_table(
+        Bucket=ci_bucket_name,
+    )
+    assert data["TotalCount"] == '0'
+
+
+
+
+
+
 def test_should_switch_domain():
     test_conf = CosConfig(
         Region=REGION, SecretId=SECRET_ID, SecretKey=SECRET_KEY, AutoSwitchDomainOnRetry=True)
@@ -6700,6 +6787,7 @@ def test_put_object_with_tagging():
     if os.path.exists(filename):
         os.remove(filename)
     
+    
 # 向量桶相关接口
 def create_vector_bucket(Bucket):
     """创建向量桶"""
@@ -7027,6 +7115,85 @@ def test_cos_vectors():
     assert 'indexes' in data
     assert isinstance(data['indexes'], list)
     assert len(data['indexes']) == 0
+
+
+def test_put_get_symlink_multiver():
+    """测试创建和获取软链接功能"""
+    # 先上传一个目标文件
+    target_file_name = "test_symlink_target.txt"
+    symlink_name = "test_symlink.txt"
+
+    # 开启版本控制 测试带版本控制的软链接功能
+    response = client.put_bucket_versioning(
+        Bucket=test_bucket,
+        Status='Enabled',
+    )
+    
+    # 上传目标文件
+    response = client.put_object(
+        Bucket=test_bucket,
+        Body=b'hello',
+        Key=target_file_name
+    )
+    
+    # 创建软链接，指向目标文件
+    response = client.put_symlink(
+        Bucket=test_bucket,
+        SymlinkName=symlink_name,
+        SymlinkTarget=target_file_name
+    )
+    print(response)
+    
+    # 验证put_symlink响应
+    assert 'x-cos-request-id' in response
+    assert 'x-cos-version-id' in response
+    version_id = response['x-cos-version-id']
+    
+    # 获取软链接信息
+    response = client.get_symlink(
+        Bucket=test_bucket,
+        SymlinkName=symlink_name,
+        VersionId=version_id,
+    )
+    print(response)
+    
+    # 验证get_symlink响应
+    assert 'x-cos-request-id' in response
+    assert 'x-cos-symlink-target' in response
+    assert response['x-cos-symlink-target'] == target_file_name
+
+    # 读取软链接指向文件
+    response = client.get_object(
+        Bucket=test_bucket,
+        Key=symlink_name,
+    )
+    body = response['Body'].read()
+    print(response)
+    print(body)
+    assert body == b'hello'
+
+    # 获取软链接信息 -- 使用无效的verionId
+    try:
+        client.get_symlink(
+            Bucket=test_bucket,
+            SymlinkName=symlink_name,
+            VersionId='invalid-version-id',
+        )
+    except CosServiceError as e:
+        assert e.get_error_code() == 'NoSuchVersion'
+
+    # 获取软链接信息 -- 使用无效的symlinkName
+    try:
+        client.get_symlink(
+            Bucket=test_bucket,
+            SymlinkName='invalid-sym',
+        )
+    except CosServiceError as e:
+        assert e.get_error_code() == 'NoSuchKey'
+
+    # 清理测试文件
+    client.delete_object(Bucket=test_bucket, Key=symlink_name)
+    client.delete_object(Bucket=test_bucket, Key=target_file_name)
 
 if __name__ == "__main__":
     setUp()

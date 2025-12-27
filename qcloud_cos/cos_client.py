@@ -4576,6 +4576,86 @@ class CosS3Client(object):
         )
         return response
 
+    def put_symlink(self, Bucket, SymlinkName, SymlinkTarget, **kwargs):
+        """创建软链接
+
+        :param Bucket(string): 存储桶名称.
+        :param SymlinkName(string): 软链接路径.
+        :param SymlinkTarget(string): 目标路径.
+        :kwargs(dict): 公共请求头部.
+        :return: 请求的响应头部.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 创建软链接
+            response = client.put_symlink(
+                Bucket='bucket-1250000000',
+                SymlinkName='testsym.txt',
+                SymlinkTarget='test.txt',
+            )
+        """
+
+        headers = mapped(kwargs)
+        headers['x-cos-symlink-target'] = SymlinkTarget
+        params = {'symlink': ''}
+
+        url = self._conf.uri(bucket=Bucket, path=SymlinkName)
+        logger.debug("put symlink, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, SymlinkName, params=params),
+            headers=headers,
+            params=params)
+        response = dict(**rt.headers)
+        return response
+
+    def get_symlink(self, Bucket, SymlinkName, **kwargs):
+        """获取软链接本身
+
+        :param Bucket(string): 存储桶名称.
+        :param SymlinkName(string): 软链接路径.
+        :kwargs(dict): 公共请求头部.
+        :return: 请求的响应头部.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取软链接本身
+            response = client.get_symlink(
+                Bucket='bucket-1250000000',
+                SymlinkName='testsym.txt',
+            )
+        """
+
+        headers = mapped(kwargs)
+        params = {'symlink': ''}
+
+        if 'versionId' in headers:
+            params['versionId'] = headers['versionId']
+            del headers['versionId']
+        params = format_values(params)
+
+        url = self._conf.uri(bucket=Bucket, path=SymlinkName)
+        logger.debug("get symlink, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, SymlinkName, params=params),
+            headers=headers,
+            params=params)
+        response = dict(**rt.headers)
+        return response
+
     def put_bucket_encryption(self, Bucket, ServerSideEncryptionConfiguration={}, **kwargs):
         """设置执行存储桶下的默认加密配置
 
@@ -9568,7 +9648,7 @@ class CosS3Client(object):
 
     def ci_create_asr_template(self, Bucket, Name, EngineModelType, ChannelNum=None,
                                ResTextFormat=None, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
-                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, HotVocabularyTableId=None, **kwargs):
         """ 创建语音识别模板接口 https://cloud.tencent.com/document/product/460/78939
 
         :param Bucket(string): 存储桶名称.
@@ -9654,6 +9734,8 @@ class CosS3Client(object):
             body['SpeechRecognition']['Format'] = Format
         body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
         body['SpeechRecognition']['WordInfo'] = WordInfo
+        if HotVocabularyTableId:
+            body['SpeechRecognition']['HotVocabularyTableId'] = HotVocabularyTableId
 
         xml_config = format_xml(data=body, root='Request')
         path = "/template"
@@ -9678,7 +9760,7 @@ class CosS3Client(object):
 
     def ci_update_asr_template(self, Bucket, TemplateId, Name, EngineModelType, ChannelNum,
                                ResTextFormat, FilterDirty=0, FilterModal=0, ConvertNumMode=0, SpeakerDiarization=0,
-                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, **kwargs):
+                               SpeakerNumber=0, FilterPunc=0, OutputFileType='txt', FlashAsr=False, Format=None, FirstChannelOnly=1, WordInfo=0, HotVocabularyTableId=None, **kwargs):
         """ 更新语音识别模板接口 https://cloud.tencent.com/document/product/460/78942
 
         :param Bucket(string): 存储桶名称.
@@ -9766,6 +9848,8 @@ class CosS3Client(object):
             body['SpeechRecognition']['Format'] = Format
         body['SpeechRecognition']['FirstChannelOnly'] = FirstChannelOnly
         body['SpeechRecognition']['WordInfo'] = WordInfo
+        if HotVocabularyTableId:
+            body['SpeechRecognition']['HotVocabularyTableId'] = HotVocabularyTableId
         xml_config = format_xml(data=body, root='Request')
         path = "/template/" + TemplateId
         url = self._conf.uri(bucket=Bucket, path=path, endpoint=self._conf._endpoint_ci)
