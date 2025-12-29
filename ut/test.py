@@ -144,7 +144,7 @@ mi_face_search_dataset_name = "ci-sdk-face-search"
 mi_face_search_file = "face.jpeg"
 
 cos_vectors_bucket_name_tmp = COS_VECTORS_BUCKET_FOR_CREATE_DELETE
-cos_vectors_bucket_name = 'cos-python-v5-test-vec-' + COS_VECTORS_APPID
+cos_vectors_bucket_name = 'cos-python-v5-test-vec-gz-' + COS_VECTORS_APPID
 cos_vectors_index_name = 'idx-float32-dim3'
 
 
@@ -6787,7 +6787,7 @@ def test_put_object_with_tagging():
     if os.path.exists(filename):
         os.remove(filename)
     
-    
+
 # 向量桶相关接口
 def create_vector_bucket(Bucket):
     """创建向量桶"""
