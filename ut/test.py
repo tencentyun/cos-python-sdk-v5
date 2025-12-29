@@ -842,6 +842,7 @@ def test_get_service():
             }
         }
     )
+    time.sleep(5)
     response = client.list_buckets(
         Region=REGION, TagKey='tagKey', TagValue='tagValue')
     for bucket in response['Buckets']['Bucket']:
