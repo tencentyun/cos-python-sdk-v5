@@ -688,7 +688,7 @@ class CosVectorsClient(CosS3Client):
         headers['Content-Type'] = 'application/json'
         data = dict()
         # 构造请求数据
-        policy_str = Policy # 策略内容, 可以是json格式字符串或者json格式字典
+        policy_str = Policy  # 策略内容, 可以是json格式字符串或者json格式字典
         policy_type = type(policy_str)
         if policy_type != str and policy_type != dict:
             raise CosClientError("Policy must be a json format string or json format dict")

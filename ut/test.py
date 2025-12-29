@@ -39,7 +39,7 @@ COS_VECTORS_APPID = os.environ["COS_VECTORS_APPID"]
 COS_VECTORS_SECRET_ID = os.environ["COS_VECTORS_SECRET_ID"]
 COS_VECTORS_SECRET_KEY = os.environ["COS_VECTORS_SECRET_KEY"]
 COS_VECTORS_REGION = os.environ["COS_VECTORS_REGION"]
-COS_VECTORS_USE_IP = os.environ["COS_VECTORS_USE_IP"] # 为true则需指定IP,Port,Domain
+COS_VECTORS_USE_IP = os.environ["COS_VECTORS_USE_IP"]  # 为true则需指定IP,Port,Domain
 if COS_VECTORS_USE_IP == 'true':
     COS_VECTORS_IP = os.environ["COS_VECTORS_IP"]
     COS_VECTORS_PORT = os.environ["COS_VECTORS_PORT"]
@@ -6869,7 +6869,7 @@ def create_index():
         DataType="float32",
         Dimension=3,
         DistanceMetric='euclidean',
-        NonFilterableMetadataKeys=['nfkey1','nfkey2']
+        NonFilterableMetadataKeys=['nfkey1', 'nfkey2']
     )
     return resp, data
 
@@ -6916,25 +6916,25 @@ def put_vectors():
             },
             {
                 'key': 'vector2',
-                'data':{
-                    'float32':[0.4,0.5,0.6]
+                'data': {
+                    'float32':[0.4, 0.5, 0.6]
                 },
-                'metadata':{
-                    'key1':'value11',
-                    'key2':'value22',
-                    'nfkey2':'nfvalue22'
+                'metadata': {
+                    'key1': 'value11',
+                    'key2': 'value22',
+                    'nfkey2': 'nfvalue22'
                 }
             },
             {
                 'key': 'vector3',
-                'data':{
-                    'float32':[0.7,0.8,0.9]
+                'data': {
+                    'float32': [0.7, 0.8, 0.9]
                 },
-                'metadata':{
-                    'key1':'value111',
-                    'key2':'value222',
-                    'nfkey1':'nfvalue111',
-                    'nfkey2':'nfvalue222'
+                'metadata': {
+                    'key1': 'value111',
+                    'key2': 'value222',
+                    'nfkey1': 'nfvalue111',
+                    'nfkey2': 'nfvalue222'
                 }
             }
         ]
@@ -6977,7 +6977,7 @@ def query_vectors(query_vector, filter = None):
     resp, data = cos_vectors_client.query_vectors(
         Bucket=cos_vectors_bucket_name,
         Index=cos_vectors_index_name,
-        QueryVector={"float32":query_vector},
+        QueryVector={"float32": query_vector},
         TopK=1,
         Filter=filter,
         ReturnDistance=True,
@@ -7012,7 +7012,7 @@ def test_cos_vectors():
     """向量桶相关接口集成测试"""
 
     # 列出现有向量桶
-    resp, data = list_vector_buckets() #指定前缀为bucket_name
+    resp, data = list_vector_buckets()  # 指定前缀为bucket_name
     assert isinstance(data, dict)
     assert 'vectorBuckets' in data
     assert isinstance(data['vectorBuckets'], list)
@@ -7093,7 +7093,7 @@ def test_cos_vectors():
     assert vector['key'] == 'vector2'   # vectorr1被删除, vector2距离最近
 
     # 过滤查询
-    resp, data = query_vectors([0.1, 0.2, 0.3], filter={'key1':{'$eq':'value111'}})
+    resp, data = query_vectors([0.1, 0.2, 0.3], filter={'key1': {'$eq': 'value111'}})
     assert isinstance(data, dict)
     assert 'vectors' in data
     assert isinstance(data['vectors'], list)
