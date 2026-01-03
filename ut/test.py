@@ -34,6 +34,7 @@ TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
 
 # 向量桶配置
+COS_VECTORS_BUCKET = os.environ["COS_VECTORS_BUCKET"]
 COS_VECTORS_BUCKET_FOR_CREATE_DELETE = os.environ["COS_VECTORS_BUCKET_FOR_CREATE_DELETE"]
 COS_VECTORS_APPID = os.environ["COS_VECTORS_APPID"]
 COS_VECTORS_SECRET_ID = os.environ["COS_VECTORS_SECRET_ID"]
@@ -144,7 +145,7 @@ mi_face_search_dataset_name = "ci-sdk-face-search"
 mi_face_search_file = "face.jpeg"
 
 cos_vectors_bucket_name_tmp = COS_VECTORS_BUCKET_FOR_CREATE_DELETE
-cos_vectors_bucket_name = 'cos-python-v5-test-vec-gz-' + COS_VECTORS_APPID
+cos_vectors_bucket_name = COS_VECTORS_BUCKET
 cos_vectors_index_name = 'idx-float32-dim3'
 
 

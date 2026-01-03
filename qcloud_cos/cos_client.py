@@ -466,6 +466,14 @@ class CosS3Client(object):
                 if len(exception_logbuf) > 0:
                     logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
                 raise CosServiceError(method, info, res.status_code)
+            elif 'x-cos-error-code' in res.headers: # 兼容向量桶，向量桶错误码在头部，错误信息在body
+                info = dict()
+                info['code'] = res.headers['x-cos-error-code']
+                if 'x-cos-request-id' in res.headers:
+                    info['requestid'] = res.headers['x-cos-request-id']
+                info['message'] = res.text
+                logger.error(info)
+                raise CosServiceError(method, info, res.status_code)
             else:
                 msg = res.text
                 if msg == u'':  # 服务器没有返回Error Body时 给出头部的信息
