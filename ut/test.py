@@ -7118,6 +7118,12 @@ def test_cos_vectors():
     assert isinstance(data['indexes'], list)
     assert len(data['indexes']) == 0
 
+    # 再次尝试获取索引，但实际索引不存在
+    try:
+        resp, data = get_index()
+    except CosServiceError as e:
+        assert e.get_error_code() == "NotFoundException"
+
 
 def test_put_get_symlink_multiver():
     """测试创建和获取软链接功能"""
