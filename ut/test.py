@@ -813,7 +813,7 @@ def test_get_bucket_location():
 
 def test_put_get_bucket_object_lock():
     """bucket object_lock测试"""
-    
+
     # 创建worm测试桶
     try:
         response = client.create_bucket(Bucket=test_worm_bucket)
@@ -823,7 +823,7 @@ def test_put_get_bucket_object_lock():
             pass
         else:
             raise e
-    
+
     object_lock_conf = {
         'ObjectLockEnabled': 'Enabled',
     }
@@ -6203,11 +6203,11 @@ def test_download_file_disable_temp_file():
 
     srcfd = open(file_name, 'rb')
     src_md5 = get_raw_md5(srcfd.read())
-    srcfd.close() 
+    srcfd.close()
 
     dstfd = open(file_name_dst, 'rb')
     dst_md5 = get_raw_md5(dstfd.read())
-    dstfd.close() 
+    dstfd.close()
 
     assert src_md5 == dst_md5
 
@@ -6483,7 +6483,7 @@ def test_cos_client_retry():
 
     # connection reset
     client2 = CosS3Client(conf2)
-    do_retry_test(client2, test_bucket, 'shutdown', 1, False) 
+    do_retry_test(client2, test_bucket, 'shutdown', 1, False)
 
 
 def test_cos_client_retry_2():
@@ -6702,7 +6702,7 @@ def test_cos_client_retry_2():
     '''服务端返回5xx的请求，按照默认配置的重试次数（3次）进行重试。
     故障mock server会把第一次重试（第二次执行）的请求转发出去，保证本次请求成功，因此检查重试次数是否为1
     '''
-    
+
     # response 500
     client2 = CosS3Client(conf2)
     do_retry_test(client2, err_retry_bucket, '500l', 3, True)
@@ -6733,7 +6733,12 @@ def test_cos_client_retry_2():
 
     # connection reset
     client2 = CosS3Client(conf2)
-    do_retry_test(client2, err_retry_bucket, 'shutdown', 1, False) 
+    do_retry_test(client2, err_retry_bucket, 'shutdown', 1, False)
+
+
+def test_cos_client_read_session():
+    session = CosS3Client.generate_built_in_connection_pool(20, 30)
+    assert CosS3Client.read_connection_pool_size(session) == (20, 30)
 
 
 def test_head_exception():
@@ -6788,7 +6793,7 @@ def test_put_object_with_tagging():
 
     if os.path.exists(filename):
         os.remove(filename)
-    
+
 
 # 向量桶相关接口
 def create_vector_bucket(Bucket):
@@ -7136,14 +7141,14 @@ def test_put_get_symlink_multiver():
         Bucket=test_bucket,
         Status='Enabled',
     )
-    
+
     # 上传目标文件
     response = client.put_object(
         Bucket=test_bucket,
         Body=b'hello',
         Key=target_file_name
     )
-    
+
     # 创建软链接，指向目标文件
     response = client.put_symlink(
         Bucket=test_bucket,
@@ -7151,12 +7156,12 @@ def test_put_get_symlink_multiver():
         SymlinkTarget=target_file_name
     )
     print(response)
-    
+
     # 验证put_symlink响应
     assert 'x-cos-request-id' in response
     assert 'x-cos-version-id' in response
     version_id = response['x-cos-version-id']
-    
+
     # 获取软链接信息
     response = client.get_symlink(
         Bucket=test_bucket,
@@ -7164,7 +7169,7 @@ def test_put_get_symlink_multiver():
         VersionId=version_id,
     )
     print(response)
-    
+
     # 验证get_symlink响应
     assert 'x-cos-request-id' in response
     assert 'x-cos-symlink-target' in response

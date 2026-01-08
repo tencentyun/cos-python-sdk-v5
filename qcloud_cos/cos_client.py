@@ -13,6 +13,7 @@ import threading
 import xml.dom.minidom
 import xml.etree.ElementTree
 from requests import Request, Session, ConnectionError, Timeout
+from requests.exceptions import InvalidSchema
 from datetime import datetime
 from six.moves.urllib.parse import quote, unquote, urlencode, urlparse
 from six import text_type, binary_type
@@ -253,26 +254,48 @@ class CosS3Client(object):
         self._retry_exe_times = 0 # 重试已执行次数
 
         if session is None:
+            built_in_session_created = False
             if not CosS3Client.__built_in_sessions:
                 with threading.Lock():
                     if not CosS3Client.__built_in_sessions:  # 加锁后double check
                         CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
                         CosS3Client.__built_in_pid = os.getpid()
+                        built_in_session_created = True
 
             self._session = CosS3Client.__built_in_sessions
             self._use_built_in_pool = True
-            logger.info("bound built-in connection pool when new client. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
+            if built_in_session_created:
+                logger.info("bound built-in connection pool when new client. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
+            else:
+                built_in_conn, built_in_max = self.read_connection_pool_size(self._session)
+                logger.info(
+                    "reuse built-in connection pool when new client. maxsize=%s,%s. "
+                    "connection settings from CosConfig ignored.",
+                    built_in_conn, built_in_max
+                )
         else:
             self._session = session
             self._use_built_in_pool = False
 
-    def generate_built_in_connection_pool(self, PoolConnections, PoolMaxSize):
+    @classmethod
+    def generate_built_in_connection_pool(cls, PoolConnections, PoolMaxSize):
         """生成SDK内置的连接池，此连接池是client间共用的"""
         built_in_sessions = requests.session()
         built_in_sessions.mount('http://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
         built_in_sessions.mount('https://', requests.adapters.HTTPAdapter(pool_connections=PoolConnections, pool_maxsize=PoolMaxSize))
         logger.info("generate built-in connection pool success. maxsize=%d,%d" % (PoolConnections, PoolMaxSize))
         return built_in_sessions
+
+    @classmethod
+    def read_connection_pool_size(cls, session):
+        try:
+            for prefix in ['https://', 'http://']:
+                adapter = session.get_adapter(prefix)
+                if adapter and isinstance(adapter, requests.adapters.HTTPAdapter):
+                    return adapter._pool_connections, adapter._pool_maxsize
+        except InvalidSchema:
+            pass
+        return None, None
 
     def handle_built_in_connection_pool_by_pid(self):
         if not CosS3Client.__built_in_sessions:
@@ -300,11 +323,11 @@ class CosS3Client(object):
     def get_conf(self):
         """获取配置"""
         return self._conf
-    
+
     def get_retry_exe_times(self):
         """获取重试已执行次数"""
         return self._retry_exe_times
-    
+
     def inc_retry_exe_times(self):
         """重试执行次数递增"""
         self._retry_exe_times += 1
@@ -3620,7 +3643,7 @@ class CosS3Client(object):
 
     def list_bucket_intelligenttiering_configurations(self, Bucket, **kwargs):
         """列举存储桶中的所有智能分层配置
-        
+
         :param Bucket(string): 存储桶名称.
         :param kwargs(dict): 设置请求headers.
         :return(dict): 所有的智能分层配置.
@@ -3646,7 +3669,7 @@ class CosS3Client(object):
             params=params)
         data = xml_to_dict(rt.content)
         return data
-    
+
     def put_bucket_object_lock(self, Bucket, ObjectLockConfiguration={}, **kwargs):
         """设置存储桶对象锁定配置
 
@@ -3684,7 +3707,7 @@ class CosS3Client(object):
             headers=headers,
             params=params)
         return rt.headers
-    
+
     def get_bucket_object_lock(self, Bucket, **kwargs):
         """获取存储桶对象锁定配置
 
@@ -3713,7 +3736,7 @@ class CosS3Client(object):
             params=params)
         data = xml_to_dict(rt.content)
         return data
-    
+
     def get_bucket_meta(self, Bucket, **kwargs):
         """获取存储桶各项配置
 
