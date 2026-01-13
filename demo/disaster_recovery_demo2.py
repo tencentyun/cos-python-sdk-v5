@@ -9,15 +9,16 @@ import logging
 # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 
-def _recover_main(src_region, src_bucket, secret_id, secret_key, prefix):
+def _recover_main(src_region, src_bucket, dst_region, dst_bucket, secret_id, secret_key, prefix):
 
     src_client = CosS3Client(CosConfig(Region=src_region, SecretId=secret_id, SecretKey=secret_key))
+    dst_client = CosS3Client(CosConfig(Region=dst_region, SecretId=secret_id, SecretKey=secret_key))
 
     # 列举操作的分页参数
     key_marker = ''
     versionId_marker = ''
-    
-    recovered_keys = set() # 用于记录已经恢复的对象
+
+    recovered_keys = set() # 记录已经恢复的对象
 
     while True:
         response = src_client.list_objects_versions(
@@ -26,27 +27,18 @@ def _recover_main(src_region, src_bucket, secret_id, secret_key, prefix):
             KeyMarker=key_marker,
             VersionIdMarker=versionId_marker,
         )
-        delete_marker_keys = set()
-        # 从 DeleteMarker 取出被删除的对象
-        if 'DeleteMarker' in response:
-            for version in response['DeleteMarker']:
-                if version['IsLatest'] == 'true':
-                    delete_marker_keys.add(version['Key'])
-        
-        if len(delete_marker_keys) == 0:
-            print('no delete markers found, no data to recover, continue listing')
 
         # 从 Version 取出用于恢复的对象版本
         if 'Version' in response:
             for version in response['Version']:
                 key = version['Key']
                 versionId = version['VersionId']
-                if key in delete_marker_keys and not key in recovered_keys:
-                    print('recover from object: {src_bucket}/{key}(versionId:{versionId})'.format(
+                if not key in recovered_keys:
+                    print('recover from object: {src_bucket}/{key}(versionId={versionId})'.format(
                         src_bucket=src_bucket, key=key, versionId=versionId))
                     try:
-                        src_client.copy(
-                            Bucket=src_bucket,
+                        dst_client.copy(
+                            Bucket=dst_bucket,
                             Key=key,
                             CopySource={
                                 'Bucket': src_bucket,
@@ -56,26 +48,33 @@ def _recover_main(src_region, src_bucket, secret_id, secret_key, prefix):
                             }
                         )
                         recovered_keys.add(key)
-                        print("success recover object: {src_bucket}/{key}(versionId={versionId}) => {src_bucket}/{key}".format(
-                            src_bucket=src_bucket, key=key, versionId=versionId))
+                        print("success recover object: {src_bucket}/{key}(versionId={versionId}) => {dst_bucket}/{key}".format(
+                            src_bucket=src_bucket, key=key, versionId=versionId, dst_bucket=dst_bucket))
                     except Exception as e:
                         print(e)
                         pass
-
+        
         if response['IsTruncated'] == 'false':
             break
 
         key_marker = response['NextKeyMarker']
         versionId_marker = response['NextVersionIdMarker']
+    
 
 
 if __name__ == '__main__':
     # 使用场景:
-    # 根据源桶src_bucket的删除标记从历史版本里把文件恢复出来
+    # src_bucket: 备份桶
+    # dst_bucket: 目标桶
+    # 目标桶(dst_bucket)里的对象被误删，遍历备份桶(src_bucket)的对象，选择非删除标记的当前版本对象，复制到目标桶(dst_bucket)从而完成恢复
 
-    # 源桶信息
-    src_region = 'ap-guangzhou'  # 源地域
-    src_bucket = 'bucket-1250000000'  # 源桶名
+    # 备份桶信息
+    src_region = 'ap-guangzhou'
+    src_bucket = 'bucket-backup-1250000000'
+
+    # 目标桶信息
+    dst_region = 'ap-guangzhou'
+    dst_bucket = 'bucket-1250000000'
 
     # 从环境变量获取密钥
     secret_id = os.environ['COS_SECRET_ID']
@@ -86,6 +85,8 @@ if __name__ == '__main__':
     _recover_main(
         src_region=src_region,
         src_bucket=src_bucket,
+        dst_region=dst_region,
+        dst_bucket=dst_bucket,
         secret_id=secret_id,
         secret_key=secret_key,
         prefix=prefix
