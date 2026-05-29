@@ -3515,6 +3515,120 @@ class CosS3Client(object):
             params=params)
         return None
 
+    def put_bucket_response_control(self, Bucket, ResponseControlConfiguration={}, **kwargs):
+        """设置bucket的响应内容控制规则
+
+        :param Bucket(string): 存储桶名称.
+        :param ResponseControlConfiguration(dict): Bucket的响应内容控制规则.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 设置bucket响应内容控制
+            response_control_config = {
+                'ControlParamList': {
+                    'Param': [
+                        'response-content-type',
+                        'response-content-disposition',
+                        'response-cache-control',
+                        'response-content-encoding',
+                        'response-content-language',
+                        'response-expires'
+                    ]
+                }
+            }
+            response = client.put_bucket_response_control(
+                Bucket='bucket',
+                ResponseControlConfiguration=response_control_config
+            )
+        """
+        xml_config = format_xml(data=ResponseControlConfiguration, root='ResponseControlConfiguration')
+        headers = mapped(kwargs)
+        headers['Content-MD5'] = get_md5(xml_config)
+        headers['Content-Type'] = 'application/xml'
+        params = {'response-control': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("put bucket response control, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            data=xml_config,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
+    def get_bucket_response_control(self, Bucket, **kwargs):
+        """获取bucket响应内容控制规则
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return(dict): Bucket对应的响应内容控制规则.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 获取bucket响应内容控制
+            response = client.get_bucket_response_control(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'response-control': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("get bucket response control, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        data = xml_to_dict(rt.content)
+        if 'ControlParamList' in data and data['ControlParamList'] is not None:
+            format_dict(data['ControlParamList'], ['Param'])
+        return data
+
+    def delete_bucket_response_control(self, Bucket, **kwargs):
+        """删除bucket响应内容控制规则
+
+        :param Bucket(string): 存储桶名称.
+        :param kwargs(dict): 设置请求headers.
+        :return: None.
+
+        .. code-block:: python
+
+            config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key, Token=token)  # 获取配置对象
+            client = CosS3Client(config)
+            # 删除bucket响应内容控制
+            response = client.delete_bucket_response_control(
+                Bucket='bucket'
+            )
+        """
+        headers = mapped(kwargs)
+        params = {'response-control': ''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("delete bucket response control, url=:{url} ,headers=:{headers}".format(
+            url=url,
+            headers=headers))
+        rt = self.send_request(
+            method='DELETE',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params)
+        return None
+
     def put_bucket_intelligenttiering_v2(self, Bucket, IntelligentTieringConfiguration=None, Id=None, **kwargs):
         """设置存储桶智能分层配置
 

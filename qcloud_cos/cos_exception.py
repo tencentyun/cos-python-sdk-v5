@@ -32,7 +32,7 @@ def digest_xml(data):
         msg['requestid'] = result[0].childNodes[0].nodeValue
 
         result = root.getElementsByTagName('TraceId')
-        if result:
+        if result and len(result[0].childNodes) > 0:
             msg['traceid'] = result[0].childNodes[0].nodeValue
         else:
             msg['traceid'] = 'Unknown'
