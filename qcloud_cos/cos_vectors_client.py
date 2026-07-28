@@ -608,8 +608,9 @@ class CosVectorsClient(CosS3Client):
             data["returnData"] = ReturnData
         if ReturnMetaData is not None:
             data["returnMetaData"] = ReturnMetaData
-        if SegmentCount is not None and SegmentIndex is not None:
+        if SegmentCount is not None:
             data["segmentCount"] = SegmentCount
+        if SegmentIndex is not None:
             data["segmentIndex"] = SegmentIndex
         if Filter is not None:
             data["filter"] = Filter
@@ -685,7 +686,7 @@ class CosVectorsClient(CosS3Client):
         return response
     
     def query_vectors(self, Bucket, Index, QueryVector, TopK, Filter=None,
-                      ReturnDistance=None, ReturnMetaData=None, **kwargs):
+                      ReturnDistance=None, ReturnMetaData=None, ReturnData=None, **kwargs):
         """ 查询向量桶的索引中的向量
             :param Bucket: 向量存储桶名称.
             :type Bucket: string
@@ -701,6 +702,8 @@ class CosVectorsClient(CosS3Client):
             :type ReturnDistance: bool
             :param ReturnMetaData: 是否返回元数据.
             :type ReturnMetaData: bool
+            :param ReturnData: 是否返回向量数据.
+            :type ReturnData: bool
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
             :return: response header 和请求成功返回的结果.
@@ -734,6 +737,8 @@ class CosVectorsClient(CosS3Client):
             data["returnDistance"] = ReturnDistance
         if ReturnMetaData is not None:
             data["returnMetaData"] = ReturnMetaData
+        if ReturnData is not None:
+            data["returnData"] = ReturnData
 
         # 构造请求URL
         path = "/" + "QueryVectors"
