@@ -7069,6 +7069,7 @@ def test_cos_vectors():
 
     # 插入向量
     resp = put_vectors(vector_bucket_name)
+    time.sleep(6)
     
     # 获取向量
     resp, data = get_vectors(vector_bucket_name, ['vector1', 'vector2'])
@@ -7096,6 +7097,7 @@ def test_cos_vectors():
 
     # 删除向量再查询
     resp = delete_vectors(vector_bucket_name, ['vector1'])
+    time.sleep(6)
     resp, data = query_vectors(vector_bucket_name, [0.1, 0.2, 0.3])
     assert isinstance(data, dict)
     assert 'vectors' in data
@@ -7115,6 +7117,7 @@ def test_cos_vectors():
 
     # 删除向量
     resp = delete_vectors(vector_bucket_name, ['vector2', 'vector3'])
+    time.sleep(6)
     resp, data = list_vectors(vector_bucket_name)
     assert isinstance(data, dict)
     assert 'vectors' in data
