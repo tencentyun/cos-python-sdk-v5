@@ -68,6 +68,8 @@ maplist = {
     'AcceptEncoding': 'Accept-Encoding',
     "Callback": "x-cos-callback",
     "CallbackVar": "x-cos-callback-var",
+    'RenameSource': 'x-cos-rename-source',
+    'ForbidOverwrite': 'x-cos-forbid-overwrite',
 }
 
 
@@ -479,16 +481,16 @@ def format_dict_or_list(data, key_lst):
     return data
 
 
-def decode_result(data, key_lst, multi_key_list):
+def decode_result(data, key_lst, multi_key_list, decode_func=unquote):
     """decode结果中的字段"""
     for key in key_lst:
         if key in data and data[key]:
-            data[key] = unquote(data[key])
+            data[key] = decode_func(data[key])
     for multi_key in multi_key_list:
         if multi_key[0] in data:
             for item in data[multi_key[0]]:
                 if multi_key[1] in item and item[multi_key[1]]:
-                    item[multi_key[1]] = unquote(item[multi_key[1]])
+                    item[multi_key[1]] = decode_func(item[multi_key[1]])
     return data
 
 
@@ -536,7 +538,7 @@ def client_can_retry(file_position, **kwargs):
         try:
             kwargs['data'].seek(file_position)
             return True
-        except Exception as ioe:
+        except Exception:
             return False
     return False
 

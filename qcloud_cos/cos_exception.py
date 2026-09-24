@@ -25,17 +25,17 @@ def digest_xml(data):
         result = root.getElementsByTagName('Message')
         msg['message'] = result[0].childNodes[0].nodeValue
 
-        result = root.getElementsByTagName('Resource')
-        msg['resource'] = result[0].childNodes[0].nodeValue
-
-        result = root.getElementsByTagName('RequestId')
-        msg['requestid'] = result[0].childNodes[0].nodeValue
-
-        result = root.getElementsByTagName('TraceId')
-        if result and len(result[0].childNodes) > 0:
-            msg['traceid'] = result[0].childNodes[0].nodeValue
-        else:
-            msg['traceid'] = 'Unknown'
+        # Auxiliary fields may be absent or empty without invalidating Code/Message.
+        # An empty requestid lets get_request_id() use the response header.
+        for tag, key, default in (
+                ('Resource', 'resource', 'Unknown'),
+                ('RequestId', 'requestid', ''),
+                ('TraceId', 'traceid', 'Unknown')):
+            result = root.getElementsByTagName(tag)
+            if result and result[0].childNodes:
+                msg[key] = result[0].childNodes[0].nodeValue
+            else:
+                msg[key] = default
         return msg
     except Exception as e:
         return "Response Error Msg Is INVALID"
@@ -63,7 +63,7 @@ class CosClientError(CosException):
 class CosServiceError(CosException):
     """COS Server端错误，可以获取特定的错误信息"""
 
-    def __init__(self, method, message, status_code):
+    def __init__(self, method, message, status_code, headers=None):
         CosException.__init__(self, message)
         if isinstance(message, dict) or isinstance(message, CaseInsensitiveDict):
             self._origin_msg = ''
@@ -72,6 +72,7 @@ class CosServiceError(CosException):
             self._origin_msg = message
             self._digest_msg = digest_xml_or_json(message)
         self._status_code = status_code
+        self._headers = CaseInsensitiveDict(headers or {})
 
     def __str__(self):
         return str(self._digest_msg)
@@ -105,11 +106,11 @@ class CosServiceError(CosException):
         return "Unknown"
 
     def get_trace_id(self):
-        if isinstance(self._digest_msg, dict):
-            return self._digest_msg['traceid']
-        return "Unknown"
+        value = self._digest_msg.get('traceid') if isinstance(self._digest_msg, dict) else None
+        if value and value != 'Unknown':
+            return value
+        return self._headers.get('x-cos-trace-id') or "Unknown"
 
     def get_request_id(self):
-        if isinstance(self._digest_msg, dict):
-            return self._digest_msg['requestid']
-        return "Unknown"
+        value = self._digest_msg.get('requestid') if isinstance(self._digest_msg, dict) else None
+        return value or self._headers.get('x-cos-request-id') or "Unknown"

@@ -4,6 +4,7 @@ from .cos_exception import CosServiceError
 from .cos_exception import CosClientError
 from .cos_auth import CosS3Auth
 from .cos_comm import get_date
+from .session_auth import is_rapid_bucket  # noqa: F401 - public SDK export
 from .cos_vectors_client import CosVectorsClient
 from .meta_insight import MetaInsightClient
 from .ai_recognition import AIRecognitionClient

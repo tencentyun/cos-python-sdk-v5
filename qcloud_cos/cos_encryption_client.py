@@ -119,7 +119,8 @@ class CosEncryptionClient(CosS3Client):
             stream=True,
             auth=CosS3Auth(self._conf, Key, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            _rapid_data_request=True)
 
         self.provider.init_data_cipter_by_user(encrypt_key, encrypt_start, real_start)
         response['Body'] = self.provider.make_data_decrypt_adapter(rt, offset)

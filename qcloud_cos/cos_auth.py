@@ -45,15 +45,22 @@ def filter_headers(data):
 
 class CosS3Auth(AuthBase):
 
-    def __init__(self, conf, key=None, params={}, expire=10000, sign_host=None):
-        self._secret_id = conf._secret_id if conf._secret_id else \
-            (conf._credential_inst.secret_id if conf._credential_inst else None)
-        self._secret_key = conf._secret_key if conf._secret_key else \
-            (conf._credential_inst.secret_key if conf._credential_inst else None)
+    def __init__(self, conf, key=None, params=None, expire=10000, sign_host=None,
+                 secret_id=None, secret_key=None):
+        if secret_id is not None and secret_key is not None:
+            self._secret_id = secret_id
+            self._secret_key = secret_key
+        else:
+            self._secret_id = conf._secret_id if conf._secret_id else \
+                (conf._credential_inst.secret_id if getattr(conf, '_credential_inst', None) else None)
+            self._secret_key = conf._secret_key if conf._secret_key else \
+                (conf._credential_inst.secret_key if getattr(conf, '_credential_inst', None) else None)
         self._anonymous = conf._anonymous
         self._expire = expire
-        self._params = params
+        self._params = {} if params is None else params
         self._sign_params = conf._sign_params
+        self._key = key
+        self._conf = conf
 
         # 如果API指定了是否签名host，则以具体API为准，如果未指定则以配置为准
         if sign_host is not None:
@@ -69,6 +76,17 @@ class CosS3Auth(AuthBase):
                 self._path = u'/' + key
         else:
             self._path = u'/'
+
+    def with_credentials(self, secret_id, secret_key):
+        """用指定凭证克隆，保留 path/params/expire/sign_host。"""
+        return CosS3Auth(
+            self._conf,
+            key=self._key,
+            params=self._params,
+            expire=self._expire,
+            sign_host=self._sign_host,
+            secret_id=secret_id,
+            secret_key=secret_key)
 
     def __call__(self, r):
 
