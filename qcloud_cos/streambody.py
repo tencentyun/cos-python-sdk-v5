@@ -49,7 +49,7 @@ class StreamBody(object):
     def get_stream_to_file(self, file_name, disable_tmp_file=False, auto_decompress=False):
         """保存流到本地文件"""
         self._read_len = 0
-        tmp_file_name = "{file_name}_{uuid}".format(file_name=file_name, uuid=uuid.uuid4().hex)
+        tmp_file_name = os.path.join(os.path.dirname(file_name), uuid.uuid4().hex)
         if disable_tmp_file:
             tmp_file_name = file_name
         chunk_size = 1024 * 1024
