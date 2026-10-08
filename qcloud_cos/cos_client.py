@@ -2166,9 +2166,9 @@ class CosS3Client(object):
         :param Bucket(string): 存储桶名称. 存储桶名称不支持大写字母，COS 后端会将用户传入的大写字母自动转换为小写字母用于创建存储桶.
         :param BucketAZConfig(string): 存储桶的多AZ配置
         :param VpcId(string): Rapid 桶的 VPC ID，可与 Metadata 请求头同值合并。
-        :param CidrBlock(string): Rapid 桶的网络 CIDR。
+        :param CidrBlock(string): 已废弃，服务端不再使用；可选，非空时仍原样发送以兼容旧调用。
         :param SubnetId(string): Rapid 桶的子网 ID。
-        :param Zone(string): Rapid 桶的可用区；四项须在命名参数或 Metadata 中提供。
+        :param Zone(string): Rapid 桶的可用区；VpcId、SubnetId、Zone 须在命名参数或 Metadata 中提供。
         :param kwargs(dict): 设置请求headers.
         :return: None.
 
@@ -2187,15 +2187,17 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
+        # CidrBlock is deprecated: the server no longer uses it, so it is optional
+        # and only forwarded when non-empty for backward compatibility.
         network = (
-            ('VpcId', 'x-cos-vpc-id', VpcId),
-            ('CidrBlock', 'x-cos-cidr-block', CidrBlock),
-            ('SubnetId', 'x-cos-subnet-id', SubnetId),
-            ('Zone', 'x-cos-zone', Zone),
+            ('VpcId', 'x-cos-vpc-id', VpcId, True),
+            ('CidrBlock', 'x-cos-cidr-block', CidrBlock, False),
+            ('SubnetId', 'x-cos-subnet-id', SubnetId, True),
+            ('Zone', 'x-cos-zone', Zone, True),
         )
         if is_rapid_bucket(self._formatted_bucket(Bucket)):
             missing = []
-            for parameter, header, value in network:
+            for parameter, header, value, required in network:
                 keys = [key for key in headers if to_unicode(key).lower() == header]
                 values = [headers[key] for key in keys]
                 if value is not None:
@@ -2203,17 +2205,18 @@ class CosS3Client(object):
                 if values and any(to_bytes(item) != to_bytes(values[0]) for item in values[1:]):
                     raise CosClientError('conflicting values for rapid create_bucket parameter ' + parameter)
                 effective = values[0] if values else None
-                if effective is None or effective in ('', b'') or (
-                        isinstance(effective, (text_type, binary_type)) and not effective.strip()):
+                empty = effective is None or effective in ('', b'') or (
+                    isinstance(effective, (text_type, binary_type)) and not effective.strip())
+                if empty and required:
                     missing.append(parameter)
                 for key in keys:
                     del headers[key]
-                if effective is not None:
+                if not empty:
                     headers[header] = effective
             if missing:
                 raise CosClientError('rapid create_bucket requires non-empty parameters: ' + ', '.join(missing))
         else:
-            supplied = [parameter for parameter, _header, value in network if value is not None]
+            supplied = [parameter for parameter, _header, value, _required in network if value is not None]
             if supplied:
                 raise CosClientError(
                     'create_bucket parameters are only supported for rapid bucket: ' + ', '.join(supplied))

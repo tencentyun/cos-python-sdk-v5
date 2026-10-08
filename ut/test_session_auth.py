@@ -44,10 +44,10 @@ from qcloud_cos.session_auth import (
 RAPID_BUCKET = 'rapid-x--1250000000'
 ORDINARY_BUCKET = 'example-1250000000'
 RAPID_CREATE_NETWORK = {
-    # NOCA:InnerIPLeak(Synthetic address for local tests; not production topology)
-    'VpcId': 'vpc-test', 'CidrBlock': '10.230.0.0/24',
-    'SubnetId': 'subnet-test', 'Zone': 'ap-guangzhou-1',
+    'VpcId': 'vpc-test', 'SubnetId': 'subnet-test', 'Zone': 'ap-guangzhou-1',
 }
+# NOCA:InnerIPLeak(Synthetic address for local tests; not production topology)
+LEGACY_CIDR = '10.230.0.0/24'
 BASE_AK = 'AKIDBASE'
 BASE_SK = 'base-secret'
 SESSION_AK = 'SKIDSESSION'
@@ -962,11 +962,10 @@ class TestClientSession(unittest.TestCase):
     def test_create_bucket_network_headers_and_signature(self):
         network = {
             'x-cos-vpc-id': 'vpc-test',
-            # NOCA:InnerIPLeak(Synthetic address for local tests; not production topology)
-            'x-cos-cidr-block': '10.230.0.0/24',
             'x-cos-subnet-id': 'subnet-test',
             'x-cos-zone': 'ap-guangzhou-1',
         }
+        legacy = dict(network, **{'x-cos-cidr-block': LEGACY_CIDR})
         for flag in (False, None, True):
             client = self.server.client(
                 Domain=None, EnableRapidDomain=True, EnableSessionAuth=flag,
@@ -974,16 +973,20 @@ class TestClientSession(unittest.TestCase):
             try:
                 self.server.state.requests[:] = []
                 variants = [
-                    dict(RAPID_CREATE_NETWORK),
-                    {'Metadata': dict(network)},
-                    {'VpcId': 'vpc-test', 'Zone': 'ap-guangzhou-1', 'Metadata': {
-                        # NOCA:InnerIPLeak(Synthetic address for local tests; not production topology)
-                        'X-Cos-Cidr-Block': '10.230.0.0/24', 'X-Cos-Subnet-Id': 'subnet-test'}},
-                    dict(RAPID_CREATE_NETWORK, Metadata={
-                        'X-Cos-Vpc-Id': b'vpc-test', 'x-cos-vpc-id': 'vpc-test'}),
-                    {'VpcId': None, 'Metadata': dict(network)},
+                    (dict(RAPID_CREATE_NETWORK), network),
+                    ({'Metadata': dict(network)}, network),
+                    ({'VpcId': 'vpc-test', 'Zone': 'ap-guangzhou-1', 'Metadata': {
+                        'X-Cos-Subnet-Id': 'subnet-test'}}, network),
+                    (dict(RAPID_CREATE_NETWORK, Metadata={
+                        'X-Cos-Vpc-Id': b'vpc-test', 'x-cos-vpc-id': 'vpc-test'}), network),
+                    ({'VpcId': None, 'Metadata': dict(network)}, network),
+                    (dict(RAPID_CREATE_NETWORK, CidrBlock=LEGACY_CIDR), legacy),
+                    ({'VpcId': 'vpc-test', 'Metadata': {
+                        'X-Cos-Cidr-Block': LEGACY_CIDR, 'X-Cos-Subnet-Id': 'subnet-test',
+                        'X-Cos-Zone': 'ap-guangzhou-1'}}, legacy),
+                    ({'Metadata': dict(legacy)}, legacy),
                 ]
-                for options in variants:
+                for options, expected in variants:
                     before = len(self.server.object_requests())
                     self.assertIsNone(client.create_bucket(Bucket=RAPID_BUCKET, **options))
                     self.assertEqual(len(self.server.object_requests()), before + 1)
@@ -997,9 +1000,12 @@ class TestClientSession(unittest.TestCase):
                     self.assertEqual(auth['q-ak'], BASE_AK)
                     signed = auth['q-header-list'].split(';')
                     self.assertIn('host', signed)
-                    for name, value in network.items():
+                    for name, value in expected.items():
                         self.assertEqual(headers[name], value)
                         self.assertIn(name, signed)
+                    if 'x-cos-cidr-block' not in expected:
+                        self.assertNotIn('x-cos-cidr-block', headers)
+                        self.assertNotIn('x-cos-cidr-block', signed)
                     self.assertFalse(any(name.lower().startswith('x-cos-meta-')
                                          for name in headers))
                     self.assertNotIn('x-cos-security-token', headers)
@@ -1021,6 +1027,7 @@ class TestClientSession(unittest.TestCase):
                 client.create_bucket(Bucket=RAPID_BUCKET)
             for name in RAPID_CREATE_NETWORK:
                 self.assertIn(name, str(raised.exception))
+            self.assertNotIn('CidrBlock', str(raised.exception))
             for metadata in ({'X-Cos-Vpc-Id': 'other-vpc'},
                              {'x-cos-vpc-id': 'vpc-test', 'X-Cos-Vpc-Id': 'other-vpc'}):
                 with self.assertRaises(CosClientError) as raised:
@@ -1046,7 +1053,7 @@ class TestClientSession(unittest.TestCase):
             self.assertIn(b'<BucketAZConfig>MAZ</BucketAZConfig>', rec['body'])
             self.assertIn(b'<BucketArchConfig>OFS</BucketArchConfig>', rec['body'])
             before = len(self.server.state.requests)
-            for name, value in RAPID_CREATE_NETWORK.items():
+            for name, value in dict(RAPID_CREATE_NETWORK, CidrBlock=LEGACY_CIDR).items():
                 for supplied in (value, ''):
                     with self.assertRaises(CosClientError):
                         client.create_bucket(Bucket=ORDINARY_BUCKET, **{name: supplied})
@@ -1058,12 +1065,11 @@ class TestClientSession(unittest.TestCase):
             client._session.close()
 
     def test_create_bucket_metadata_missing_empty_and_conflicting(self):
-        # NOCA:InnerIPLeak(Synthetic address for local tests; not production topology)
-        network = {'x-cos-vpc-id': 'vpc-test', 'x-cos-cidr-block': '10.230.0.0/24',
+        network = {'x-cos-vpc-id': 'vpc-test',
                    'x-cos-subnet-id': 'subnet-test', 'x-cos-zone': 'ap-guangzhou-1'}
         client = self.server.client()
         try:
-            for parameter, header in (('VpcId', 'x-cos-vpc-id'), ('CidrBlock', 'x-cos-cidr-block'),
+            for parameter, header in (('VpcId', 'x-cos-vpc-id'),
                                       ('SubnetId', 'x-cos-subnet-id'), ('Zone', 'x-cos-zone')):
                 for empty in (None, '', b'', '  '):
                     values = dict(network)
@@ -1083,6 +1089,34 @@ class TestClientSession(unittest.TestCase):
                 self.assertIn('conflicting', str(raised.exception))
                 self.assertIn(parameter, str(raised.exception))
             self.assertEqual(self.server.state.requests, [])
+        finally:
+            client._session.close()
+
+    def test_create_bucket_cidr_block_optional_and_conflict_checked(self):
+        client = self.server.client()
+        try:
+            variants = [{}]
+            for empty in (None, '', b'', '  '):
+                variants.append({'CidrBlock': empty})
+                variants.append({'Metadata': {'x-cos-cidr-block': empty}})
+            for options in variants:
+                before = len(self.server.object_requests())
+                self.assertIsNone(client.create_bucket(
+                    Bucket=RAPID_BUCKET, **dict(RAPID_CREATE_NETWORK, **options)))
+                self.assertEqual(len(self.server.object_requests()), before + 1)
+                headers = requests.structures.CaseInsensitiveDict(
+                    self.server.object_requests()[-1]['headers'])
+                self.assertNotIn('x-cos-cidr-block', headers)
+            before = len(self.server.state.requests)
+            # NOCA:InnerIPLeak(Synthetic address for local tests; not production topology)
+            for options in ({'CidrBlock': LEGACY_CIDR, 'Metadata': {'X-Cos-Cidr-Block': '10.0.0.0/16'}},
+                            {'Metadata': {'x-cos-cidr-block': LEGACY_CIDR,
+                                          'X-Cos-Cidr-Block': '10.0.0.0/16'}}):
+                with self.assertRaises(CosClientError) as raised:
+                    client.create_bucket(Bucket=RAPID_BUCKET, **dict(RAPID_CREATE_NETWORK, **options))
+                self.assertIn('conflicting', str(raised.exception))
+                self.assertIn('CidrBlock', str(raised.exception))
+            self.assertEqual(len(self.server.state.requests), before)
         finally:
             client._session.close()
 

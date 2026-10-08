@@ -98,12 +98,11 @@ full-jitter 指数退避。``retry=N`` 最多执行 ``N+1`` 次 IP 尝试；IP �
 * 控制面（使用基础凭证，不走 session）：``create_bucket`` / ``delete_bucket`` /
   ``head_bucket`` / bucket policy / ``create_session``
 
-创建高性能桶时，使用 ``create_bucket`` 的四个可选命名参数；它们合并后的有效值
-必须齐全且非空。以下变量应使用实际桶名、VPC、CIDR、子网和可用区配置::
+创建高性能桶时，使用 ``create_bucket`` 的 ``VpcId``、``SubnetId``、``Zone`` 命名参数；
+三者合并后的有效值必须齐全且非空。以下变量应使用实际桶名、VPC、子网和可用区配置::
 
     client.create_bucket(
-        Bucket=bucket, VpcId=vpc_id, CidrBlock=cidr_block,
-        SubnetId=subnet_id, Zone=zone,
+        Bucket=bucket, VpcId=vpc_id, SubnetId=subnet_id, Zone=zone,
     )
 
 旧 ``Metadata`` 用法仍然支持，可与命名参数混合使用::
@@ -112,16 +111,18 @@ full-jitter 指数退避。``retry=N`` 最多执行 ``N+1`` 次 IP 尝试；IP �
         Bucket=bucket,
         Metadata={
             'x-cos-vpc-id': vpc_id,
-            'x-cos-cidr-block': cidr_block,
             'x-cos-subnet-id': subnet_id,
             'x-cos-zone': zone,
         },
     )
 
-``Metadata`` 的键是完整 HTTP 头名，不会自动添加 ``x-cos-meta-`` 前缀。四个字段按
+``CidrBlock`` / ``x-cos-cidr-block`` 已废弃，服务端不再使用：不再必填，旧代码继续传入
+时仍参与冲突检查，非空值原样发送，空值不发送。
+
+``Metadata`` 的键是完整 HTTP 头名，不会自动添加 ``x-cos-meta-`` 前缀。网络字段按
 头名大小写不敏感合并；同值接受（含等价的 text/bytes），冲突在本地报错，不静默覆盖。
-命名参数的 ``None`` 表示未提供，允许由 ``Metadata`` 补齐；缺失、空字符串或纯空白值
-在发送请求前拒绝。SDK 不推导 Zone/CIDR，不代替服务端校验云资源配置。
+命名参数的 ``None`` 表示未提供，允许由 ``Metadata`` 补齐；必填字段缺失、空字符串或纯空白值
+在发送请求前拒绝。SDK 不推导 Zone，不代替服务端校验云资源配置。
 命名参数仅用于 Rapid ``create_bucket``，普通桶误用非 ``None`` 值会被拒绝；普通桶
 原有 ``Metadata`` 行为不变，其它 API 也不新增这些参数。
 
