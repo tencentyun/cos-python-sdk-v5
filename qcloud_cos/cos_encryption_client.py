@@ -50,8 +50,8 @@ class CosEncryptionClient(CosS3Client):
                 )
                 print (response['ETag'])
         """
-        encrypt_key, encrypt_start = self.provider.init_data_cipher()
-        meta_handle = MetaHandle(encrypt_key, encrypt_start)
+        encrypt_key, encrypt_start, master_iv = self.provider.init_data_cipher()
+        meta_handle = MetaHandle(encrypt_key, encrypt_start, master_iv)
         kwargs = meta_handle.set_object_meta(kwargs)
         data = self.provider.make_data_encrypt_adapter(Body)
         response = super(CosEncryptionClient, self).put_object(Bucket, data, Key, EnableMD5, **kwargs)
@@ -79,7 +79,7 @@ class CosEncryptionClient(CosS3Client):
         """
         response = self.head_object(Bucket, Key, **kwargs)
         meta_handle = MetaHandle()
-        encrypt_key, encrypt_start = meta_handle.get_object_meta(response)
+        encrypt_key, encrypt_start, master_iv = meta_handle.get_object_meta(response)
 
         headers = mapped(kwargs)
         offset = 0
@@ -122,7 +122,7 @@ class CosEncryptionClient(CosS3Client):
             headers=headers,
             _rapid_data_request=True)
 
-        self.provider.init_data_cipter_by_user(encrypt_key, encrypt_start, real_start)
+        self.provider.init_data_cipter_by_user(encrypt_key, encrypt_start, real_start, master_iv)
         response['Body'] = self.provider.make_data_decrypt_adapter(rt, offset)
         return response
 
@@ -145,8 +145,8 @@ class CosEncryptionClient(CosS3Client):
                 Key='test.txt'
             )
         """
-        encrypt_key, encrypt_start = self.provider.init_data_cipher()
-        meta_handle = MetaHandle(encrypt_key, encrypt_start)
+        encrypt_key, encrypt_start, master_iv = self.provider.init_data_cipher()
+        meta_handle = MetaHandle(encrypt_key, encrypt_start, master_iv)
         kwargs = meta_handle.set_object_meta(kwargs)
         response = super(CosEncryptionClient, self).create_multipart_upload(Bucket, Key, **kwargs)
         return response

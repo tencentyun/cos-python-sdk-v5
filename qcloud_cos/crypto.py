@@ -142,12 +142,19 @@ class BaseProvider(object):
 
     @abstractmethod
     def init_data_cipher(self):
-        """初始化cipher"""
+        """初始化cipher
+
+        :return: (encrypt_key, encrypt_iv, master_iv) 三元组
+                 master_iv 为主密钥加密使用的随机IV，RSAProvider 返回 None
+        """
         pass
 
     @abstractmethod
-    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0):
-        """根据密钥初始化cipher"""
+    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0, master_iv=None):
+        """根据密钥初始化cipher
+
+        :param master_iv(bytes): 主密钥加密使用的IV，为None时兼容旧数据
+        """
         pass
 
     def adjust_read_offset(self, start):
@@ -250,17 +257,15 @@ class RSAProvider(BaseProvider):
 
     def init_data_cipher(self):
         """初始化cipher"""
-        encrypt_key = None
-        encrypt_iv = None
         self.__data_key = self.get_data_key()
         self.__data_iv = self.data_cipher.get_counter_iv()
         start = iv_to_big_int(self.__data_iv)
         self.data_cipher.new_cipher(self.__data_key, start)
         encrypt_key = self.__encrypt_obj.encrypt(self.__data_key)
         encrypt_iv = self.__encrypt_obj.encrypt(self.__data_iv)
-        return encrypt_key, encrypt_iv
+        return encrypt_key, encrypt_iv, None
 
-    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0):
+    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0, master_iv=None):
         """根据密钥初始化cipher"""
         self.__data_key = self.__decrypt_obj.decrypt(encrypt_key)
         self.__data_iv = self.__decrypt_obj.decrypt(encrypt_iv)
@@ -277,58 +282,68 @@ class AESProvider(BaseProvider):
         self.__ed_obj = None
         self.__data_key = None
         self.__data_iv = None
-        self.__my_counter = Counter.new(_AES_CTR_COUNTER_BITS_LENGTH, initial_value=0)
         self.__aes_key = aes_key
         self.__aes_key_path = aes_key_path
 
-    def init_ed_obj(self):
+    def __get_aes_key(self):
+        """获取AES主密钥的原始字节，不创建cipher对象"""
         default_aes_dir = os.path.expanduser('~/.cos_local_aes')
         default_key_path = os.path.join(default_aes_dir, '.aes_key.pem')
+        aes_key = None
         if self.__aes_key:
             aes_key = to_bytes(base64.b64decode(to_bytes(self.__aes_key)))
-            self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
         elif self.__aes_key_path:
             if os.path.exists(self.__aes_key_path):
                 with open(self.__aes_key_path, 'rb') as f:
-                    aes_key = f.read()
-                    aes_key = to_bytes(base64.b64decode(to_bytes(aes_key)))
-                    self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
+                    aes_key = to_bytes(base64.b64decode(to_bytes(f.read())))
         else:
             logger.info('aes_key and aes_key_path is None, try to get key from default path')
             if os.path.exists(default_key_path):
                 with open(default_key_path, 'rb') as f:
-                    aes_key = f.read()
-                    aes_key = to_bytes(base64.b64decode(to_bytes(aes_key)))
-                    self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
+                    aes_key = to_bytes(base64.b64decode(to_bytes(f.read())))
 
-        if self.__ed_obj is None:
+        if aes_key is None:
             logger.warning('fail to get aes key, will generate key')
             aes_key = random_key(_AES_256_KEY_SIZE)
-            self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=self.__my_counter)
             if not os.path.exists(default_aes_dir):
                 os.makedirs(default_aes_dir)
-
             with open(default_key_path, 'wb') as f:
-                aes_key = to_bytes(base64.b64encode(to_bytes(aes_key)))
-                f.write(aes_key)
+                f.write(to_bytes(base64.b64encode(to_bytes(aes_key))))
+
+        return aes_key
+
+    def init_ed_obj(self, master_iv=None):
+        """初始化信封加解密对象
+
+        :param master_iv(bytes): 主密钥加密使用的IV，为None时使用initial_value=0（兼容旧数据）
+        """
+        if master_iv is not None:
+            counter_initial = iv_to_big_int(master_iv)
+        else:
+            counter_initial = 0
+        my_counter = Counter.new(_AES_CTR_COUNTER_BITS_LENGTH, initial_value=counter_initial)
+        aes_key = self.__get_aes_key()
+        self.__ed_obj = AES.new(aes_key, AES.MODE_CTR, counter=my_counter)
 
     def init_data_cipher(self):
-        """初始化cipher"""
-        encrypt_key = None
-        encrypt_iv = None
+        """初始化cipher，每次生成随机master IV防止密钥流重用"""
         self.__data_key = self.get_data_key()
         self.__data_iv = self.data_cipher.get_counter_iv()
         start = iv_to_big_int(self.__data_iv)
         self.data_cipher.new_cipher(self.__data_key, start)
 
-        self.init_ed_obj()
+        master_iv = random_iv()
+        self.init_ed_obj(master_iv)
         encrypt_key = self.__ed_obj.encrypt(self.__data_key)
         encrypt_iv = self.__ed_obj.encrypt(self.__data_iv)
-        return encrypt_key, encrypt_iv
+        return encrypt_key, encrypt_iv, master_iv
 
-    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0):
-        """根据密钥初始化cipher"""
-        self.init_ed_obj()
+    def init_data_cipter_by_user(self, encrypt_key, encrypt_iv, offset=0, master_iv=None):
+        """根据密钥初始化cipher
+
+        :param master_iv(bytes): 主密钥加密使用的IV，为None时兼容旧数据（counter=0）
+        """
+        self.init_ed_obj(master_iv)
         self.__data_key = self.__ed_obj.decrypt(encrypt_key)
         self.__data_iv = self.__ed_obj.decrypt(encrypt_iv)
         start = iv_to_big_int(self.__data_iv)
@@ -338,20 +353,24 @@ class AESProvider(BaseProvider):
 class MetaHandle(object):
     """用于获取/生成加密的元信息"""
 
-    def __init__(self, encrypt_key=None, encrypt_iv=None):
+    def __init__(self, encrypt_key=None, encrypt_iv=None, master_iv=None):
         """初始化
 
         :param encrypt_key(string): 加密的数据密钥
         :param encrypt_iv(bytes): 加密counter的初始值
+        :param master_iv(bytes): 主密钥加密使用的随机IV
         """
         self.__encrypt_key = encrypt_key
         self.__encrypt_iv = encrypt_iv
+        self.__master_iv = master_iv
 
     def set_object_meta(self, headers):
         """设置加密元信息到object的头部"""
         meta_data = dict()
         meta_data['x-cos-meta-client-side-encryption-key'] = to_bytes(base64.b64encode(to_bytes(self.__encrypt_key)))
         meta_data['x-cos-meta-client-side-encryption-iv'] = to_bytes(base64.b64encode(to_bytes(self.__encrypt_iv)))
+        if self.__master_iv is not None:
+            meta_data['x-cos-meta-client-side-encryption-master-iv'] = to_bytes(base64.b64encode(to_bytes(self.__master_iv)))
         headers['Metadata'] = meta_data
         return headers
 
@@ -360,7 +379,11 @@ class MetaHandle(object):
         if 'x-cos-meta-client-side-encryption-key' in headers and 'x-cos-meta-client-side-encryption-iv' in headers:
             self.__encrypt_key = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-key']))
             self.__encrypt_iv = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-iv']))
-        return self.__encrypt_key, self.__encrypt_iv
+        if 'x-cos-meta-client-side-encryption-master-iv' in headers:
+            self.__master_iv = base64.b64decode(to_bytes(headers['x-cos-meta-client-side-encryption-master-iv']))
+        else:
+            self.__master_iv = None
+        return self.__encrypt_key, self.__encrypt_iv, self.__master_iv
 
 
 class DataEncryptAdapter(object):
