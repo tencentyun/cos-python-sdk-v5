@@ -1,6 +1,5 @@
 # -*- coding=utf-8
 
-import requests
 import logging
 import hashlib
 import base64
@@ -9,25 +8,50 @@ import sys
 import time
 import copy
 import json
+import random
 import threading
+import socket
 import xml.dom.minidom
 import xml.etree.ElementTree
+
+import requests
 from requests import Request, Session, ConnectionError, Timeout
-from datetime import datetime
-from six.moves.urllib.parse import quote, unquote, urlencode, urlparse
+from requests.exceptions import ChunkedEncodingError
+from six.moves.urllib.parse import quote, unquote, unquote_plus, urlencode, urlparse
 from six import text_type, binary_type
-from hashlib import md5
 from .streambody import StreamBody
 from .xml2dict import Xml2Dict
 from .cos_auth import CosS3Auth
 from .cos_auth import CosRtmpAuth
 from .cos_comm import *
+from .cos_comm import (
+    client_can_retry, decode_result, format_bucket, get_copy_source_info,
+    mapped, switch_hostname_for_url, to_bytes, to_unicode,
+)
 from .cos_threadpool import SimpleThreadPool
 from .cos_exception import CosClientError
 from .cos_exception import CosServiceError
 from .version import __version__
 from .select_event_stream import EventStream
 from .resumable_downloader import ResumableDownLoader
+from . import gateway_dns_lb
+from .session_auth import (
+    CreateSessionProvider,
+    SESSION_MODE_READ_ONLY,
+    SESSION_MODE_READ_WRITE,
+    endpoint_looks_rapid,
+    host_looks_rapid,
+    is_rapid_bucket,
+    normalize_rapid_region,
+    normalize_session_mode,
+    parse_bucket_name_from_host,
+    parse_create_session_result,
+    rapid_endpoint_for_region,
+    rapid_region_from_host,
+    rapid_service_domain_for_region,
+    require_session_ready,
+    resolve_session_bucket,
+)
 
 # python 3.10报错"module 'collections' has no attribute 'Iterable'"，这里先规避
 if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
@@ -35,6 +59,18 @@ if sys.version_info.major >= 3 and sys.version_info.minor >= 10:
     collections.Iterable = collections.abc.Iterable
 
 logger = logging.getLogger(__name__)
+
+_RESPONSE_HEADER_KEYS = dict((name.lower(), name) for name in (
+    'ETag', 'Content-Length', 'Content-Range', 'Content-Type', 'Content-MD5',
+    'Last-Modified', 'Accept-Ranges', 'Cache-Control', 'Content-Disposition',
+    'Content-Encoding', 'Content-Language', 'Expires', 'Date', 'Location',
+))
+
+
+def _check_rapid_object_key(key):
+    # HTTP libraries can normalize a trailing /.. before Gateway sees the key.
+    if any(part in (u'.', u'..') for part in to_unicode(key).split(u'/')):
+        raise CosClientError('rapid object key must not contain . or .. path segments')
 
 
 class CosConfig(object):
@@ -44,7 +80,10 @@ class CosConfig(object):
                  Access_id=None, Access_key=None, Secret_id=None, Secret_key=None, Endpoint=None, IP=None, Port=None,
                  Anonymous=None, UA=None, Proxies=None, Domain=None, ServiceDomain=None, KeepAlive=True, PoolConnections=10,
                  PoolMaxSize=10, AllowRedirects=False, SignHost=True, EndpointCi=None, EndpointPic=None, EnableOldDomain=True, EnableInternalDomain=True, SignParams=True,
-                 AutoSwitchDomainOnRetry=False, VerifySSL=None, SSLCert=None):
+                 AutoSwitchDomainOnRetry=False, VerifySSL=None, SSLCert=None,
+                 EnableSessionAuth=None, SessionMode=None, EnableRapidDomain=False,
+                 SessionRefreshBefore=60, CreateSessionTimeout=30,
+                 EnableGatewayDnsLb=None, GatewayDnsRefreshInterval=5):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -78,6 +117,15 @@ class CosConfig(object):
         :param AutoSwitchDomainOnRetry(bool): 重试请求时是否将myqcloud.com域名切换为tencentcos.cn
         :param VerifySSL(bool or string): 是否开启SSL证书校验, 或客户端CA bundle证书文件路径. 示例: True/False 或 '/path/certfile'
         :param SSLCert(string or tuple): 客户端SSL证书路径. 示例: '/path/client.pem' 或 ('/path/client.cert', '/path/client.key')
+        :param EnableSessionAuth(bool): 高性能桶 session 鉴权。None=自动（rapid 桶且 Endpoint/Domain 符合 Rapid 域名时开启）；
+            True 强制对 rapid 桶开启；False 关闭（rapid 数据面会本地报错）。
+        :param SessionMode(string): CreateSession 默认权限，ReadWrite 或 ReadOnly，缺省 ReadWrite。
+        :param EnableRapidDomain(bool): 为 True 时 Bucket Endpoint 使用 cosrapid.<region>.myqcloud.com，
+            ServiceDomain 使用 service.cosrapid.<region>.myqcloud.com。
+        :param SessionRefreshBefore(int): session 剩余寿命低于该秒数时提前刷新，默认 60。
+        :param CreateSessionTimeout(int): CreateSession 独立超时秒数，默认 30。
+        :param EnableGatewayDnsLb(bool): HTTP Rapid Gateway DNS 负载均衡。None=自动；True=强制校验；False=关闭。
+        :param GatewayDnsRefreshInterval(int or float): Gateway DNS 刷新间隔秒数，最小 1，默认 5。
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -105,9 +153,68 @@ class CosConfig(object):
         self._auto_switch_domain_on_retry = AutoSwitchDomainOnRetry
         self._verify_ssl = VerifySSL
         self._ssl_cert = SSLCert
+        self._enable_session_auth = EnableSessionAuth
+        self._session_mode = normalize_session_mode(SessionMode) if SessionMode else SESSION_MODE_READ_WRITE
+        self._enable_rapid_domain = bool(EnableRapidDomain)
+        self._session_refresh_before = SessionRefreshBefore if SessionRefreshBefore is not None else 60
+        self._create_session_timeout = CreateSessionTimeout if CreateSessionTimeout is not None else 30
+        self._enable_gateway_dns_lb = EnableGatewayDnsLb
+        self._rapid_service_domain = None
+        try:
+            refresh_interval = (5 if GatewayDnsRefreshInterval is None
+                                else GatewayDnsRefreshInterval)
+            self._gateway_dns_refresh_interval = max(
+                1.0, float(refresh_interval))
+        except (TypeError, ValueError):
+            raise CosClientError('GatewayDnsRefreshInterval must be a number')
+        if not hasattr(self, '_credential_inst'):
+            self._credential_inst = None
+
+        if EnableRapidDomain and Endpoint is None and Domain is None:
+            if not Region:
+                raise CosClientError('Region is required when EnableRapidDomain is True')
+            Endpoint = rapid_endpoint_for_region(Region)
+            EnableOldDomain = False
+            self._enable_old_domain = False
 
         if self._domain is None:
             self._endpoint = format_endpoint(Endpoint, Region, u'cos.', EnableOldDomain, EnableInternalDomain)
+
+        rapid_host = None
+        if endpoint_looks_rapid(self._endpoint, Region):
+            rapid_host = self._endpoint
+        elif (parse_bucket_name_from_host(self._domain)
+              and host_looks_rapid(self._domain, Region)):
+            rapid_host = self._domain
+        rapid_region = (normalize_rapid_region(Region)
+                        or rapid_region_from_host(rapid_host))
+
+        if EnableRapidDomain:
+            if not rapid_region:
+                raise CosClientError(
+                    'Region or a valid Rapid Endpoint/Domain is required '
+                    'when EnableRapidDomain is True')
+            if self._domain is None:
+                expected_endpoint = rapid_endpoint_for_region(rapid_region)
+                if self._endpoint != expected_endpoint:
+                    raise CosClientError(
+                        'EnableRapidDomain requires Endpoint %s, got %s' % (
+                            expected_endpoint, self._endpoint))
+            elif (not host_looks_rapid(self._domain, rapid_region)
+                  or not parse_bucket_name_from_host(self._domain)):
+                raise CosClientError(
+                    'EnableRapidDomain requires Domain '
+                    '<bucket>.cosrapid.<region>.myqcloud.com')
+            self._rapid_service_domain = (
+                ServiceDomain if ServiceDomain is not None
+                else rapid_service_domain_for_region(rapid_region))
+            self._service_domain = self._rapid_service_domain
+        elif rapid_host:
+            self._rapid_service_domain = (
+                self._service_domain
+                or rapid_service_domain_for_region(rapid_region))
+            if self._service_domain is None:
+                self._service_domain = self._rapid_service_domain
         if Scheme is None:
             Scheme = u'https'
         Scheme = to_unicode(Scheme)
@@ -177,6 +284,8 @@ class CosConfig(object):
             if not path:
                 raise CosClientError("Key is required not empty")
             path = to_unicode(path)
+            if bucket and resolve_session_bucket(self, bucket)[1]:
+                _check_rapid_object_key(path)
             if path[0] == u'/':
                 path = path[1:]
             path = quote(to_bytes(path), '/-_.~')
@@ -281,6 +390,15 @@ class CosS3Client(object):
 
     __built_in_sessions = None  # 内置的静态连接池，多个Client间共享使用
     __built_in_pid = 0
+    __built_in_locks = {}
+
+    @classmethod
+    def _built_in_lock(cls):
+        pid = os.getpid()
+        lock = cls.__built_in_locks.get(pid)
+        if lock is None:
+            lock = cls.__built_in_locks.setdefault(pid, threading.Lock())
+        return lock
 
     def __init__(self, conf, retry=3, session=None):
         """初始化client对象
@@ -295,7 +413,7 @@ class CosS3Client(object):
 
         if session is None:
             if not CosS3Client.__built_in_sessions:
-                with threading.Lock():
+                with CosS3Client._built_in_lock():
                     if not CosS3Client.__built_in_sessions:  # 加锁后double check
                         CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
                         CosS3Client.__built_in_pid = os.getpid()
@@ -306,6 +424,87 @@ class CosS3Client(object):
         else:
             self._session = session
             self._use_built_in_pool = False
+
+        self._session_provider = CreateSessionProvider(
+            create_fn=self._provider_create_session,
+            base_secret_id_fn=self._base_secret_id,
+            refresh_before=self._conf._session_refresh_before)
+
+    def _base_secret_id(self):
+        if self._conf._secret_id:
+            return self._conf._secret_id
+        inst = getattr(self._conf, '_credential_inst', None)
+        if inst is not None:
+            return inst.secret_id
+        return u''
+
+    def _formatted_bucket(self, bucket):
+        name, _rapid = resolve_session_bucket(self._conf, bucket)
+        return name
+
+    def _validate_rapid_options(self, bucket, *options):
+        """Reject options whose requested semantics the Rapid backend cannot honor."""
+        if not is_rapid_bucket(self._formatted_bucket(bucket)):
+            return
+        for values in options:
+            for key, value in (values or {}).items():
+                name = to_unicode(key).lower()
+                if name == 'versionid':
+                    raise CosClientError('VersionId is not supported for rapid bucket')
+                if name in ('callback', 'callbackvar', 'x-cos-callback', 'x-cos-callback-var'):
+                    raise CosClientError('server-side Callback/CallbackVar is not supported for rapid bucket')
+                if name in ('forbidoverwrite', 'x-cos-forbid-overwrite'):
+                    if value not in ('true', 'false', b'true', b'false'):
+                        raise CosClientError('ForbidOverwrite must be the string "true" or "false" for rapid bucket')
+
+    def _validate_rapid_copy_source(self, bucket, source):
+        if 'Bucket' not in source:
+            return  # Keep the existing CopySource parameter error.
+        destination = self._formatted_bucket(bucket)
+        source_bucket = format_bucket(source['Bucket'], source.get('Appid', ''))
+        if not (is_rapid_bucket(destination) or is_rapid_bucket(source_bucket)):
+            return
+        if source_bucket != destination:
+            raise CosClientError('rapid copy requires source and destination in the same bucket')
+        if 'VersionId' in source:
+            raise CosClientError('VersionId is not supported for rapid bucket')
+        if 'Key' in source:
+            _check_rapid_object_key(source['Key'])
+
+    def _rapid_complete_options(self, bucket, options):
+        """Validate before high-level IO and retain the final commit condition."""
+        if not is_rapid_bucket(self._formatted_bucket(bucket)):
+            return {}
+        headers = mapped(options)
+        self._validate_rapid_options(bucket, headers)
+        for name, value in headers.items():
+            if to_unicode(name).lower() == 'x-cos-forbid-overwrite':
+                return {'ForbidOverwrite': value}
+        return {}
+
+    def _decode_list_result(self, bucket, data, keys, nested_keys):
+        decoder = unquote
+        if is_rapid_bucket(self._formatted_bucket(bucket)) and data.get('EncodingType') == 'url':
+            decoder = unquote_plus
+            # Gateway encodes names, not opaque upload IDs.
+            keys = [key for key in keys if key not in ('UploadIdMarker', 'NextUploadIdMarker')]
+            keys.append('Delimiter')
+        return decode_result(data, keys, nested_keys, decode_func=decoder)
+
+    def _response_headers(self, bucket, headers):
+        """Preserve wire keys and add stable Rapid header aliases, without changing values."""
+        result = dict(headers)
+        if is_rapid_bucket(self._formatted_bucket(bucket)):
+            for key, value in headers.items():
+                lower_key = key.lower()
+                result.setdefault(lower_key, value)
+                canonical = _RESPONSE_HEADER_KEYS.get(lower_key)
+                if canonical:
+                    result.setdefault(canonical, value)
+        return result
+
+    def _provider_create_session(self, bucket_name, mode):
+        return self.create_session(Bucket=bucket_name, Mode=mode, _as_credential=True)
 
     def generate_built_in_connection_pool(self, PoolConnections, PoolMaxSize):
         """生成SDK内置的连接池，此连接池是client间共用的"""
@@ -322,21 +521,23 @@ class CosS3Client(object):
         if not self._use_built_in_pool:
             return
 
-        if CosS3Client.__built_in_pid == os.getpid():
+        pid = os.getpid()
+        if CosS3Client.__built_in_pid == pid:
+            if self._session is not CosS3Client.__built_in_sessions:
+                self._session = CosS3Client.__built_in_sessions
             return
 
-        with threading.Lock():
-            if CosS3Client.__built_in_pid == os.getpid(): # 加锁后double check
-                return
-
-            # 重新生成内置连接池
-            CosS3Client.__built_in_sessions.close()
-            CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(self._conf._pool_connections, self._conf._pool_maxsize)
-            CosS3Client.__built_in_pid = os.getpid()
+        with CosS3Client._built_in_lock():
+            if CosS3Client.__built_in_pid != pid:
+                # fork 后不能关闭继承的 Session，其内部连接池锁可能由已消失的父进程线程持有。
+                CosS3Client.__built_in_sessions = self.generate_built_in_connection_pool(
+                    self._conf._pool_connections, self._conf._pool_maxsize)
+                CosS3Client.__built_in_pid = pid
+                logger.debug("bound built-in connection pool when new processor. maxsize=%d,%d" %
+                             (self._conf._pool_connections, self._conf._pool_maxsize))
 
             # 重新绑定到内置连接池
             self._session = CosS3Client.__built_in_sessions
-            logger.debug("bound built-in connection pool when new processor. maxsize=%d,%d" % (self._conf._pool_connections, self._conf._pool_maxsize))
 
     def get_conf(self):
         """获取配置"""
@@ -350,7 +551,8 @@ class CosS3Client(object):
         """重试执行次数递增"""
         self._retry_exe_times += 1
 
-    def get_auth(self, Method, Bucket, Key, Expired=300, Headers={}, Params={}, SignHost=None, UseCiEndPoint=False):
+    def get_auth(self, Method, Bucket, Key, Expired=300, Headers=None, Params=None, SignHost=None, UseCiEndPoint=False,
+                 SecretId=None, SecretKey=None):
         """获取签名
 
         :param Method(string): http method,如'PUT','GET'.
@@ -378,7 +580,7 @@ class CosS3Client(object):
             print (auth_string)
         """
 
-        # python中默认参数只会初始化一次，这里重新生成可变对象实例避免多线程访问问题
+        # 为省略或空的参数创建本次调用独立的字典。
         if not Headers:
             Headers = dict()
         if not Params:
@@ -389,7 +591,8 @@ class CosS3Client(object):
             endpoint = self._conf._endpoint_ci
         url = self._conf.uri(bucket=Bucket, path=Key, endpoint=endpoint)
         r = Request(Method, url, headers=Headers, params=Params)
-        auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost)
+        auth = CosS3Auth(self._conf, Key, Params, Expired, SignHost,
+                         secret_id=SecretId, secret_key=SecretKey)
         return auth(r).headers['Authorization']
 
     def should_switch_domain(self, url, headers={}):
@@ -400,15 +603,337 @@ class CosS3Client(object):
             return True
         return False
 
-    def send_request(self, method, url, bucket=None, timeout=30, cos_request=True, ci_request=False, appid=None, **kwargs):
+    @staticmethod
+    def _is_ip_literal(host):
+        if not host:
+            return False
+        if not hasattr(socket, 'inet_pton'):
+            try:
+                socket.inet_aton(host)
+                return True
+            except socket.error:
+                return ':' in host
+        for family in (socket.AF_INET, socket.AF_INET6):
+            try:
+                socket.inet_pton(family, host)
+                return True
+            except (AttributeError, socket.error):
+                pass
+        return False
+
+    @staticmethod
+    def _has_http_environment_proxy():
+        for name in ('http_proxy', 'HTTP_PROXY', 'all_proxy', 'ALL_PROXY'):
+            if os.environ.get(name):
+                return True
+        return False
+
+    def _gateway_lb_context(self, url, bucket, cos_request=True, ci_request=False):
+        """返回 (逻辑 Host, DNS host, port)；None 表示保持原请求路径。"""
+        if (not cos_request) or ci_request or not bucket:
+            return None
+        bucket_name, rapid = resolve_session_bucket(self._conf, bucket)
+        if not rapid or not is_rapid_bucket(bucket_name):
+            return None
+
+        flag = self._conf._enable_gateway_dns_lb
+        if flag is False:
+            return None
+
+        parsed = urlparse(url)
+        host = parsed.hostname
+        reasons = []
+        if self._conf._scheme != u'http' or parsed.scheme.lower() != u'http':
+            reasons.append('HTTP is required')
+        if parsed.port is not None:
+            reasons.append('the Gateway Bucket Host must not contain an explicit port')
+        if (not host
+                or not host_looks_rapid(host, self._conf._region)
+                or parse_bucket_name_from_host(host) != bucket_name
+                or self._is_ip_literal(host)):
+            reasons.append(
+                'a non-IP <bucket>.cosrapid.<region>.myqcloud.com host is required')
+        if self._conf._ip is not None:
+            reasons.append('CosConfig.IP is set')
+        if self._conf._proxies:
+            reasons.append('CosConfig.Proxies is set')
+        if not self._use_built_in_pool:
+            reasons.append('a custom session is set')
+        if getattr(self._session, 'trust_env', False) and self._has_http_environment_proxy():
+            reasons.append('an HTTP/ALL environment proxy is set')
+
+        if reasons:
+            if flag is True:
+                raise CosClientError(
+                    'Gateway DNS LB is unavailable for rapid bucket %s: %s' % (
+                        bucket_name, '; '.join(reasons)))
+            return None
+
+        port = parsed.port if parsed.port is not None else 80
+        return parsed.netloc, host, port
+
+    def _rapid_proxy_target(self, url, bucket, rapid_control_request):
+        """为 Rapid Bucket 控制面返回 (Proxy TCP URL, 逻辑 Bucket Host)。"""
+        if (not rapid_control_request) or not bucket:
+            return url, None
+        bucket_name, rapid = resolve_session_bucket(self._conf, bucket)
+        if not rapid:
+            return url, None
+        service_domain = getattr(self._conf, '_rapid_service_domain', None)
+        if not service_domain or self._conf._ip is not None:
+            return url, None
+
+        parsed = urlparse(url)
+        logical_bucket = parse_bucket_name_from_host(parsed.hostname)
+        if logical_bucket != bucket_name:
+            raise CosClientError(
+                'Rapid control request Host does not match bucket %s: %s' % (
+                    bucket_name, parsed.netloc))
+        return parsed._replace(netloc=service_domain).geturl(), parsed.netloc
+
+    def _apply_session_credential(self, bucket, kwargs, mode=None, force_refresh=False):
+        """用 session 凭证替换本次请求的签名与 token。"""
+        cred = self._session_provider.get_credential(
+            self._formatted_bucket(bucket), mode=mode, force_refresh=force_refresh)
+        auth = kwargs.get('auth')
+        if auth is not None and hasattr(auth, 'with_credentials'):
+            kwargs['auth'] = auth.with_credentials(cred.secret_id, cred.secret_key)
+        kwargs.setdefault('headers', {})
+        kwargs['headers']['x-cos-security-token'] = cred.session_token
+        return cred
+
+    def _http_once(self, method, url, timeout, **kwargs):
+        if method == 'POST':
+            return self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
+        if method == 'GET':
+            return self._session.get(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
+        if method == 'PUT':
+            return self._session.put(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
+        if method == 'DELETE':
+            return self._session.delete(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
+        if method == 'HEAD':
+            return self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
+        raise CosClientError('unsupported method %s' % method)
+
+    def _rewind_for_retry(self, file_position, kwargs):
+        if 'data' not in kwargs or kwargs['data'] is None:
+            return True
+        body = kwargs['data']
+        if isinstance(body, (text_type, binary_type)):
+            return True
+        if file_position is not None and hasattr(body, 'seek'):
+            try:
+                body.seek(file_position)
+                return True
+            except Exception:
+                return False
+        return False
+
+    def _retry_delay(self, retry_index):
+        delay = random.uniform(0, min(2.0, 0.2 * (2 ** retry_index)))
+        time.sleep(delay)
+        return delay
+
+    @staticmethod
+    def _gateway_ip_url(logical_url, node):
+        parsed = urlparse(logical_url)
+        ip, port = node
+        if ':' in ip and not ip.startswith('['):
+            ip = '[%s]' % ip
+        return parsed._replace(netloc='%s:%s' % (ip, port)).geturl()
+
+    def _mark_request_retry(self, kwargs):
+        kwargs['headers']['x-cos-sdk-retry'] = 'true'
+        self.inc_retry_exe_times()
+
+    def _send_request_gateway_lb(self, method, logical_url, timeout, kwargs,
+                                 context, file_position, use_session,
+                                 bucket, session_mode, retry_ambiguous):
+        logical_host, dns_host, dns_port = context
+        kwargs['headers']['Host'] = logical_host
+        nodes = gateway_dns_lb.ensure_snapshot(
+            dns_host, dns_port, self._conf._gateway_dns_refresh_interval)
+        cold_domain = not nodes
+        if cold_domain:
+            logger.warning(
+                'Gateway DNS has no snapshot for %s:%s; using the logical host',
+                dns_host, dns_port)
+
+        failed_nodes = set()
+        current_node = gateway_dns_lb.pick_node(nodes)
+        current_url = (self._gateway_ip_url(logical_url, current_node)
+                       if current_node else logical_url)
+        ip_attempts = 0
+        domain_attempts = 0
+        max_ip_attempts = self._retry + 1
+        max_domain_attempts = self._retry + 1 if cold_domain else 1
+        retry_index = 0
+        count_budget = True
+        session_retried = False
+        exception_logbuf = []
+
+        def pick_next_ip():
+            if ip_attempts >= max_ip_attempts:
+                return None
+            next_node = gateway_dns_lb.pick_node(nodes, failed_nodes)
+            if next_node is None and nodes:
+                failed_nodes.clear()
+                excluded = set([current_node]) if len(nodes) > 1 else None
+                next_node = gateway_dns_lb.pick_node(nodes, excluded)
+            return next_node
+
+        def next_target(failed_node):
+            if failed_node is not None:
+                failed_nodes.add(failed_node)
+                next_node = pick_next_ip()
+                if next_node is not None:
+                    return (next_node,
+                            self._gateway_ip_url(logical_url, next_node), False)
+                if domain_attempts < max_domain_attempts:
+                    return None, logical_url, True
+                return None, None, False
+            if domain_attempts < max_domain_attempts:
+                return None, logical_url, False
+            return None, None, False
+
+        while True:
+            if count_budget:
+                if current_node is None:
+                    domain_attempts += 1
+                else:
+                    ip_attempts += 1
+            count_budget = True
+
+            try:
+                logger.debug(
+                    'send Gateway request: target=%s, logical_host=%s, header_keys=%s',
+                    urlparse(current_url).netloc, logical_host,
+                    sorted(kwargs['headers'].keys()))
+                res = self._http_once(method, current_url, timeout, **kwargs)
+                logger.debug('recv Gateway response: status_code=%s, headers=%s',
+                             res.status_code, res.headers)
+            except Exception as error:
+                logger.debug('recv Gateway exception: %s', error)
+                exception_logbuf.append(
+                    'target:%s exception:%s' % (
+                        urlparse(current_url).netloc, str(error)))
+                if not isinstance(
+                        error, (ConnectionError, Timeout, ChunkedEncodingError)):
+                    logger.exception(exception_logbuf)
+                    raise CosClientError(str(error))
+                if not retry_ambiguous:
+                    logger.exception(exception_logbuf)
+                    raise CosClientError(str(error))
+
+                next_node, next_url, fallback = next_target(current_node)
+
+                if next_url is None or not self._rewind_for_retry(file_position, kwargs):
+                    logger.exception(exception_logbuf)
+                    raise CosClientError(str(error))
+
+                self._mark_request_retry(kwargs)
+                delay = self._retry_delay(retry_index)
+                retry_index += 1
+                if fallback:
+                    logger.warning(
+                        'Gateway IP attempts exhausted after %s attempts for %s:%s; '
+                        'retrying the logical host once',
+                        ip_attempts, dns_host, dns_port)
+                else:
+                    logger.debug(
+                        'retry Gateway request #%s from %s to %s after %.0fms: %s',
+                        retry_index, current_node, next_node, delay * 1000, error)
+                current_node = next_node
+                current_url = next_url
+                continue
+
+            if res.status_code < 400:
+                return res, exception_logbuf
+
+            if use_session and (not session_retried) and res.status_code == 403:
+                if not self._rewind_for_retry(file_position, kwargs):
+                    return res, exception_logbuf
+                session_retried = True
+                try:
+                    res.close()
+                except Exception:
+                    pass
+                evicted = self._session_provider.evict(self._formatted_bucket(bucket))
+                self._apply_session_credential(
+                    bucket, kwargs, mode=session_mode, force_refresh=evicted)
+                self._mark_request_retry(kwargs)
+                count_budget = False
+                continue
+
+            if res.status_code not in (500, 502, 503, 504):
+                return res, exception_logbuf
+            if not retry_ambiguous:
+                return res, exception_logbuf
+
+            next_node, next_url, fallback = next_target(current_node)
+
+            if next_url is None or not self._rewind_for_retry(file_position, kwargs):
+                return res, exception_logbuf
+
+            try:
+                res.close()
+            except Exception:
+                pass
+            self._mark_request_retry(kwargs)
+            delay = self._retry_delay(retry_index)
+            retry_index += 1
+            if fallback:
+                logger.warning(
+                    'Gateway IP attempts exhausted after %s attempts for %s:%s; '
+                    'retrying the logical host once',
+                    ip_attempts, dns_host, dns_port)
+            else:
+                logger.debug(
+                    'retry Gateway request #%s from %s to %s after %.0fms: HTTP %s',
+                    retry_index, current_node, next_node, delay * 1000,
+                    res.status_code)
+            current_node = next_node
+            current_url = next_url
+
+    def send_request(self, method, url, bucket=None, timeout=30, cos_request=True, ci_request=False, appid=None,
+                     skip_session_auth=False, session_mode=None, force_timeout=False,
+                     _rapid_data_request=False, _rapid_control_request=False,
+                     _retry_ambiguous=True, _no_redirects=False, **kwargs):
         """封装request库发起http请求"""
-        if self._conf._timeout is not None:  # 用户自定义超时时间
+        if (not force_timeout) and self._conf._timeout is not None:  # 用户自定义超时时间
             timeout = self._conf._timeout
+        kwargs.setdefault('headers', {})
+        if _rapid_data_request:
+            self._validate_rapid_options(bucket, kwargs['headers'], kwargs.get('params'))
         if self._conf._ua is not None:
             kwargs['headers']['User-Agent'] = self._conf._ua
         else:
             kwargs['headers']['User-Agent'] = 'cos-python-sdk-v' + __version__
-        if self._conf._token is not None:
+
+        # fork 后先重建内置连接池；显式 DNS LB 冲突必须在 CreateSession 前本地失败。
+        self.handle_built_in_connection_pool_by_pid()
+        url, rapid_control_host = self._rapid_proxy_target(
+            url, bucket, _rapid_control_request)
+        if rapid_control_host is not None:
+            # TCP/DNS 连接 Proxy service 域名，HTTP Host 与签名仍使用 Bucket Host。
+            gateway_context = None
+        else:
+            gateway_context = self._gateway_lb_context(
+                url, bucket, cos_request=cos_request, ci_request=ci_request)
+
+        use_session = False
+        if (not skip_session_auth) and (not ci_request) and bucket:
+            if require_session_ready(self._conf, bucket):
+                if not _rapid_data_request:
+                    raise CosClientError(
+                        'this SDK API is not supported for rapid bucket %s; '
+                        'only the documented Rapid data-plane APIs are allowed' %
+                        self._formatted_bucket(bucket))
+                use_session = True
+
+        if use_session:
+            self._apply_session_credential(bucket, kwargs, mode=session_mode)
+        elif self._conf._token is not None:
             if ci_request:
                 kwargs['headers']['x-ci-security-token'] = self._conf._token
             else:
@@ -423,6 +948,9 @@ class CosS3Client(object):
         if self._conf._keep_alive == False:
             kwargs['headers']['Connection'] = 'close'
         kwargs['headers'] = format_values(kwargs['headers'])
+        if rapid_control_host is not None:
+            # 放在 format_values 之后，保持与 DNS LB 路径相同的文本 Host 值。
+            kwargs['headers']['Host'] = rapid_control_host
 
         file_position = None
         if 'data' in kwargs:
@@ -430,7 +958,7 @@ class CosS3Client(object):
             if hasattr(body, 'tell') and hasattr(body, 'seek') and hasattr(body, 'read'):
                 try:
                     file_position = body.tell()  # 记录文件当前位置
-                except Exception as ioe:
+                except Exception:
                     file_position = None
             kwargs['data'] = to_bytes(kwargs['data'])
         # 使用https访问时可设置ssl证书校验相关参数
@@ -441,55 +969,105 @@ class CosS3Client(object):
                 kwargs['cert'] = self._conf._ssl_cert
         if self._conf._allow_redirects is not None:
             kwargs['allow_redirects'] = self._conf._allow_redirects
+        if _no_redirects:
+            # 仅 CreateSession 私有路径：签发凭证的请求不跟随重定向，覆盖任何配置。
+            kwargs['allow_redirects'] = False
         exception_logbuf = list() # 记录每次重试的错误日志
 
-        # 切换了进程需要重新生成连接池
-        self.handle_built_in_connection_pool_by_pid()
+        if gateway_context is not None:
+            res, exception_logbuf = self._send_request_gateway_lb(
+                method, url, timeout, kwargs, gateway_context, file_position,
+                use_session, bucket, session_mode, _retry_ambiguous)
+            if res.status_code < 400:
+                return res
+        else:
+            _, rapid_bucket = resolve_session_bucket(self._conf, bucket)
 
-        for j in range(self._retry + 1):
-            try:
-                if j != 0:
-                    if client_can_retry(file_position, **kwargs):
+            def rewind_for_retry():
+                if rapid_bucket:
+                    return self._rewind_for_retry(file_position, kwargs)
+                return client_can_retry(file_position, **kwargs)
+
+            res = None
+            last_exception = None
+            rewound_for_next = False
+            session_retried = False
+            for j in range(self._retry + 1):
+                try:
+                    if j != 0:
+                        if (not rewound_for_next) and not rewind_for_retry():
+                            if res is None:
+                                raise CosClientError(str(last_exception))
+                            break
+                        rewound_for_next = False
                         kwargs['headers']['x-cos-sdk-retry'] = 'true' # SDK重试标记
                         self.inc_retry_exe_times()
                         time.sleep(j)
-                    else:
-                        break
-                logger.debug("send request: url: {}, headers: {}".format(url, kwargs['headers']))
-                if method == 'POST':
-                    res = self._session.post(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
-                elif method == 'GET':
-                    res = self._session.get(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
-                elif method == 'PUT':
-                    res = self._session.put(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
-                elif method == 'DELETE':
-                    res = self._session.delete(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
-                elif method == 'HEAD':
-                    res = self._session.head(url, timeout=timeout, proxies=self._conf._proxies, **kwargs)
-                logger.debug("recv response: status_code: {}, headers: {}".format(res.status_code, res.headers))
-                if res.status_code < 400:  # 2xx和3xx都认为是成功的
-                    if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
-                        if j < self._retry and self.should_switch_domain(url, res.headers):
-                            url = switch_hostname_for_url(url)
+                    logger.debug("send request: url: {}, header keys: {}".format(
+                        url, sorted(kwargs['headers'].keys())))
+                    res = self._http_once(method, url, timeout, **kwargs)
+                    logger.debug("recv response: status_code: {}, headers: {}".format(res.status_code, res.headers))
+                    if res.status_code < 400:  # 2xx和3xx都认为是成功的
+                        if res.status_code == 301 or res.status_code == 302 or res.status_code == 307:
+                            if j < self._retry and self.should_switch_domain(url, res.headers):
+                                url = switch_hostname_for_url(url)
+                                continue
+                        return res
+                    elif res.status_code < 500:  # 4xx 默认不重试；session 403 按桶 evict 后立即重试一次
+                        if use_session and (not session_retried) and res.status_code == 403:
+                            if not rewind_for_retry():
+                                break
+                            session_retried = True
+                            try:
+                                res.close()
+                            except Exception:
+                                pass
+                            evicted = self._session_provider.evict(self._formatted_bucket(bucket))
+                            self._apply_session_credential(
+                                bucket, kwargs, mode=session_mode, force_refresh=evicted)
+                            self._mark_request_retry(kwargs)
+                            try:
+                                res = self._http_once(method, url, timeout, **kwargs)
+                            except Exception as e:
+                                logger.debug("recv exception: {}".format(e))
+                                exception_logbuf.append(
+                                    'url:%s, retry_time:%d exception:%s' % (url, j, str(e)))
+                                raise CosClientError(str(e))
+                            if res.status_code < 400:
+                                return res
+                            if res.status_code < 500:
+                                break
+                            if not _retry_ambiguous:
+                                break
+                            if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
+                                url = switch_hostname_for_url(url)
                             continue
-                    return res
-                elif res.status_code < 500:  # 4xx 不重试
-                    break
-                else:
-                    if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
-                        url = switch_hostname_for_url(url)
-                    continue
-            except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
-                logger.debug("recv exception: {}".format(e))
-                # 记录每次请求的exception
-                exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
-                exception_logbuf.append(exception_log)
-                if j < self._retry and (isinstance(e, ConnectionError) or isinstance(e, Timeout)):  # 只重试网络错误
-                    if j == (self._retry - 1) and self.should_switch_domain(url):
-                        url = switch_hostname_for_url(url)
-                    continue
-                logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
-                raise CosClientError(str(e))
+                        break
+                    else:
+                        if not _retry_ambiguous:
+                            break
+                        if j == (self._retry - 1) and self.should_switch_domain(url, res.headers):
+                            url = switch_hostname_for_url(url)
+                        continue
+                except CosClientError:
+                    raise
+                except Exception as e:  # 捕获requests抛出的如timeout等客户端错误,转化为客户端错误
+                    last_exception = e
+                    logger.debug("recv exception: {}".format(e))
+                    # 记录每次请求的exception
+                    exception_log = 'url:%s, retry_time:%d exception:%s' % (url, j, str(e))
+                    exception_logbuf.append(exception_log)
+                    if (_retry_ambiguous and j < self._retry
+                            and (isinstance(e, ConnectionError) or isinstance(e, Timeout))):  # 只重试网络错误
+                        if not rewind_for_retry():
+                            logger.exception(exception_logbuf)
+                            raise CosClientError(str(e))
+                        rewound_for_next = True
+                        if j == (self._retry - 1) and self.should_switch_domain(url):
+                            url = switch_hostname_for_url(url)
+                        continue
+                    logger.exception(exception_logbuf)  # 最终重试失败, 输出前几次重试失败的exception
+                    raise CosClientError(str(e))
 
         if not cos_request:
             return res
@@ -506,7 +1084,7 @@ class CosS3Client(object):
                 logger.warning(info)
                 if len(exception_logbuf) > 0:
                     logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
-                raise CosServiceError(method, info, res.status_code)
+                raise CosServiceError(method, info, res.status_code, headers=res.headers)
             elif 'x-cos-error-code' in res.headers: # 兼容向量桶，向量桶错误码在头部，错误信息在body
                 info = dict()
                 info['code'] = res.headers['x-cos-error-code']
@@ -514,7 +1092,7 @@ class CosS3Client(object):
                     info['requestid'] = res.headers['x-cos-request-id']
                 info['message'] = res.text
                 logger.error(info)
-                raise CosServiceError(method, info, res.status_code)
+                raise CosServiceError(method, info, res.status_code, headers=res.headers)
             else:
                 msg = res.text
                 if msg == u'':  # 服务器没有返回Error Body时 给出头部的信息
@@ -522,7 +1100,7 @@ class CosS3Client(object):
                 logger.error(msg)
                 if len(exception_logbuf) > 0:
                     logger.exception(exception_logbuf) # 最终重试失败, 输出前几次重试失败的exception
-                raise CosServiceError(method, msg, res.status_code)
+                raise CosServiceError(method, msg, res.status_code, headers=res.headers)
 
         return None
 
@@ -566,9 +1144,10 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, Key),
             data=Body,
-            headers=headers)
+            headers=headers,
+            _rapid_data_request=True)
 
-        response = dict(**rt.headers)
+        response = self._response_headers(Bucket, rt.headers)
         return response
 
     def get_object(self, Bucket, Key, KeySimplifyCheck=True, **kwargs):
@@ -622,9 +1201,10 @@ class CosS3Client(object):
             stream=True,
             auth=CosS3Auth(self._conf, Key, params=params),
             params=params,
-            headers=headers)
+            headers=headers,
+            _rapid_data_request=True)
 
-        response = dict(**rt.headers)
+        response = self._response_headers(Bucket, rt.headers)
         response['Body'] = StreamBody(rt)
 
         return response
@@ -777,6 +1357,10 @@ class CosS3Client(object):
         endpoint = None
         if UseCiEndPoint:
             endpoint = self._conf._endpoint_ci
+        if Bucket and require_session_ready(self._conf, Bucket):
+            return self.get_session_presigned_url(
+                Bucket=Bucket, Key=Key, Method=Method, Expired=Expired,
+                Params=Params, Headers=Headers, SignHost=SignHost)
         url = self._conf.uri(bucket=Bucket, path=Key, endpoint=endpoint)
         sign = self.get_auth(Method=Method, Bucket=Bucket, Key=Key, Expired=Expired, Headers=Headers, Params=Params, SignHost=SignHost, UseCiEndPoint=UseCiEndPoint)
         sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
@@ -807,6 +1391,147 @@ class CosS3Client(object):
             )
         """
         return self.get_presigned_url(Bucket, Key, 'GET', Expired, Params, Headers, UseCiEndPoint, SignHost)
+
+    def create_session(self, Bucket, Mode=None, _as_credential=False):
+        """为高性能桶签发 session 凭证（GET /?session）。
+
+        响应契约为 AWS 兼容 XML（AccessKeyId/SecretAccessKey/SessionToken/Expiration）。
+        请求带 Accept: application/xml；解析器仅为历史部署过渡兼容 JSON。
+        CreateSession 自身用基础凭证签名，独立超时且不跟随重定向。
+        Mode 为 ReadWrite 或 ReadOnly，缺省取 CosConfig.SessionMode。
+        """
+        _name, rapid = resolve_session_bucket(self._conf, Bucket)
+        if not rapid:
+            raise CosClientError(
+                'create_session is only supported on rapid bucket (COS Rapid Bucket / fusion-io), got %s' % Bucket)
+        mode = normalize_session_mode(Mode, default=self._conf._session_mode)
+        headers = {
+            u'x-cos-create-session-mode': mode,
+            u'Accept': u'application/xml',
+        }
+        if self._conf._token is None:
+            credential_inst = getattr(self._conf, '_credential_inst', None)
+            credential_token = (getattr(credential_inst, 'token', None)
+                                if credential_inst is not None else None)
+            if credential_token:
+                headers[u'x-cos-security-token'] = credential_token
+        params = {u'session': u''}
+        url = self._conf.uri(bucket=Bucket)
+        logger.info("create session, url=:{url} ,mode=:{mode}".format(url=url, mode=mode))
+        rt = self.send_request(
+            method='GET',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, params=params),
+            headers=headers,
+            params=params,
+            skip_session_auth=True,
+            _rapid_control_request=True,
+            force_timeout=True,
+            timeout=self._conf._create_session_timeout,
+            _no_redirects=True)
+        if rt.status_code != 200:
+            raise CosClientError(
+                'CreateSession unexpected status %s (redirects are not followed)' % rt.status_code)
+        parsed = parse_create_session_result(rt.content)
+        parsed['credential'].mode = mode
+        if _as_credential:
+            return parsed
+        cred = parsed['credential']
+        expiration = cred.expiration.strftime('%Y-%m-%dT%H:%M:%SZ')
+        return {
+            'Credentials': {
+                'AccessKeyId': cred.secret_id,
+                'SecretAccessKey': cred.secret_key,
+                'SessionToken': cred.session_token,
+                'Expiration': expiration,
+            },
+            'ExpiredTime': parsed.get('ExpiredTime'),
+            'Expiration': parsed.get('Expiration') or expiration,
+            'RequestId': parsed.get('RequestId') or rt.headers.get('x-cos-request-id', ''),
+        }
+
+    def rename_object(self, Bucket, Key, RenameSource, ForbidOverwrite=None, **kwargs):
+        """高性能桶内原子重命名对象。
+
+        :param Bucket(string): 存储桶名称.
+        :param Key(string): 目标对象 key.
+        :param RenameSource(string): 同桶源对象 key，内部补前导 / 并编码（保留 /）.
+        :param ForbidOverwrite(string): 置为 "true" 时目标已存在则拒绝.
+        """
+        _name, rapid = resolve_session_bucket(self._conf, Bucket)
+        if not rapid:
+            raise CosClientError(
+                'rename_object is only supported on rapid bucket (COS Rapid Bucket / fusion-io); '
+                'use copy + delete for ordinary bucket')
+        if not Key or Key == u'/':
+            raise CosClientError('empty object name')
+        if not RenameSource or RenameSource == u'/':
+            raise CosClientError('empty rename source')
+        src = to_unicode(RenameSource).lstrip(u'/')
+        _check_rapid_object_key(src)
+        headers = mapped(kwargs)
+        headers[u'x-cos-rename-source'] = u'/' + quote(to_bytes(src), "/-_.~!*'()")
+        if ForbidOverwrite is not None:
+            headers[u'x-cos-forbid-overwrite'] = ForbidOverwrite
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        logger.info("rename object, url=:{url} ,headers=:{headers}".format(url=url, headers=headers))
+        rt = self.send_request(
+            method='PUT',
+            url=url,
+            bucket=Bucket,
+            auth=CosS3Auth(self._conf, Key),
+            headers=headers,
+            _rapid_data_request=True,
+            _retry_ambiguous=False)
+        return self._response_headers(Bucket, rt.headers)
+
+    def get_session_presigned_url(self, Bucket, Key, Method, Expired=300, Params=None, Headers=None,
+                                  SignHost=None, Mode=None, SignMerged=False):
+        """为高性能桶生成以 session 凭证签名的预签名 URL。
+
+        token 放在 query 的 x-cos-security-token 并参与签名。网关只接受拆开的
+        q-sign-algorithm/q-ak/... 形态，SignMerged 会被拒绝。
+
+        GET/HEAD 默认申请独立的 ReadOnly session，不复用数据面已缓存的
+        ReadWrite，降低预签名泄露后的写风险。PUT 等写预签名仍走数据面缓存。
+        Expired 必须为正；实际可用窗口还受网关种子剩余寿命约束（通常 ≥ token）。
+        """
+        if SignMerged:
+            raise CosClientError(
+                'GetSessionPresignedURL does not support SignMerged; '
+                'fusion-io gateway only accepts split q-sign-* query parameters')
+        if not Key:
+            raise CosClientError('object key is empty')
+        if Expired is None or Expired <= 0:
+            raise CosClientError('session presign expired time must be positive')
+        self._validate_rapid_options(Bucket, Params, Headers)
+        require_session_ready(self._conf, Bucket)
+        _check_rapid_object_key(Key)
+        method = to_unicode(Method).upper()
+        if Mode is None and method in (u'GET', u'HEAD'):
+            mode = SESSION_MODE_READ_ONLY
+        else:
+            mode = normalize_session_mode(Mode, default=self._conf._session_mode)
+        cred = self._session_provider.fresh_credential(
+            self._formatted_bucket(Bucket), Expired, mode=mode,
+            isolated_readonly=(mode == SESSION_MODE_READ_ONLY))
+        if not Params:
+            Params = {}
+        else:
+            Params = dict(Params)
+        Params[u'x-cos-security-token'] = cred.session_token
+        if not Headers:
+            Headers = {}
+        url = self._conf.uri(bucket=Bucket, path=Key)
+        sign = self.get_auth(
+            Method=method, Bucket=Bucket, Key=Key, Expired=Expired,
+            Headers=Headers, Params=Params, SignHost=SignHost,
+            SecretId=cred.secret_id, SecretKey=cred.secret_key)
+        sign = urlencode(dict([item.split('=', 1) for item in sign.split('&')]))
+        url = url + '?' + sign
+        url = url + '&' + urlencode(Params)
+        return url
 
     def get_object_url(self, Bucket, Key):
         """生成对象访问的url
@@ -861,8 +1586,9 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, Key, params),
             headers=headers,
-            params=params)
-        data = dict(**rt.headers)
+            params=params,
+            _rapid_data_request=True)
+        data = self._response_headers(Bucket, rt.headers)
         return data
 
     def delete_objects(self, Bucket, Delete={}, **kwargs):
@@ -894,6 +1620,12 @@ class CosS3Client(object):
                 Delete=objects
             )
         """
+        if is_rapid_bucket(self._formatted_bucket(Bucket)):
+            objects = Delete.get('Object', [])
+            if isinstance(objects, dict):
+                objects = [objects]
+            if any('VersionId' in obj for obj in objects):
+                raise CosClientError('VersionId is not supported for rapid bucket')
         xml_config = format_xml(data=Delete, root='Delete')
         headers = mapped(kwargs)
         headers['Content-MD5'] = get_md5(xml_config)
@@ -911,7 +1643,8 @@ class CosS3Client(object):
             data=xml_config,
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            _rapid_data_request=True)
         data = xml_to_dict(rt.content)
         format_dict(data, ['Deleted', 'Error'])
         return data
@@ -949,8 +1682,9 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, Key, params=params),
             headers=headers,
-            params=params)
-        return dict(**rt.headers)
+            params=params,
+            _rapid_data_request=True)
+        return self._response_headers(Bucket, rt.headers)
 
     def copy_object(self, Bucket, Key, CopySource, CopyStatus='Copy', **kwargs):
         """文件拷贝，文件信息修改
@@ -975,6 +1709,7 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
+        self._validate_rapid_copy_source(Bucket, CopySource)
         headers['x-cos-copy-source'] = gen_copy_source_url(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         if CopyStatus != 'Copy' and CopyStatus != 'Replaced':
             raise CosClientError('CopyStatus must be Copy or Replaced')
@@ -988,12 +1723,13 @@ class CosS3Client(object):
             url=url,
             bucket=Bucket,
             auth=CosS3Auth(self._conf, Key),
-            headers=headers)
+            headers=headers,
+            _rapid_data_request=True)
         body = xml_to_dict(rt.content)
         if 'ETag' not in body:
             logger.error(rt.content)
-            raise CosServiceError('PUT', rt.content, 200)
-        data = dict(**rt.headers)
+            raise CosServiceError('PUT', rt.content, 200, headers=rt.headers)
+        data = self._response_headers(Bucket, rt.headers)
         data.update(body)
         return data
 
@@ -1024,6 +1760,7 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
+        self._validate_rapid_copy_source(Bucket, CopySource)
         headers['x-cos-copy-source'] = gen_copy_source_url(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
         headers['x-cos-copy-source-range'] = CopySourceRange
         params = {'partNumber': PartNumber, 'uploadId': UploadId}
@@ -1038,9 +1775,10 @@ class CosS3Client(object):
             bucket=Bucket,
             headers=headers,
             params=params,
-            auth=CosS3Auth(self._conf, Key, params=params))
+            auth=CosS3Auth(self._conf, Key, params=params),
+            _rapid_data_request=True)
         body = xml_to_dict(rt.content)
-        data = dict(**rt.headers)
+        data = self._response_headers(Bucket, rt.headers)
         data.update(body)
         return data
 
@@ -1075,7 +1813,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, Key, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            _rapid_data_request=True)
 
         data = xml_to_dict(rt.content)
         return data
@@ -1125,8 +1864,9 @@ class CosS3Client(object):
             headers=headers,
             params=params,
             auth=CosS3Auth(self._conf, Key, params=params),
-            data=Body)
-        response = dict(**rt.headers)
+            data=Body,
+            _rapid_data_request=True)
+        response = self._response_headers(Bucket, rt.headers)
         return response
 
     def complete_multipart_upload(self, Bucket, Key, UploadId, MultipartUpload={}, **kwargs):
@@ -1166,13 +1906,14 @@ class CosS3Client(object):
             data=dict_to_xml(MultipartUpload),
             timeout=1200,  # 分片上传大文件的时间比较长，设置为20min
             headers=headers,
-            params=params)
+            params=params,
+            _rapid_data_request=True)
         body = xml_to_dict(rt.content)
         # 分块上传文件返回200OK并不能代表文件上传成功,返回的body里面如果没有ETag则认为上传失败
         if 'ETag' not in body:
             logger.error(rt.content)
-            raise CosServiceError('POST', rt.content, 200)
-        data = dict(**rt.headers)
+            raise CosServiceError('POST', rt.content, 200, headers=rt.headers)
+        data = self._response_headers(Bucket, rt.headers)
         data.update(body)
         return data
 
@@ -1209,7 +1950,8 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, Key, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            _rapid_data_request=True)
         return None
 
     def list_parts(self, Bucket, Key, UploadId, EncodingType='', MaxParts=1000, PartNumberMarker=0, **kwargs):
@@ -1259,11 +2001,12 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, Key, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            _rapid_data_request=True)
         data = xml_to_dict(rt.content)
         format_dict(data, ['Part'])
         if decodeflag:
-            decode_result(data, ['Key'], [])
+            self._decode_list_result(Bucket, data, ['Key'], [])
         return data
 
     def put_object_acl(self, Bucket, Key, AccessControlPolicy={}, **kwargs):
@@ -1416,11 +2159,16 @@ class CosS3Client(object):
         return data
 
     # s3 bucket interface begin
-    def create_bucket(self, Bucket, BucketAZConfig=None, BucketArchConfig=None, **kwargs):
+    def create_bucket(self, Bucket, BucketAZConfig=None, BucketArchConfig=None,
+                      VpcId=None, CidrBlock=None, SubnetId=None, Zone=None, **kwargs):
         """创建一个bucket
 
         :param Bucket(string): 存储桶名称. 存储桶名称不支持大写字母，COS 后端会将用户传入的大写字母自动转换为小写字母用于创建存储桶.
         :param BucketAZConfig(string): 存储桶的多AZ配置
+        :param VpcId(string): Rapid 桶的 VPC ID，可与 Metadata 请求头同值合并。
+        :param CidrBlock(string): 已废弃，服务端不再使用；可选，非空时仍原样发送以兼容旧调用。
+        :param SubnetId(string): Rapid 桶的子网 ID。
+        :param Zone(string): Rapid 桶的可用区；VpcId、SubnetId、Zone 须在命名参数或 Metadata 中提供。
         :param kwargs(dict): 设置请求headers.
         :return: None.
 
@@ -1439,6 +2187,39 @@ class CosS3Client(object):
             )
         """
         headers = mapped(kwargs)
+        # CidrBlock is deprecated: the server no longer uses it, so it is optional
+        # and only forwarded when non-empty for backward compatibility.
+        network = (
+            ('VpcId', 'x-cos-vpc-id', VpcId, True),
+            ('CidrBlock', 'x-cos-cidr-block', CidrBlock, False),
+            ('SubnetId', 'x-cos-subnet-id', SubnetId, True),
+            ('Zone', 'x-cos-zone', Zone, True),
+        )
+        if is_rapid_bucket(self._formatted_bucket(Bucket)):
+            missing = []
+            for parameter, header, value, required in network:
+                keys = [key for key in headers if to_unicode(key).lower() == header]
+                values = [headers[key] for key in keys]
+                if value is not None:
+                    values.append(value)
+                if values and any(to_bytes(item) != to_bytes(values[0]) for item in values[1:]):
+                    raise CosClientError('conflicting values for rapid create_bucket parameter ' + parameter)
+                effective = values[0] if values else None
+                empty = effective is None or effective in ('', b'') or (
+                    isinstance(effective, (text_type, binary_type)) and not effective.strip())
+                if empty and required:
+                    missing.append(parameter)
+                for key in keys:
+                    del headers[key]
+                if not empty:
+                    headers[header] = effective
+            if missing:
+                raise CosClientError('rapid create_bucket requires non-empty parameters: ' + ', '.join(missing))
+        else:
+            supplied = [parameter for parameter, _header, value, _required in network if value is not None]
+            if supplied:
+                raise CosClientError(
+                    'create_bucket parameters are only supported for rapid bucket: ' + ', '.join(supplied))
         xml_config = None
         bucket_config = dict()
         if BucketAZConfig == 'MAZ':
@@ -1460,7 +2241,9 @@ class CosS3Client(object):
             bucket=Bucket,
             data=xml_config,
             auth=CosS3Auth(self._conf),
-            headers=headers)
+            headers=headers,
+            skip_session_auth=True,
+            _rapid_control_request=True)
         return None
 
     def delete_bucket(self, Bucket, **kwargs):
@@ -1489,7 +2272,9 @@ class CosS3Client(object):
             url=url,
             bucket=Bucket,
             auth=CosS3Auth(self._conf),
-            headers=headers)
+            headers=headers,
+            skip_session_auth=True,
+            _rapid_control_request=True)
         return None
 
     def list_objects(self, Bucket, Prefix="", Delimiter="", Marker="", MaxKeys=1000, EncodingType="", **kwargs):
@@ -1519,12 +2304,16 @@ class CosS3Client(object):
         decodeflag = True  # 是否需要对结果进行decode
         headers = mapped(kwargs)
         url = self._conf.uri(bucket=Bucket)
+        delimiter = Delimiter
+        if is_rapid_bucket(self._formatted_bucket(Bucket)) and delimiter == "":
+            # Rapid Gateway 目录语义只接受 '/'；普通 bucket 保留原来的空值语义。
+            delimiter = "/"
         logger.info("list objects, url=:{url} ,headers=:{headers}".format(
             url=url,
             headers=headers))
         params = {
             'prefix': Prefix,
-            'delimiter': Delimiter,
+            'delimiter': delimiter,
             'marker': Marker,
             'max-keys': MaxKeys
         }
@@ -1542,11 +2331,13 @@ class CosS3Client(object):
             bucket=Bucket,
             params=params,
             headers=headers,
-            auth=CosS3Auth(self._conf, params=params))
+            auth=CosS3Auth(self._conf, params=params),
+            _rapid_data_request=True)
         data = xml_to_dict(rt.content)
         format_dict(data, ['Contents', 'CommonPrefixes'])
         if decodeflag:
-            decode_result(
+            self._decode_list_result(
+                Bucket,
                 data,
                 [
                     'Prefix',
@@ -1689,12 +2480,14 @@ class CosS3Client(object):
             bucket=Bucket,
             params=params,
             headers=headers,
-            auth=CosS3Auth(self._conf, params=params))
+            auth=CosS3Auth(self._conf, params=params),
+            _rapid_data_request=True)
 
         data = xml_to_dict(rt.content)
         format_dict(data, ['Upload', 'CommonPrefixes'])
         if decodeflag:
-            decode_result(
+            self._decode_list_result(
+                Bucket,
                 data,
                 [
                     'Prefix',
@@ -1736,9 +2529,11 @@ class CosS3Client(object):
             url=url,
             bucket=Bucket,
             auth=CosS3Auth(self._conf),
-            headers=headers)
+            headers=headers,
+            skip_session_auth=True,
+            _rapid_control_request=True)
 
-        response = dict(**rt.headers)
+        response = self._response_headers(Bucket, rt.headers)
         return response
 
     def put_bucket_acl(self, Bucket, AccessControlPolicy={}, **kwargs):
@@ -2532,7 +3327,9 @@ class CosS3Client(object):
             data=body,
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            skip_session_auth=True,
+            _rapid_control_request=True)
         return None
 
     def get_bucket_policy(self, Bucket, **kwargs):
@@ -2563,7 +3360,9 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            skip_session_auth=True,
+            _rapid_control_request=True)
         data = {'Policy': json.dumps(rt.json())}
         return data
 
@@ -2595,7 +3394,9 @@ class CosS3Client(object):
             bucket=Bucket,
             auth=CosS3Auth(self._conf, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            skip_session_auth=True,
+            _rapid_control_request=True)
         return None
 
     def put_bucket_domain(self, Bucket, DomainConfiguration={}, **kwargs):
@@ -4122,18 +4923,52 @@ class CosS3Client(object):
         """
         if key and key[0] == '/':
             key = key[1:]
-        multipart_response = self.list_multipart_uploads(
-            Bucket=bucket,
-            Prefix=key
-        )
-        if 'Upload' in multipart_response:
-            # 取最后一个(最新的)uploadid
-            index = len(multipart_response['Upload']) - 1
-            while index >= 0:
-                if multipart_response['Upload'][index]['Key'] == key:
-                    return multipart_response['Upload'][index]['UploadId']
-                index -= 1
-        return None
+        if not is_rapid_bucket(self._formatted_bucket(bucket)):
+            multipart_response = self.list_multipart_uploads(
+                Bucket=bucket,
+                Prefix=key
+            )
+            if 'Upload' in multipart_response:
+                # 取最后一个(最新的)uploadid
+                index = len(multipart_response['Upload']) - 1
+                while index >= 0:
+                    if multipart_response['Upload'][index]['Key'] == key:
+                        return multipart_response['Upload'][index]['UploadId']
+                    index -= 1
+            return None
+
+        # Rapid Gateway 当前不接受 ListMultipartUploads 的 Prefix。分页拉取后
+        # 在客户端按完整 Key 过滤，保留 upload_file 的断点续传语义。
+        key_marker = ''
+        upload_id_marker = ''
+        latest_upload_id = None
+        while True:
+            multipart_response = self.list_multipart_uploads(
+                Bucket=bucket,
+                KeyMarker=key_marker,
+                UploadIdMarker=upload_id_marker,
+                MaxUploads=1000
+            )
+            for upload in multipart_response.get('Upload') or []:
+                if upload.get('Key') == key:
+                    latest_upload_id = upload.get('UploadId')
+
+            is_truncated = to_unicode(
+                multipart_response.get('IsTruncated', '')).lower() == 'true'
+            if not is_truncated:
+                return latest_upload_id
+
+            next_key_marker = multipart_response.get('NextKeyMarker') or ''
+            next_upload_id_marker = (
+                multipart_response.get('NextUploadIdMarker') or '')
+            if ((next_key_marker, next_upload_id_marker)
+                    == (key_marker, upload_id_marker)
+                    or (not next_key_marker and not next_upload_id_marker)):
+                raise CosClientError(
+                    'Rapid ListMultipartUploads returned truncated response '
+                    'without advancing markers')
+            key_marker = next_key_marker
+            upload_id_marker = next_upload_id_marker
 
     def _check_single_upload_part(self, local_path, offset, local_part_size, remote_part_size, remote_etag):
         """从本地文件中读取分块, 校验本地分块和服务端的分块信息
@@ -4271,6 +5106,7 @@ class CosS3Client(object):
                 MAXThread=10,
             )
         """
+        rapid_complete_options = self._rapid_complete_options(Bucket, kwargs)
         file_size = os.path.getsize(LocalFilePath)
         if file_size <= 1024 * 1024 * PartSize:
             with open(LocalFilePath, 'rb') as fp:
@@ -4346,6 +5182,7 @@ class CosS3Client(object):
                 complete_headers['Callback'] = kwargs['Callback']
             if 'CallbackVar' in kwargs:
                 complete_headers['CallbackVar'] = kwargs['CallbackVar']
+            complete_headers.update(rapid_complete_options)
             rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid,
                                                 MultipartUpload={'Part': lst}, **complete_headers)
             return rt
@@ -4353,6 +5190,13 @@ class CosS3Client(object):
     def _head_object_when_copy(self, CopySource, **kwargs):
         """查询源文件的长度"""
         bucket, path, endpoint, versionid = get_copy_source_info(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)
+        if is_rapid_bucket(bucket):
+            _check_rapid_object_key(path)
+            source_region = CopySource.get('Region') or self._conf._region
+            endpoint = rapid_endpoint_for_region(source_region)
+            if endpoint != rapid_endpoint_for_region(self._conf._region):
+                raise CosClientError(
+                    'rapid high-level copy requires source and destination in the same region')
         params = {}
         if versionid != '':
             params['versionId'] = versionid
@@ -4373,7 +5217,8 @@ class CosS3Client(object):
             bucket=bucket,
             auth=CosS3Auth(self._conf, path, params=params),
             headers=headers,
-            params=params)
+            params=params,
+            _rapid_data_request=True)
         storage_class = 'standard'
         if 'x-cos-storage-class' in rt.headers:
             storage_class = rt.headers['x-cos-storage-class'].lower()
@@ -4397,7 +5242,12 @@ class CosS3Client(object):
         return None
 
     def _check_same_region(self, dst_endpoint, CopySource):
-        src_endpoint = get_copy_source_info(CopySource, self._conf._enable_old_domain, self._conf._enable_internal_domain)[2]
+        src_bucket, _path, src_endpoint, _versionid = get_copy_source_info(
+            CopySource, self._conf._enable_old_domain,
+            self._conf._enable_internal_domain)
+        if is_rapid_bucket(src_bucket):
+            source_region = CopySource.get('Region') or self._conf._region
+            src_endpoint = rapid_endpoint_for_region(source_region)
         if src_endpoint == dst_endpoint:
             return True
         return False
@@ -4427,6 +5277,8 @@ class CosS3Client(object):
                 MAXThread=10
             )
         """
+        self._validate_rapid_copy_source(Bucket, CopySource)
+        complete_headers = self._rapid_complete_options(Bucket, kwargs)
         # 先查询下拷贝源object的content-length
         file_size, src_storage_class = self._head_object_when_copy(CopySource, **kwargs)
 
@@ -4495,7 +5347,7 @@ class CosS3Client(object):
         # 完成分片上传
         try:
             rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid,
-                                                MultipartUpload={'Part': lst})
+                                                MultipartUpload={'Part': lst}, **complete_headers)
         except Exception as e:
             abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
             raise e
@@ -4529,6 +5381,7 @@ class CosS3Client(object):
         :param kwargs(dict): 设置请求headers.
         :return(dict): 成功上传的文件的结果.
         """
+        complete_headers = self._rapid_complete_options(Bucket, kwargs)
         if not hasattr(Body, 'read'):
             raise CosClientError("Body must have attr read")
 
@@ -4567,7 +5420,7 @@ class CosS3Client(object):
         # 完成分片上传
         try:
             rt = self.complete_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid,
-                                                MultipartUpload={'Part': lst})
+                                                MultipartUpload={'Part': lst}, **complete_headers)
         except Exception as e:
             abort_response = self.abort_multipart_upload(Bucket=Bucket, Key=Key, UploadId=uploadid)
             raise e

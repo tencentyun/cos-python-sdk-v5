@@ -1,0 +1,11 @@
+# Python 3.6.8 local test dependencies.
+# Versions match the previously used system environment.
+requests==2.22.0
+urllib3==1.24.2
+certifi==2025.4.26
+chardet==3.0.4
+idna==2.5
+xmltodict==0.15.0
+six==1.16.0
+crcmod==1.7
+pycryptodome==3.21.0

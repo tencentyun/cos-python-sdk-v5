@@ -1,6 +1,7 @@
 # -*- coding=utf-8
 import random
 import sys
+import subprocess
 import time
 import hashlib
 import os
@@ -7009,6 +7010,43 @@ def query_vectors(Bucket, query_vector, filter = None):
     )
     return resp, data
 
+
+def test_rapid_regression():
+    """Run credential-free Rapid regression tests with this interpreter."""
+    sdk_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = os.environ.copy()
+    env['RAPID_TEST_PYTHON'] = sys.executable
+    command = ['bash', os.path.join(sdk_root, '.ci', 'run_rapid_tests.sh')]
+    coverage = sys.modules.get('coverage')
+    active = coverage.Coverage.current() if coverage is not None else None
+    if active is None:
+        subprocess.check_call(command, cwd=sdk_root, env=env)
+        return
+
+    # Avoid auto-instrumenting pip and competing with our explicit child collector.
+    for key in list(env):
+        if key.startswith('COV_CORE_') or key == 'COVERAGE_PROCESS_START':
+            env.pop(key)
+    import shutil
+    import tempfile
+    data_dir = tempfile.mkdtemp(prefix='rapid-coverage-')
+    try:
+        data_file = os.path.join(data_dir, '.coverage')
+        # Reuse the parent's coverage version without exposing its site-packages.
+        env['RAPID_COVERAGE_PACKAGE'] = os.path.dirname(coverage.__file__)
+        env['RAPID_COVERAGE_FILE'] = data_file
+        env['RAPID_COVERAGE_BRANCH'] = '1' if active.get_option('run:branch') else '0'
+        subprocess.check_call(command, cwd=sdk_root, env=env)
+        if not os.path.isfile(data_file):
+            raise RuntimeError('Rapid child did not produce coverage data')
+        child = coverage.Coverage(data_file=data_file, config_file=False)
+        child.load()
+        # Update the live collector before pytest-cov writes its final XML report.
+        active.get_data().update(child.get_data())
+    finally:
+        shutil.rmtree(data_dir)
+
+
 def test_cos_vectors():
     """向量桶相关接口集成测试"""
 
@@ -7069,6 +7107,7 @@ def test_cos_vectors():
 
     # 插入向量
     resp = put_vectors(vector_bucket_name)
+    time.sleep(10)
     
     # 获取向量
     resp, data = get_vectors(vector_bucket_name, ['vector1', 'vector2'])
@@ -7096,6 +7135,7 @@ def test_cos_vectors():
 
     # 删除向量再查询
     resp = delete_vectors(vector_bucket_name, ['vector1'])
+    time.sleep(10)
     resp, data = query_vectors(vector_bucket_name, [0.1, 0.2, 0.3])
     assert isinstance(data, dict)
     assert 'vectors' in data
@@ -7115,6 +7155,7 @@ def test_cos_vectors():
 
     # 删除向量
     resp = delete_vectors(vector_bucket_name, ['vector2', 'vector3'])
+    time.sleep(10)
     resp, data = list_vectors(vector_bucket_name)
     assert isinstance(data, dict)
     assert 'vectors' in data
