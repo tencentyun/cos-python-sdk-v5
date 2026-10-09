@@ -2,7 +2,7 @@
 """Create a Rapid bucket and read its current provisioning status.
 
 Set COS_SECRET_ID, COS_SECRET_KEY, COS_REGION, COS_BUCKET, COS_VPC_ID,
-COS_CIDR_BLOCK, COS_SUBNET_ID and COS_ZONE; COS_SECURITY_TOKEN is optional.
+COS_SUBNET_ID and COS_ZONE; COS_SECURITY_TOKEN is optional.
 Success accepts the creation request. Object operations require Available.
 """
 from __future__ import print_function
@@ -24,7 +24,6 @@ def main():
         client.create_bucket(
             Bucket=bucket,
             VpcId=os.environ['COS_VPC_ID'],
-            CidrBlock=os.environ['COS_CIDR_BLOCK'],
             SubnetId=os.environ['COS_SUBNET_ID'],
             Zone=os.environ['COS_ZONE'])
         result = client.head_bucket(Bucket=bucket)
