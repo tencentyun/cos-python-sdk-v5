@@ -8,6 +8,7 @@ from .session_auth import is_rapid_bucket  # noqa: F401 - public SDK export
 from .cos_vectors_client import CosVectorsClient
 from .meta_insight import MetaInsightClient
 from .ai_recognition import AIRecognitionClient
+from .role_credential_provider import RoleCredentialProvider
 
 import logging
 

@@ -933,11 +933,17 @@ class CosS3Client(object):
 
         if use_session:
             self._apply_session_credential(bucket, kwargs, mode=session_mode)
-        elif self._conf._token is not None:
-            if ci_request:
-                kwargs['headers']['x-ci-security-token'] = self._conf._token
-            else:
-                kwargs['headers']['x-cos-security-token'] = self._conf._token
+        else:
+            _token = self._conf._token
+            if _token is None:
+                _credential_inst = getattr(self._conf, '_credential_inst', None)
+                if _credential_inst is not None:
+                    _token = getattr(_credential_inst, 'token', None)
+            if _token is not None:
+                if ci_request:
+                    kwargs['headers']['x-ci-security-token'] = _token
+                else:
+                    kwargs['headers']['x-cos-security-token'] = _token
         if self._conf._ip is not None:  # 使用IP访问时需要设置请求host
             if self._conf._domain is not None:
                 kwargs['headers']['Host'] = self._conf._domain
