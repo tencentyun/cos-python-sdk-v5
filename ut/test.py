@@ -21,6 +21,7 @@ from qcloud_cos.cos_encryption_client import CosEncryptionClient
 from qcloud_cos.crypto import AESProvider
 from qcloud_cos.crypto import RSAProvider
 from qcloud_cos.cos_comm import CiDetectType, get_md5, to_bytes, switch_hostname_for_url
+from qcloud_cos import RoleCredentialProvider
 
 import logging
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -7266,6 +7267,50 @@ def test_put_get_symlink_multiver():
     # 清理测试文件
     client.delete_object(Bucket=test_bucket, Key=symlink_name)
     client.delete_object(Bucket=test_bucket, Key=target_file_name)
+
+def test_role_credential_provider():
+    """使用 RoleCredentialProvider 角色授权方式
+    测试用例所用角色仅授权只读操作（不包含列举操作）
+    """
+
+    provider = RoleCredentialProvider(
+        SecretId=SECRET_ID,
+        SecretKey=SECRET_KEY,
+        RoleArn=os.environ["COS_ROLE_ARN"],
+        Region=REGION,
+    )
+
+    role_conf = CosConfig(Region=REGION, CredentialInstance=provider)
+    role_client = CosS3Client(role_conf)
+
+    # 列举对象，鉴权不通过
+    try:
+        role_client.list_objects(Bucket=test_bucket)
+        raise Exception("OPPS!")
+    except CosServiceError as e:
+        assert e.get_error_code() == "AccessDenied"
+
+    # 读不存在的对象，鉴权通过
+    try:
+        role_client.get_object(Bucket=test_bucket, Key='foobar.dat')
+        raise Exception("OPPS!")
+    except CosServiceError as e:
+        assert e.get_error_code() == "NoSuchKey"
+
+    # 写对象，鉴权不通过
+    try:
+        role_client.put_object(Bucket=test_bucket, Key='foobar.dat', Body='some data')
+        raise Exception("OPPS!")
+    except CosServiceError as e:
+        assert e.get_error_code() == "AccessDenied"
+
+    # 删对象，鉴权不通过
+    try:
+        role_client.delete_object(Bucket=test_bucket, Key='foobar.dat')
+        raise Exception("OPPS!")
+    except CosServiceError as e:
+        assert e.get_error_code() == "AccessDenied"
+
 
 if __name__ == "__main__":
     setUp()

@@ -2,3 +2,4 @@ xmltodict
 six
 crcmod
 pycryptodome
+qcloud-python-sts
