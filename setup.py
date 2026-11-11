@@ -40,6 +40,7 @@ setup(
     author_email='dutie123@qq.com',
     description='cos-python-sdk-v5',
     long_description=long_description(),
+    long_description_content_type='text/plain',
     packages=find_packages(),
     install_requires=requirements()
 )
