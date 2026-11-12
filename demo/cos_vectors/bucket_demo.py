@@ -28,27 +28,71 @@ config = CosConfig(
 )
 client = CosVectorsClient(config)
 
-print("[列出向量桶]")
+print("[列出向量桶: 全部类型]")
+# 不填 Mode 时不过滤, 返回 CLASSIC 与 ENHANCED 两种桶
 resp, data = client.list_vector_buckets()
 # print(resp)
 pprint(data)
 
-print("[创建向量桶]")
+print("[列出向量桶: 只列 CLASSIC]")
+resp, data = client.list_vector_buckets(
+    Mode='CLASSIC',
+    MaxResults=10
+)
+# print(resp)
+pprint(data)
+
+print("[列出向量桶: 只列 ENHANCED]")
+# ENHANCED 桶支持 Native API(namespace/文档接口)
+resp, data = client.list_vector_buckets(
+    Mode='ENHANCED',
+    MaxResults=10
+)
+# print(resp)
+pprint(data)
+
+print("[创建向量桶: CLASSIC, 用于向量索引]")
+# 不填 Mode 时默认创建 CLASSIC 桶, 可配合 index_demo.py / vector_demo.py 使用
 resp, data = client.create_vector_bucket(
     Bucket='example-bucket-1250000000'
 )
 # print(resp)
 pprint(data)
 
-print("[获取向量桶]")
+print("[获取向量桶: CLASSIC]")
 resp, data = client.get_vector_bucket(
     Bucket='example-bucket-1250000000'
 )
 # print(resp)
+# 响应中的 mode 为桶类型
 pprint(data)
 
-print("[删除向量桶]")
+print("[创建向量桶: ENHANCED, 用于 namespace]")
+# ENHANCED 桶支持 Native API, 可配合 namespace_demo.py / document_demo.py 使用
+# 桶类型创建后不可修改, 需要重建
+resp, data = client.create_vector_bucket(
+    Bucket='example-bucket-enhanced-1250000000',
+    Mode='ENHANCED'
+)
+# print(resp)
+pprint(data)
+
+print("[获取向量桶: ENHANCED]")
+resp, data = client.get_vector_bucket(
+    Bucket='example-bucket-enhanced-1250000000'
+)
+# print(resp)
+pprint(data)
+
+print("[删除向量桶: CLASSIC]")
 resp = client.delete_vector_bucket(
     Bucket='example-bucket-1250000000'
+)
+print(resp)
+
+print("[删除向量桶: ENHANCED]")
+# 桶内还有 namespace 时需要先删除 namespace, 参见 namespace_demo.py
+resp = client.delete_vector_bucket(
+    Bucket='example-bucket-enhanced-1250000000'
 )
 print(resp)
