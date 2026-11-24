@@ -52,7 +52,7 @@ resp, data = client.list_vector_buckets(
 pprint(data)
 
 print("[创建向量桶: CLASSIC, 用于向量索引]")
-# 不填 Mode 时默认创建 CLASSIC 桶, 可配合 index_demo.py / vector_demo.py 使用
+# 不填 Mode 时不发送 mode 字段, 由服务端按默认策略创建(当前默认 CLASSIC), 可配合 index_demo.py / vector_demo.py 使用
 resp, data = client.create_vector_bucket(
     Bucket='example-bucket-1250000000'
 )

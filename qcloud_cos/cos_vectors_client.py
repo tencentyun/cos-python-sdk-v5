@@ -78,15 +78,15 @@ class CosVectorsClient(CosS3Client):
         return u"/_native/{namespace}/_{action}".format(
             namespace=to_unicode(quote(to_bytes(namespace), safe='')), action=action)
 
-    def create_vector_bucket(self, Bucket, SseType=None, Mode="CLASSIC", **kwargs):
+    def create_vector_bucket(self, Bucket, SseType=None, Mode=None, **kwargs):
         """ 创建向量存储桶
 
             :param Bucket: 向量存储桶名称.
             :type Bucket: string
             :param SseType: 存储桶加密类型.
             :type SseType: string
-            :param Mode: 桶类型, 取值CLASSIC(经典向量索引)或ENHANCED(增强型namespace), 默认为CLASSIC.
-                创建后不可修改: Native API(namespace/文档接口)只能在ENHANCED桶上使用.
+            :param Mode: 桶类型, 取值CLASSIC(经典向量索引)或ENHANCED(增强型namespace), 不填时由服务端按默认策略决定
+                (当前服务端默认CLASSIC), SDK不发送mode字段. 创建后不可修改: Native API(namespace/文档接口)只能在ENHANCED桶上使用.
             :type Mode: string
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
@@ -844,15 +844,15 @@ class CosVectorsClient(CosS3Client):
             :type PrimaryKeySpecified: bool
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
-            :return: response header 和写入结果, 结果位于result字段(rowsUpserted等).
-            :rtype: tuple(dict, dict)
+            :return: response header, 成功响应无body.
+            :rtype: dict
 
             .. code-block:: python
 
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
                 client = CosVectorsClient(config)
                 # 行式写入, 每行都携带主键, 允许自动重试
-                resp, data = client.upsert_documents(
+                resp = client.upsert_documents(
                     Bucket="examplevectorbucket-1250000000",
                     Namespace="products",
                     Rows=[
@@ -860,7 +860,7 @@ class CosVectorsClient(CosS3Client):
                         {"id": "product-2", "title": "Object storage", "price": 9.9, "embedding": [0.4, 0.3, 0.2, 0.1]}
                     ],
                     PrimaryKeySpecified=True)
-                print(data['result'])
+                print(resp)
         """
         data = _without_none([
             ('rows', Rows),
@@ -869,7 +869,7 @@ class CosVectorsClient(CosS3Client):
         path = self._native_namespace_path(Namespace, 'upsert')
         rt = self._native_request("upsert documents", Bucket, path, data, kwargs,
                                   retry_ambiguous=bool(PrimaryKeySpecified))
-        return self._vectors_response(rt)
+        return dict(**rt.headers)
 
     def patch_documents(self, Bucket, Namespace, Rows=None, Columns=None, **kwargs):
         """ 按主键部分更新文档(Native API)
@@ -886,19 +886,19 @@ class CosVectorsClient(CosS3Client):
             :type Columns: dict
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
-            :return: response header 和写入结果, 结果位于result字段(rowsPatched等).
-            :rtype: tuple(dict, dict)
+            :return: response header, 成功响应无body.
+            :rtype: dict
 
             .. code-block:: python
 
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
                 client = CosVectorsClient(config)
                 # 更新单个文档的价格
-                resp, data = client.patch_documents(
+                resp = client.patch_documents(
                     Bucket="examplevectorbucket-1250000000",
                     Namespace="products",
                     Rows=[{"id": "product-1", "price": 10.0}])
-                print(data['result'])
+                print(resp)
         """
         data = _without_none([
             ('rows', Rows),
@@ -906,7 +906,7 @@ class CosVectorsClient(CosS3Client):
         ])
         path = self._native_namespace_path(Namespace, 'patch')
         rt = self._native_request("patch documents", Bucket, path, data, kwargs)
-        return self._vectors_response(rt)
+        return dict(**rt.headers)
 
     def delete_documents(self, Bucket, Namespace, Ids, **kwargs):
         """ 按主键删除文档(Native API)
@@ -919,25 +919,25 @@ class CosVectorsClient(CosS3Client):
             :type Ids: list
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
-            :return: response header 和写入结果, 结果位于result字段(rowsDeleted等).
-            :rtype: tuple(dict, dict)
+            :return: response header, 成功响应无body.
+            :rtype: dict
 
             .. code-block:: python
 
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
                 client = CosVectorsClient(config)
                 # 按主键删除
-                resp, data = client.delete_documents(
+                resp = client.delete_documents(
                     Bucket="examplevectorbucket-1250000000",
                     Namespace="products",
                     Ids=["product-1", "product-2"])
-                print(data['result'])
+                print(resp)
         """
         data = dict()
         data['ids'] = Ids
         path = self._native_namespace_path(Namespace, 'delete')
         rt = self._native_request("delete documents", Bucket, path, data, kwargs)
-        return self._vectors_response(rt)
+        return dict(**rt.headers)
 
     def query_documents(self, Bucket, Namespace, Query=None, Queries=None, Filter=None, Fusion=None,
                         Sort=None, Limit=None, Offset=None, Projection=None, **kwargs):

@@ -530,20 +530,20 @@ def _native_user_key_cases(bucket, namespace):
     assert 'category' not in data['namespace']['schema']['fields']
 
     # 行式与列式写入, 每行都携带主键, 允许重试
-    resp, data = client.upsert_documents(
+    resp = client.upsert_documents(
         Bucket=bucket, Namespace=namespace, PrimaryKeySpecified=True,
         Rows=[
             {'id': 'p1', 'title': 'vector database', 'price': 12.5, 'tag': 'db', 'embedding': [1.0, 0.0, 0.0]},
             {'id': 'p2', 'title': 'object storage', 'price': 9.9, 'tag': 'storage', 'embedding': [0.0, 1.0, 0.0]},
         ])
-    assert 'result' in data
-    resp, data = client.upsert_documents(
+    assert isinstance(resp, dict)
+    resp = client.upsert_documents(
         Bucket=bucket, Namespace=namespace, PrimaryKeySpecified=True,
         Columns={'id': ['p3'], 'title': ['vector search engine'], 'price': [99.0], 'tag': ['db'],
                  'embedding': [[0.9, 0.1, 0.0]]})
-    assert 'result' in data
-    resp, data = client.patch_documents(Bucket=bucket, Namespace=namespace, Rows=[{'id': 'p2', 'price': 19.9}])
-    assert 'result' in data
+    assert isinstance(resp, dict)
+    resp = client.patch_documents(Bucket=bucket, Namespace=namespace, Rows=[{'id': 'p2', 'price': 19.9}])
+    assert isinstance(resp, dict)
 
     ids = _wait_until(lambda: _native_list_all_ids(bucket, namespace),
                       lambda result: sorted(result) == ['p1', 'p2', 'p3'],
@@ -600,8 +600,8 @@ def _native_user_key_cases(bucket, namespace):
                           Query=['embedding', 'Ann', {'vector': [1.0, 0.0], 'topk': 1}])
 
     # 按主键删除
-    resp, data = client.delete_documents(Bucket=bucket, Namespace=namespace, Ids=['p1'])
-    assert 'result' in data
+    resp = client.delete_documents(Bucket=bucket, Namespace=namespace, Ids=['p1'])
+    assert isinstance(resp, dict)
     ids = _wait_until(lambda: _native_list_all_ids(bucket, namespace),
                       lambda result: sorted(result) == ['p2', 'p3'],
                       '删除 p1 后列出文档为 p2/p3')
@@ -617,13 +617,13 @@ def _native_auto_key_cases(bucket, namespace):
         }
     }
     client.create_namespace(Bucket=bucket, Namespace=namespace, Schema=schema)
-    resp, data = client.upsert_documents(
+    resp = client.upsert_documents(
         Bucket=bucket, Namespace=namespace, Rows=[{'title': 'auto key', 'embedding': [0.1, 0.2, 0.3]}])
-    assert 'result' in data
-    resp, data = client.upsert_documents(
+    assert isinstance(resp, dict)
+    resp = client.upsert_documents(
         Bucket=bucket, Namespace=namespace, PrimaryKeySpecified=True,
         Rows=[{'_id': 'auto-1', 'title': 'explicit key', 'embedding': [0.3, 0.2, 0.1]}])
-    assert 'result' in data
+    assert isinstance(resp, dict)
 
     ids = _wait_until(lambda: _native_list_all_ids(bucket, namespace),
                       lambda result: len(result) == 2,

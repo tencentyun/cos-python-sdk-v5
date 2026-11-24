@@ -334,14 +334,14 @@ class VectorsRequestBodyTest(unittest.TestCase):
         self.assertEqual(0, len(self.calls))
 
     def test_bucket_mode_parameter(self):
-        """create_vector_bucket 默认 CLASSIC；list_vector_buckets 默认不带 mode。"""
+        """create_vector_bucket 默认不发送 mode；显式传 Mode 时才发送。"""
         self.client.create_vector_bucket(Bucket=BUCKET)
         self.client.create_vector_bucket(Bucket=BUCKET, Mode='ENHANCED', SseType='AES256')
         self.client.create_vector_bucket(Bucket=BUCKET, Mode=None)
         self.client.list_vector_buckets()
         self.client.list_vector_buckets(Mode='ENHANCED')
         self.assertTrue(self.calls[0]['url'].endswith('/CreateVectorBucket'))
-        self.assertEqual({'vectorBucketName': BUCKET, 'mode': 'CLASSIC'}, _body(self.calls[0]))
+        self.assertEqual({'vectorBucketName': BUCKET}, _body(self.calls[0]))
         self.assertEqual({'vectorBucketName': BUCKET, 'mode': 'ENHANCED',
                           'encryptionConfiguration': {'sseType': 'AES256'}}, _body(self.calls[1]))
         self.assertEqual({'vectorBucketName': BUCKET}, _body(self.calls[2]))
@@ -391,9 +391,9 @@ class VectorsResponseTest(unittest.TestCase):
     def test_json_body(self):
         client = _client()
         _capture(client, _FakeResponse(200, {'Content-Type': 'application/json; charset=utf-8'},
-                                       b'{"result":{"rowsUpserted":2}}'))
-        resp, data = client.upsert_documents(Bucket=BUCKET, Namespace='products', Rows=[])
-        self.assertEqual({'result': {'rowsUpserted': 2}}, data)
+                                       b'{"namespace":{"namespaceName":"products"}}'))
+        resp, data = client.get_namespace(Bucket=BUCKET, Namespace='products')
+        self.assertEqual({'namespace': {'namespaceName': 'products'}}, data)
 
     def test_trace_id_header_passthrough(self):
         """响应头中的 X-Cos-Trace-Id 原样透传。"""
@@ -488,9 +488,9 @@ class VectorsLoopbackTest(unittest.TestCase):
         self.assertEqual(3, len(self.server.records))
 
     def test_other_actions_retried(self):
-        self.server.responses.extend([(503, JSON_HEADERS, b'{}'), (200, JSON_HEADERS, b'{"result":{}}')])
-        resp, data = self.client().patch_documents(Bucket=BUCKET, Namespace='products', Rows=[{'id': '1', 'v': 1}])
-        self.assertEqual({'result': {}}, data)
+        self.server.responses.extend([(503, JSON_HEADERS, b'{}'), (200, JSON_HEADERS, b'')])
+        resp = self.client().patch_documents(Bucket=BUCKET, Namespace='products', Rows=[{'id': '1', 'v': 1}])
+        self.assertIsInstance(resp, dict)
         self.assertEqual(2, len(self.server.records))
 
     def test_native_error_response(self):
