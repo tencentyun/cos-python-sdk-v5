@@ -334,14 +334,14 @@ class VectorsRequestBodyTest(unittest.TestCase):
         self.assertEqual(0, len(self.calls))
 
     def test_bucket_mode_parameter(self):
-        """create_vector_bucket 默认 CLASSIC；list_vector_buckets 默认不带 mode。"""
+        """create_vector_bucket 默认不发送 mode；显式传 Mode 时才发送。"""
         self.client.create_vector_bucket(Bucket=BUCKET)
         self.client.create_vector_bucket(Bucket=BUCKET, Mode='ENHANCED', SseType='AES256')
         self.client.create_vector_bucket(Bucket=BUCKET, Mode=None)
         self.client.list_vector_buckets()
         self.client.list_vector_buckets(Mode='ENHANCED')
         self.assertTrue(self.calls[0]['url'].endswith('/CreateVectorBucket'))
-        self.assertEqual({'vectorBucketName': BUCKET, 'mode': 'CLASSIC'}, _body(self.calls[0]))
+        self.assertEqual({'vectorBucketName': BUCKET}, _body(self.calls[0]))
         self.assertEqual({'vectorBucketName': BUCKET, 'mode': 'ENHANCED',
                           'encryptionConfiguration': {'sseType': 'AES256'}}, _body(self.calls[1]))
         self.assertEqual({'vectorBucketName': BUCKET}, _body(self.calls[2]))

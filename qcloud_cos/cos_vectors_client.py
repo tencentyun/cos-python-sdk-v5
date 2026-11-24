@@ -78,15 +78,15 @@ class CosVectorsClient(CosS3Client):
         return u"/_native/{namespace}/_{action}".format(
             namespace=to_unicode(quote(to_bytes(namespace), safe='')), action=action)
 
-    def create_vector_bucket(self, Bucket, SseType=None, Mode="CLASSIC", **kwargs):
+    def create_vector_bucket(self, Bucket, SseType=None, Mode=None, **kwargs):
         """ 创建向量存储桶
 
             :param Bucket: 向量存储桶名称.
             :type Bucket: string
             :param SseType: 存储桶加密类型.
             :type SseType: string
-            :param Mode: 桶类型, 取值CLASSIC(经典向量索引)或ENHANCED(增强型namespace), 默认为CLASSIC.
-                创建后不可修改: Native API(namespace/文档接口)只能在ENHANCED桶上使用.
+            :param Mode: 桶类型, 取值CLASSIC(经典向量索引)或ENHANCED(增强型namespace), 不填时由服务端按默认策略决定
+                (当前服务端默认CLASSIC), SDK不发送mode字段. 创建后不可修改: Native API(namespace/文档接口)只能在ENHANCED桶上使用.
             :type Mode: string
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
