@@ -41,7 +41,7 @@ for i in range(0, 10):
             Key='exampleobject',
             DestFilePath='local.txt')
         break
-    except CosClientError or CosServiceError as e:
+    except (CosClientError, CosServiceError) as e:
         print(e)
 
 
@@ -95,7 +95,6 @@ def listCurrentDir(prefix):
 
     print("=======================================================")
 
-    sorted(file_infos, key=lambda file_info: file_info["Key"])
     for file in file_infos:
         print(file)
     return file_infos
