@@ -844,15 +844,15 @@ class CosVectorsClient(CosS3Client):
             :type PrimaryKeySpecified: bool
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
-            :return: response header 和写入结果, 结果位于result字段(rowsUpserted等).
-            :rtype: tuple(dict, dict)
+            :return: response header, 成功响应无body.
+            :rtype: dict
 
             .. code-block:: python
 
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
                 client = CosVectorsClient(config)
                 # 行式写入, 每行都携带主键, 允许自动重试
-                resp, data = client.upsert_documents(
+                resp = client.upsert_documents(
                     Bucket="examplevectorbucket-1250000000",
                     Namespace="products",
                     Rows=[
@@ -860,7 +860,7 @@ class CosVectorsClient(CosS3Client):
                         {"id": "product-2", "title": "Object storage", "price": 9.9, "embedding": [0.4, 0.3, 0.2, 0.1]}
                     ],
                     PrimaryKeySpecified=True)
-                print(data['result'])
+                print(resp)
         """
         data = _without_none([
             ('rows', Rows),
@@ -869,7 +869,7 @@ class CosVectorsClient(CosS3Client):
         path = self._native_namespace_path(Namespace, 'upsert')
         rt = self._native_request("upsert documents", Bucket, path, data, kwargs,
                                   retry_ambiguous=bool(PrimaryKeySpecified))
-        return self._vectors_response(rt)
+        return dict(**rt.headers)
 
     def patch_documents(self, Bucket, Namespace, Rows=None, Columns=None, **kwargs):
         """ 按主键部分更新文档(Native API)
@@ -886,19 +886,19 @@ class CosVectorsClient(CosS3Client):
             :type Columns: dict
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
-            :return: response header 和写入结果, 结果位于result字段(rowsPatched等).
-            :rtype: tuple(dict, dict)
+            :return: response header, 成功响应无body.
+            :rtype: dict
 
             .. code-block:: python
 
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
                 client = CosVectorsClient(config)
                 # 更新单个文档的价格
-                resp, data = client.patch_documents(
+                resp = client.patch_documents(
                     Bucket="examplevectorbucket-1250000000",
                     Namespace="products",
                     Rows=[{"id": "product-1", "price": 10.0}])
-                print(data['result'])
+                print(resp)
         """
         data = _without_none([
             ('rows', Rows),
@@ -906,7 +906,7 @@ class CosVectorsClient(CosS3Client):
         ])
         path = self._native_namespace_path(Namespace, 'patch')
         rt = self._native_request("patch documents", Bucket, path, data, kwargs)
-        return self._vectors_response(rt)
+        return dict(**rt.headers)
 
     def delete_documents(self, Bucket, Namespace, Ids, **kwargs):
         """ 按主键删除文档(Native API)
@@ -919,25 +919,25 @@ class CosVectorsClient(CosS3Client):
             :type Ids: list
             :param kwargs: 设置上传的headers.
             :type kwargs: dict
-            :return: response header 和写入结果, 结果位于result字段(rowsDeleted等).
-            :rtype: tuple(dict, dict)
+            :return: response header, 成功响应无body.
+            :rtype: dict
 
             .. code-block:: python
 
                 config = CosConfig(Region=region, SecretId=secret_id, SecretKey=secret_key)
                 client = CosVectorsClient(config)
                 # 按主键删除
-                resp, data = client.delete_documents(
+                resp = client.delete_documents(
                     Bucket="examplevectorbucket-1250000000",
                     Namespace="products",
                     Ids=["product-1", "product-2"])
-                print(data['result'])
+                print(resp)
         """
         data = dict()
         data['ids'] = Ids
         path = self._native_namespace_path(Namespace, 'delete')
         rt = self._native_request("delete documents", Bucket, path, data, kwargs)
-        return self._vectors_response(rt)
+        return dict(**rt.headers)
 
     def query_documents(self, Bucket, Namespace, Query=None, Queries=None, Filter=None, Fusion=None,
                         Sort=None, Limit=None, Offset=None, Projection=None, **kwargs):

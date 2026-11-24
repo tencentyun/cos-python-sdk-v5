@@ -44,7 +44,7 @@ pprint(data)
 print("[写入文档: 行式]")
 # 每行都带主键, 设置 PrimaryKeySpecified=True 后失败时可以自动重试;
 # 若由系统生成主键(行内没有主键)且未指定主键, 请保持默认 False, 避免重试写入重复数据
-resp, data = client.upsert_documents(
+resp = client.upsert_documents(
     Bucket=bucket,
     Namespace=namespace,
     Rows=[
@@ -54,11 +54,10 @@ resp, data = client.upsert_documents(
     ],
     PrimaryKeySpecified=True
 )
-# print(resp)
-pprint(data)
+print(resp)
 
 print("[写入文档: 列式]")
-resp, data = client.upsert_documents(
+resp = client.upsert_documents(
     Bucket=bucket,
     Namespace=namespace,
     Columns={
@@ -70,17 +69,15 @@ resp, data = client.upsert_documents(
     },
     PrimaryKeySpecified=True
 )
-# print(resp)
-pprint(data)
+print(resp)
 
 print("[部分更新文档]")
-resp, data = client.patch_documents(
+resp = client.patch_documents(
     Bucket=bucket,
     Namespace=namespace,
     Rows=[{'id': 'p2', 'price': 19.9}]
 )
-# print(resp)
-pprint(data)
+print(resp)
 
 print("[向量检索]")
 resp, data = client.query_documents(
@@ -128,10 +125,9 @@ resp, data = client.list_documents(
 pprint(data)
 
 print("[删除文档]")
-resp, data = client.delete_documents(
+resp = client.delete_documents(
     Bucket=bucket,
     Namespace=namespace,
     Ids=['p1', 'p2', 'p3', 'p4']
 )
-# print(resp)
-pprint(data)
+print(resp)

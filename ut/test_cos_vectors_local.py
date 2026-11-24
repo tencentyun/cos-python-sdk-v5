@@ -391,9 +391,9 @@ class VectorsResponseTest(unittest.TestCase):
     def test_json_body(self):
         client = _client()
         _capture(client, _FakeResponse(200, {'Content-Type': 'application/json; charset=utf-8'},
-                                       b'{"result":{"rowsUpserted":2}}'))
-        resp, data = client.upsert_documents(Bucket=BUCKET, Namespace='products', Rows=[])
-        self.assertEqual({'result': {'rowsUpserted': 2}}, data)
+                                       b'{"namespace":{"namespaceName":"products"}}'))
+        resp, data = client.get_namespace(Bucket=BUCKET, Namespace='products')
+        self.assertEqual({'namespace': {'namespaceName': 'products'}}, data)
 
     def test_trace_id_header_passthrough(self):
         """响应头中的 X-Cos-Trace-Id 原样透传。"""
@@ -488,9 +488,9 @@ class VectorsLoopbackTest(unittest.TestCase):
         self.assertEqual(3, len(self.server.records))
 
     def test_other_actions_retried(self):
-        self.server.responses.extend([(503, JSON_HEADERS, b'{}'), (200, JSON_HEADERS, b'{"result":{}}')])
-        resp, data = self.client().patch_documents(Bucket=BUCKET, Namespace='products', Rows=[{'id': '1', 'v': 1}])
-        self.assertEqual({'result': {}}, data)
+        self.server.responses.extend([(503, JSON_HEADERS, b'{}'), (200, JSON_HEADERS, b'')])
+        resp = self.client().patch_documents(Bucket=BUCKET, Namespace='products', Rows=[{'id': '1', 'v': 1}])
+        self.assertIsInstance(resp, dict)
         self.assertEqual(2, len(self.server.records))
 
     def test_native_error_response(self):
