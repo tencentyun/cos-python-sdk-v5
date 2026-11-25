@@ -42,7 +42,7 @@ for i in range(0, 10):
         Key='exampleobject',
         LocalFilePath='local.txt')
         break
-    except CosClientError or CosServiceError as e:
+    except (CosClientError, CosServiceError) as e:
         print(e)
 
 
