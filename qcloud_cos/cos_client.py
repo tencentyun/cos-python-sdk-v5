@@ -83,7 +83,7 @@ class CosConfig(object):
                  AutoSwitchDomainOnRetry=False, VerifySSL=None, SSLCert=None,
                  EnableSessionAuth=None, SessionMode=None, EnableRapidDomain=False,
                  SessionRefreshBefore=60, CreateSessionTimeout=30,
-                 EnableGatewayDnsLb=None, GatewayDnsRefreshInterval=5):
+                 EnableGatewayDnsLb=None, GatewayDnsRefreshInterval=5, EndpointCosVectors=None):
         """初始化，保存用户的信息
 
         :param Appid(string): 用户APPID.
@@ -126,6 +126,9 @@ class CosConfig(object):
         :param CreateSessionTimeout(int): CreateSession 独立超时秒数，默认 30。
         :param EnableGatewayDnsLb(bool): HTTP Rapid Gateway DNS 负载均衡。None=自动；True=强制校验；False=关闭。
         :param GatewayDnsRefreshInterval(int or float): Gateway DNS 刷新间隔秒数，最小 1，默认 5。
+        :param EndpointCosVectors(string): COS Vectors 服务域名(不含bucket), 如 vectors.ap-guangzhou.coslake.com。
+            仅对 CosVectorsClient 生效: COS Vectors 协议接口访问该域名, Native 接口访问 <bucket>.<EndpointCosVectors>。
+            优先级低于 Domain, 高于 Region 推导的默认域名 vectors.<Region>.coslake.com。
         """
         self._appid = to_unicode(Appid)
         self._token = to_unicode(Token)
@@ -141,6 +144,7 @@ class CosConfig(object):
         self._proxies = Proxies
         self._domain = Domain
         self._service_domain = ServiceDomain
+        self._endpoint_cosvectors = to_unicode(EndpointCosVectors) if EndpointCosVectors else None
         self._keep_alive = KeepAlive
         self._pool_connections = PoolConnections
         self._pool_maxsize = PoolMaxSize
@@ -308,40 +312,67 @@ class CosConfig(object):
         :param path(string): 请求COSVectos的路径(即方法，如/GetVectorBucket).
         :return(string): 请求COS Vectors的URL地址.
         """
-
-        def format_uri(scheme, url, path):
-            return u"{scheme}://{url}/{path}".format(scheme=to_unicode(scheme), url=to_unicode(url), path=to_unicode(path))
-
-        if path is None:
+        if not path:
             raise CosClientError("path is required not empty")
-        
+
         # path处理
+        path = to_unicode(path)
         if path[0] == u'/':
-                path = path[1:]
+            path = path[1:]
         path = quote(to_bytes(path), '/-_.~')
         path = path.replace('./', '.%2F')
 
-        scheme = self._scheme
-        # 优先级：ip:port > domain > region
+        url, _ = self.cos_vectors_url(u'/' + to_unicode(path), domain=domain)
+        return url
 
-        # ip:port
-        if self._ip is not None and self._port is not None:
-            url = u"{ip}:{port}".format(ip=self._ip, port=self._port)
-            return format_uri(scheme, url, path)
+    def cos_vectors_host(self, bucket=None, domain=None):
+        """计算COS Vectors请求的Host, 优先级: Domain > EndpointCosVectors > Region.
 
-        # domain
+        :param bucket(string): Native接口的存储桶名称; 为None时返回COS Vectors协议接口的Host.
+        :param domain(string): 覆盖配置中的Domain.
+        :return(string): Host, 可能包含端口.
+        """
         if domain is None:
             domain = self._domain
         if domain is not None:
-            return format_uri(scheme, domain, path)
-        
-        # region
-        if self._region is not None:
-            url =  u"vectors.{region}.coslake.com".format(region=self._region)
-            return format_uri(scheme, url, path)
+            host = to_unicode(domain)
+            if bucket is not None:
+                bucket = format_bucket(bucket, self._appid)
+                label = host.split(u':')[0].split(u'.')[0]
+                if label.lower() != bucket.lower():
+                    raise CosClientError(
+                        u"Domain {domain} does not match bucket {bucket}: Native API requires Domain in format "
+                        u"<bucket>.vectors.<region>.coslake.com, or use EndpointCosVectors/Region instead".format(
+                            domain=host, bucket=bucket))
+            return host
 
-        raise CosClientError('Region is Required!')
+        if self._endpoint_cosvectors:
+            service = self._endpoint_cosvectors
+        elif self._region:
+            service = u"vectors.{region}.coslake.com".format(region=to_unicode(self._region))
+        else:
+            raise CosClientError('Region or EndpointCosVectors or Domain is required for COS Vectors!')
+        if bucket is None:
+            return service
+        return u"{bucket}.{service}".format(bucket=format_bucket(bucket, self._appid), service=service)
 
+    def cos_vectors_url(self, path, bucket=None, domain=None):
+        """计算COS Vectors请求的URL与Host. 配置IP时连接IP(未配置Port时使用scheme默认端口), Host仍为域名.
+
+        :param path(string): 已编码的请求路径, 以/开头.
+        :param bucket(string): Native接口的存储桶名称; 为None时按COS Vectors协议接口计算.
+        :param domain(string): 覆盖配置中的Domain.
+        :return(tuple): (url, host).
+        """
+        host = self.cos_vectors_host(bucket=bucket, domain=domain)
+        netloc = host
+        if self._ip is not None:
+            netloc = self._ip
+            if self._port is not None:
+                netloc = u"{ip}:{port}".format(ip=self._ip, port=self._port)
+        url = u"{scheme}://{netloc}{path}".format(
+            scheme=to_unicode(self._scheme), netloc=to_unicode(netloc), path=to_unicode(path))
+        return url, host
 
     def get_host(self, Bucket=None, Appid=None):
         """传入bucket名称,根据endpoint获取Host名称

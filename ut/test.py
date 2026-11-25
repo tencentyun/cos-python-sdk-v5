@@ -11,7 +11,7 @@ import json
 import base64
 import multiprocessing
 
-from qcloud_cos import CosS3Client, MetaInsightClient, CosVectorsClient, AIRecognitionClient
+from qcloud_cos import CosS3Client, MetaInsightClient, AIRecognitionClient
 from qcloud_cos import CosConfig
 from qcloud_cos import CosServiceError, CosClientError
 from qcloud_cos.intelligent_speech import IntelligentSpeechClient
@@ -34,9 +34,6 @@ APPID = os.environ['COS_APPID']
 FAILURE_MOCK_SERVER = os.environ['ERR_HOST']
 TEST_CI = os.environ["TEST_CI"]
 USE_CREDENTIAL_INST = os.environ["USE_CREDENTIAL_INST"]
-
-# 向量桶配置
-COS_VECTORS_DOMAIN = os.environ["COS_VECTORS_DOMAIN"]
 
 test_bucket = 'cos-python-v5-test-' + str(sys.version_info[0]) + '-' + str(
     sys.version_info[1]) + '-' + REGION + '-' + APPID
@@ -85,21 +82,11 @@ metaConf = CosConfig(
     SecretKey=SECRET_KEY,
 )
 
-cosVectorsConf = CosConfig(
-    Scheme='http',
-    Appid=APPID,
-    Region=REGION,
-    SecretId=SECRET_ID,
-    SecretKey=SECRET_KEY,
-    Domain=COS_VECTORS_DOMAIN,
-)
-
 anonymous_conf = CosConfig(Appid=APPID, Region=REGION, Anonymous=True)
 anonymous_client = CosS3Client(anonymous_conf)
 
 client = CosS3Client(conf, retry=3)
 meta_insight_client = MetaInsightClient(metaConf, retry=3)
-cos_vectors_client = CosVectorsClient(cosVectorsConf, retry=3)
 ai_recognition_client = AIRecognitionClient(conf, retry=3)
 intelligent_speech_client = IntelligentSpeechClient(conf, retry=3)
 rsa_provider = RSAProvider()
@@ -124,9 +111,6 @@ mi_image_search_file = "image_search.png"
 mi_image_search_dataset_name = "ci-sdk-image-search"
 mi_face_search_dataset_name = "ci-sdk-face-search"
 mi_face_search_file = "face.jpeg"
-
-cos_vectors_bucket_name_prefix = "cos-python-sdk-test-vec"
-cos_vectors_index_name = 'idx-float32-dim3'
 
 
 def _create_test_bucket(test_bucket, create_region=None):
@@ -6813,203 +6797,6 @@ def test_put_object_with_tagging():
 
     if os.path.exists(filename):
         os.remove(filename)
-    
-
-# 向量桶相关接口
-def create_vector_bucket(Bucket):
-    """创建向量桶"""
-    resp, data = cos_vectors_client.create_vector_bucket(
-        Bucket=Bucket,
-        SseType='AES256'
-    )
-    return resp, data
-
-def delete_vector_bucket(Bucket):
-    """删除向量桶"""
-    resp = cos_vectors_client.delete_vector_bucket(
-        Bucket=Bucket
-    )
-    return resp
-
-def list_vector_buckets():
-    """列出向量桶"""
-    resp, data = cos_vectors_client.list_vector_buckets(
-        MaxResults=100,
-        Prefix=cos_vectors_bucket_name_prefix
-    )
-    return resp, data
-
-def get_vector_bucket(Bucket):
-    """获取向量桶"""
-    resp, data = cos_vectors_client.get_vector_bucket(
-        Bucket=Bucket
-    )
-    return resp, data
-
-def put_vector_bucket_policy(Bucket):
-    """设置向量桶策略"""
-    resource = "qcs::cosvector:" + REGION + ":uid/" + APPID + ":bucket/" + Bucket + "/*"
-    resource_list = [resource]
-    resp = cos_vectors_client.put_vector_bucket_policy(
-        Bucket=Bucket,
-        Policy={
-            "Version": "2.0",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {
-                        "qcs": [
-                            "qcs::cam::anonymous:anonymous"
-                        ]
-                    },
-                    "Action": [
-                        "name/cos:GetVectorBucket",
-                        "name/cos:ListVectors"
-                    ],
-                    "Resource": resource_list
-                }
-            ]
-        }
-    )
-    return resp
-
-def get_vector_bucket_policy(Bucket):
-    """获取向量桶策略"""
-    resp, data = cos_vectors_client.get_vector_bucket_policy(
-        Bucket=Bucket
-    )
-    return resp, data
-
-def delete_vector_bucket_policy(Bucket):
-    """删除向量桶策略"""
-    resp = cos_vectors_client.delete_vector_bucket_policy(
-        Bucket=Bucket
-    )
-    return resp
-
-def create_index(Bucket):
-    """创建索引"""
-    resp, data = cos_vectors_client.create_index(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name,
-        DataType="float32",
-        Dimension=3,
-        DistanceMetric='euclidean',
-        NonFilterableMetadataKeys=['nfkey1', 'nfkey2']
-    )
-    return resp, data
-
-def delete_index(Bucket):
-    """删除索引"""
-    resp = cos_vectors_client.delete_index(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name
-    )
-    return resp
-
-def list_indexes(Bucket):
-    """列出索引"""
-    resp, data = cos_vectors_client.list_indexes(
-        MaxResults=100,
-        Bucket=Bucket
-    )
-    return resp, data
-
-def get_index(Bucket):
-    """获取索引"""
-    resp, data = cos_vectors_client.get_index(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name
-    )
-    return resp, data
-
-def put_vectors(Bucket):
-    """插入向量"""
-    resp = cos_vectors_client.put_vectors(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name,
-        Vectors=[
-            {
-                'key': 'vector1',
-                'data': {
-                    'float32': [0.1, 0.2, 0.3],
-                },
-                'metadata': {
-                    'key1': 'value1',
-                    'key2': 'value2',
-                    'nfkey1': 'nfvalue1'
-                }
-            },
-            {
-                'key': 'vector2',
-                'data': {
-                    'float32':[0.4, 0.5, 0.6]
-                },
-                'metadata': {
-                    'key1': 'value11',
-                    'key2': 'value22',
-                    'nfkey2': 'nfvalue22'
-                }
-            },
-            {
-                'key': 'vector3',
-                'data': {
-                    'float32': [0.7, 0.8, 0.9]
-                },
-                'metadata': {
-                    'key1': 'value111',
-                    'key2': 'value222',
-                    'nfkey1': 'nfvalue111',
-                    'nfkey2': 'nfvalue222'
-                }
-            }
-        ]
-    )
-    return resp
-
-def get_vectors(Bucket, keys):
-    """获取向量"""
-    resp, data = cos_vectors_client.get_vectors(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name,
-        Keys=keys,
-        ReturnData=True,
-        ReturnMetaData=True
-    )
-    return resp, data
-
-def list_vectors(Bucket):
-    """列出向量"""
-    resp, data = cos_vectors_client.list_vectors(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name,
-        MaxResults=100,
-        ReturnData=True,
-        ReturnMetaData=True
-    )
-    return resp, data
-
-def delete_vectors(Bucket, keys):
-    """删除向量"""
-    resp = cos_vectors_client.delete_vectors(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name,
-        Keys=keys
-    )
-    return resp
-
-def query_vectors(Bucket, query_vector, filter = None):
-    """查询向量"""
-    resp, data = cos_vectors_client.query_vectors(
-        Bucket=Bucket,
-        Index=cos_vectors_index_name,
-        QueryVector={"float32": query_vector},
-        TopK=1,
-        Filter=filter,
-        ReturnDistance=True,
-        ReturnMetaData=True
-    )
-    return resp, data
 
 
 def test_rapid_regression():
@@ -7048,146 +6835,25 @@ def test_rapid_regression():
         shutil.rmtree(data_dir)
 
 
-def test_cos_vectors():
-    """向量桶相关接口集成测试"""
-
-    # 生成随机桶名，固定前缀
-    random_suffix = ''.join(random.choice('0123456789abcdefghijklmnopqrstuvwxyz') for _ in range(8))
-    vector_bucket_name = u"{prefix}-{suffix}-{appid}".format(prefix=cos_vectors_bucket_name_prefix, suffix=random_suffix, appid=APPID)
-
-    # 创建测试向量桶
-    resp, data = create_vector_bucket(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'vectorBucketQcs' in data
-
-    # 列出现有向量桶
-    resp, data = list_vector_buckets()  # 指定前缀为bucket_name
-    assert isinstance(data, dict)
-    assert 'vectorBuckets' in data
-    assert isinstance(data['vectorBuckets'], list)
-
-    # 获取向量桶
-    resp, data = get_vector_bucket(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'vectorBucket' in data
-    assert isinstance(data['vectorBucket'], dict)
-    assert data['vectorBucket']['vectorBucketName'] == vector_bucket_name
-
-    # 创建policy
-    resp = put_vector_bucket_policy(vector_bucket_name)
-
-    # 获取policy
-    time.sleep(1)
-    resp, data = get_vector_bucket_policy(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'policy' in data
-
-    # 删除policy
-    time.sleep(1)
-    resp = delete_vector_bucket_policy(vector_bucket_name)
-
-    # 创建索引
-    resp, data = create_index(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'indexQcs' in data
-
-    # 列出索引
-    resp, data = list_indexes(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'indexes' in data
-    assert isinstance(data['indexes'], list)
-    assert len(data['indexes']) == 1
-
-    # 获取索引
-    resp, data = get_index(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'index' in data
-    assert isinstance(data['index'], dict)
-    assert data['index']['indexName'] == cos_vectors_index_name
-    assert data['index']['vectorBucketName'] == vector_bucket_name
-
-    # 插入向量
-    resp = put_vectors(vector_bucket_name)
-    time.sleep(10)
-    
-    # 获取向量
-    resp, data = get_vectors(vector_bucket_name, ['vector1', 'vector2'])
-    assert isinstance(data, dict)
-    assert 'vectors' in data
-    assert isinstance(data['vectors'], list)
-    assert len(data['vectors']) == 2
-
-    # 列出向量
-    resp, data = list_vectors(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'vectors' in data
-    assert isinstance(data['vectors'], list)
-    assert len(data['vectors']) == 3
-
-    # 查询向量
-    resp, data = query_vectors(vector_bucket_name, [0.1, 0.2, 0.3])
-    assert isinstance(data, dict)
-    assert 'vectors' in data
-    assert isinstance(data['vectors'], list)
-    assert len(data['vectors']) == 1
-
-    vector = data['vectors'][0]
-    assert vector['key'] == 'vector1'   # vector1距离最近
-
-    # 删除向量再查询
-    resp = delete_vectors(vector_bucket_name, ['vector1'])
-    time.sleep(10)
-    resp, data = query_vectors(vector_bucket_name, [0.1, 0.2, 0.3])
-    assert isinstance(data, dict)
-    assert 'vectors' in data
-    assert isinstance(data['vectors'], list)
-    assert len(data['vectors']) == 1
-    vector = data['vectors'][0]
-    assert vector['key'] == 'vector2'   # vectorr1被删除, vector2距离最近
-
-    # 过滤查询
-    resp, data = query_vectors(vector_bucket_name, [0.1, 0.2, 0.3], filter={'key1': {'$eq': 'value111'}})
-    assert isinstance(data, dict)
-    assert 'vectors' in data
-    assert isinstance(data['vectors'], list)
-    assert len(data['vectors']) == 1
-    vector = data['vectors'][0]
-    assert vector['key'] == 'vector3'   # vector2被过滤掉，vector3距离最近
-
-    # 删除向量
-    resp = delete_vectors(vector_bucket_name, ['vector2', 'vector3'])
-    time.sleep(10)
-    resp, data = list_vectors(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'vectors' in data
-    assert isinstance(data['vectors'], list)
-    assert len(data['vectors']) == 0
-
-    # 删除索引
-    resp = delete_index(vector_bucket_name)
-    resp, data = list_indexes(vector_bucket_name)
-    assert isinstance(data, dict)
-    assert 'indexes' in data
-    assert isinstance(data['indexes'], list)
-    assert len(data['indexes']) == 0
-
-    # 再次尝试获取索引，但实际索引不存在
+def _vectors_e2e():
+    """按运行器不同加载 e2e 模块: pytest 走包内相对导入, nose 走顶层模块导入"""
     try:
-        resp, data = get_index(vector_bucket_name)
-    except CosServiceError as e:
-        assert e.get_error_code() == "NotFoundException"
+        from . import test_cos_vectors_e2e
+        return test_cos_vectors_e2e
+    except (ImportError, ValueError):
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import test_cos_vectors_e2e
+        return test_cos_vectors_e2e
 
-    # 删除向量桶
-    try:
-        time.sleep(1)
-        resp = delete_vector_bucket(vector_bucket_name)
-    except CosServiceError as e:
-        assert e.get_error_code() == "ConflictException"
-        print(e)
-    resp, data = list_vector_buckets()
-    assert isinstance(data, dict)
-    assert 'vectorBuckets' in data
-    assert isinstance(data['vectorBuckets'], list)
+
+def test_cos_vectors_classic():
+    """COS Vectors CLASSIC 流程(桶+index+vectors) e2e, 实现见 ut/test_cos_vectors_e2e.py"""
+    return _vectors_e2e().run_classic_e2e()
+
+
+def test_cos_vectors_enhanced():
+    """COS Vectors ENHANCED 流程(桶+namespace+documents) e2e, 实现见 ut/test_cos_vectors_e2e.py"""
+    return _vectors_e2e().run_enhanced_e2e()
 
 
 def test_put_get_symlink_multiver():

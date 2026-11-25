@@ -4,9 +4,10 @@ Qcloud COSv5 SDK
 .. image:: https://img.shields.io/pypi/v/cos-python-sdk-v5.svg
    :target: https://pypi.org/search/?q=cos-python-sdk-v5
    :alt: Pypi
+
 .. image:: https://api.travis-ci.com/tencentyun/cos-python-sdk-v5.svg?branch=master
    :target: https://app.travis-ci.com/github/tencentyun/cos-python-sdk-v5
-   :alt: Travis CI 
+   :alt: Travis CI
 
 介绍
 _______
@@ -45,7 +46,7 @@ ____________________________
 自动完成签发、按桶缓存与重签。不要用基础永久密钥直接打数据面；未启用 session
 时 SDK 会本地报错，而不是把请求发出去后等网关 403。
 
-使用示例见 `demo/rapid_bucket.py <demo/rapid_bucket.py>`_。
+使用示例见 `demo/rapid_bucket.py <https://github.com/tencentyun/cos-python-sdk-v5/blob/master/demo/rapid_bucket.py>`_。
 
 配置要点：
 
@@ -129,7 +130,7 @@ full-jitter 指数退避。``retry=N`` 最多执行 ``N+1`` 次 IP 尝试；IP �
 创建请求使用基础凭证，不依赖 Rapid session。方法成功返回 ``None`` 表示创建请求
 已受理，不代表资源编排完成；使用 ``head_bucket`` 查询 ``x-cos-bucket-status``，
 待服务端报告 ``Available`` 后再进行对象操作。
-独立建桶示例见 `demo/rapid_create_bucket.py <demo/rapid_create_bucket.py>`_。
+独立建桶示例见 `demo/rapid_create_bucket.py <https://github.com/tencentyun/cos-python-sdk-v5/blob/master/demo/rapid_create_bucket.py>`_。
 
 Rapid ``upload_file`` 会在不携带 Prefix 的情况下分页列举未完成 MPU，再按完整 Key
 在客户端过滤，因此兼容 Gateway 的 ListMultipartUploads 参数限制并保留断点续传。
