@@ -270,8 +270,11 @@ def switch_hostname_for_url(url):
         host = url_parsed.hostname
         new_host = switch_hostname(host)
         if host != new_host:
-            new_url = url.replace(host, new_host)
-            return new_url
+            # Replace only the hostname, preserving userinfo and the port.
+            netloc = url_parsed.netloc
+            host_start = netloc.rfind('@') + 1
+            netloc = netloc[:host_start] + new_host + netloc[host_start + len(host):]
+            return url_parsed._replace(netloc=netloc).geturl()
 
     return url
 
